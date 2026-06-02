@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   POST_IT_BG,
   POST_IT_COLOR_LABELS,
+  POST_IT_RADIUS,
   POST_IT_SHADOW,
   POST_IT_SIZE,
 } from "@/lib/post-it-utils";
@@ -119,12 +120,12 @@ export function RoomTaskPrompt({
         <div className="space-y-4 px-5 py-4">
           <div className="flex justify-center">
             <div
-              className="flex items-center justify-center p-4 text-center text-[15px] text-[#323338]"
+              className="flex items-center justify-center p-4 text-center text-[15px] font-medium text-[#323338] antialiased"
               style={{
                 width: POST_IT_SIZE,
                 height: POST_IT_SIZE,
                 backgroundColor: POST_IT_BG[color],
-                borderRadius: 4,
+                borderRadius: POST_IT_RADIUS,
                 boxShadow: POST_IT_SHADOW,
               }}
             >

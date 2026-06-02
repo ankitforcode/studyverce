@@ -6,17 +6,16 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useTransition,
 } from "react";
-import { Layers, Pin, Plus, Trash2, CircleCheck } from "lucide-react";
+import { Pin, Trash2, CircleCheck } from "lucide-react";
 import type { PostItItem, UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import {
   POST_IT_BG,
   POST_IT_COLOR_STYLES,
-  POST_IT_FONT_MAX,
   POST_IT_MAX_SIZE,
   POST_IT_MIN_SIZE,
+  POST_IT_RADIUS,
   POST_IT_SHADOW,
   POST_IT_SHADOW_ACTIVE,
   POST_IT_SHADOW_HOVER,
@@ -87,7 +86,6 @@ export function PostItNote({
   const [hovered, setHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
-  const [pending, startTransition] = useTransition();
   const [displaySize, setDisplaySize] = useState(task.width);
 
   const syncNoteGeometry = useCallback(() => {
@@ -113,13 +111,16 @@ export function PostItNote({
     }
   }, [task.zIndex]);
 
-  const focusSelf = useCallback(() => {
+  const bringToFront = useCallback(() => {
     const nextZ = onFocus(task.id);
     if (noteRef.current) {
       noteRef.current.style.zIndex = String(nextZ);
     }
+    if (nextZ !== task.zIndex) {
+      void updatePostItTask(task.id, { zIndex: nextZ });
+    }
     return nextZ;
-  }, [onFocus, task.id]);
+  }, [onFocus, task.id, task.zIndex]);
 
   useEffect(() => {
     if (!editing) {
@@ -128,15 +129,17 @@ export function PostItNote({
     }
   }, [task.title, task.items, editing]);
 
-  const fitKey = `${task.title}|${task.items.map((i) => i.text).join("|")}|${displaySize}`;
+  const displayTitle = editing ? draftTitle : task.title;
+  const displayItems = editing ? draftItems : task.items;
+  const fitKey = `${displayTitle}|${displayItems.map((i) => i.text).join("|")}|${displaySize}`;
   const fontSize = usePostItFitFont(contentRef, [fitKey], {
-    enabled: !editing && !resizing,
+    enabled: !resizing,
   });
 
   const persistPosition = useCallback(
     (x: number, y: number) => {
       if (task.pinned) return;
-      startTransition(async () => {
+      void (async () => {
         const { task: updated, error } = await updatePostItTask(task.id, {
           posX: x,
           posY: y,
@@ -146,14 +149,14 @@ export function PostItNote({
           livePosRef.current = { x: task.posX, y: task.posY };
           syncNoteGeometry();
         }
-      });
+      })();
     },
     [task.id, task.pinned, task.posX, task.posY, onUpdate, syncNoteGeometry]
   );
 
   const persistSize = useCallback(
     (size: number) => {
-      startTransition(async () => {
+      void (async () => {
         const { task: updated, error } = await updatePostItTask(task.id, {
           width: size,
           height: size,
@@ -164,7 +167,7 @@ export function PostItNote({
           setDisplaySize(task.width);
           syncNoteGeometry();
         }
-      });
+      })();
     },
     [task.id, task.width, onUpdate, syncNoteGeometry]
   );
@@ -216,7 +219,7 @@ export function PostItNote({
     if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
-    focusSelf();
+    bringToFront();
     interactingRef.current = true;
     resizeRef.current = {
       startX: e.clientX,
@@ -321,13 +324,13 @@ export function PostItNote({
 
     if (!titleChanged && !itemsChanged) return;
 
-    startTransition(async () => {
+    void (async () => {
       const { task: updated } = await updatePostItTask(task.id, {
         title,
         items,
       });
       if (updated) onUpdate(updated);
-    });
+    })();
   }, [draftTitle, draftItems, task.id, task.title, task.items, onUpdate]);
 
   function cancelEdits() {
@@ -336,26 +339,14 @@ export function PostItNote({
     setEditing(false);
   }
 
-  function enterEditMode(focusNewItem = false) {
+  function enterEditMode() {
     setDraftTitle(task.title);
-    if (focusNewItem) {
-      const withNew = [...task.items, newItem()];
-      setDraftItems(withNew);
-      setEditing(true);
-      requestAnimationFrame(() => {
-        const inputs = noteRef.current?.querySelectorAll<HTMLInputElement>(
-          "[data-item-input]"
-        );
-        inputs?.[inputs.length - 1]?.focus();
-      });
-    } else {
-      setDraftItems(task.items);
-      setEditing(true);
-      requestAnimationFrame(() => {
-        titleInputRef.current?.focus();
-        titleInputRef.current?.select();
-      });
-    }
+    setDraftItems(task.items);
+    setEditing(true);
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    });
   }
 
   useEffect(() => {
@@ -373,34 +364,26 @@ export function PostItNote({
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    startTransition(async () => {
+    void (async () => {
       const { error } = await deletePostItTask(task.id);
       if (!error) onDelete(task.id);
-    });
+    })();
   }
 
   function handleTogglePin(e: React.MouseEvent) {
     e.stopPropagation();
-    startTransition(async () => {
+    void (async () => {
       const { task: updated } = await togglePostItPin(task.id);
       if (updated) onUpdate(updated);
-    });
-  }
-
-  function handleBringToFront(e: React.MouseEvent) {
-    e.stopPropagation();
-    const nextZ = focusSelf();
-    startTransition(async () => {
-      await updatePostItTask(task.id, { zIndex: nextZ });
-    });
+    })();
   }
 
   function handleClose(e: React.MouseEvent) {
     e.stopPropagation();
-    startTransition(async () => {
+    void (async () => {
       const { task: updated } = await closePostItTask(task.id);
       if (updated) onUpdate(updated);
-    });
+    })();
   }
 
   function updateDraftItem(id: string, text: string) {
@@ -435,7 +418,6 @@ export function PostItNote({
   const showResize = !editing && !task.pinned;
   const showControls =
     (task.pinned || hovered || editing || resizing) && !dragging;
-  const showResizeRing = showResize && showControls;
 
   return (
     <div
@@ -444,8 +426,7 @@ export function PostItNote({
         "group absolute pointer-events-auto outline-none select-none",
         !editing && !task.pinned && !resizing && "cursor-grab active:cursor-grabbing",
         task.pinned && "cursor-default",
-        POST_IT_COLOR_STYLES[task.color],
-        pending && "opacity-90"
+        POST_IT_COLOR_STYLES[task.color]
       )}
       style={{
         left: task.posX,
@@ -453,7 +434,7 @@ export function PostItNote({
         zIndex: task.zIndex,
         width: task.width,
         height: task.height,
-        borderRadius: 4,
+        borderRadius: POST_IT_RADIUS,
         backgroundColor: POST_IT_BG[task.color],
         boxShadow: shadow,
         transition:
@@ -468,6 +449,7 @@ export function PostItNote({
       }}
       onPointerDown={(e) => {
         e.stopPropagation();
+        bringToFront();
         const target = e.target as HTMLElement;
         if (
           target.closest(
@@ -476,18 +458,10 @@ export function PostItNote({
         ) {
           return;
         }
-        focusSelf();
         startDrag(e);
       }}
     >
-      <div className="relative h-full w-full overflow-visible rounded-[4px]">
-        {showResizeRing && (
-          <div
-            className="pointer-events-none absolute inset-0 rounded-[4px] ring-2 ring-[#323338]/20 ring-inset"
-            aria-hidden
-          />
-        )}
-
+      <div className="relative h-full w-full overflow-visible">
         <div
           className={cn(
             "pointer-events-auto absolute right-1 top-1 z-20 flex items-center gap-0.5 transition-opacity",
@@ -507,16 +481,6 @@ export function PostItNote({
               <Pin
                 className={cn("h-3.5 w-3.5", task.pinned && "fill-current")}
               />
-            </button>
-          </PostItIconTooltip>
-          <PostItIconTooltip label="Bring to front">
-            <button
-              type="button"
-              onClick={handleBringToFront}
-              className={iconBtn}
-              aria-label="Bring to front"
-            >
-              <Layers className="h-3.5 w-3.5" />
             </button>
           </PostItIconTooltip>
           <PostItIconTooltip label="Mark done & close">
@@ -551,12 +515,12 @@ export function PostItNote({
         <div
           ref={contentRef}
           className={cn(
-            "flex h-full flex-col overflow-hidden px-3 pb-8 pt-7 text-[#323338]",
-            editing ? "pointer-events-auto overflow-y-auto" : "pointer-events-none"
+            "flex h-full flex-col overflow-hidden px-3 pb-8 pt-7 text-[#323338] antialiased",
+            editing
+              ? "pointer-events-auto overflow-y-auto"
+              : "pointer-events-none"
           )}
-          style={{
-            fontSize: editing ? POST_IT_FONT_MAX : fontSize,
-          }}
+          style={{ fontSize }}
         >
           {editing ? (
             <>
@@ -615,21 +579,12 @@ export function PostItNote({
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
-                data-no-drag
-                onClick={addDraftItem}
-                className="mt-1.5 flex items-center gap-1 self-start text-[0.9em] text-[#323338]/55 hover:text-[#323338]"
-              >
-                <Plus className="h-3 w-3" />
-                Add item
-              </button>
             </>
           ) : (
             <>
               <p
                 className={cn(
-                  "mb-1.5 shrink-0 font-semibold leading-snug",
+                  "mb-1.5 shrink-0 font-semibold leading-snug wrap-break-word",
                   task.titleDone && "text-[#323338]/55 line-through"
                 )}
               >
@@ -657,26 +612,6 @@ export function PostItNote({
             </>
           )}
         </div>
-
-        {!editing && (
-          <PostItIconTooltip label="Add item" side="top">
-            <button
-              type="button"
-              data-no-drag
-              onClick={(e) => {
-                e.stopPropagation();
-                enterEditMode(true);
-              }}
-              className={cn(
-                "pointer-events-auto absolute bottom-7 left-3 z-10 flex items-center gap-0.5 text-[11px] text-[#323338]/50 transition-opacity hover:text-[#323338]",
-                showControls ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-              )}
-            >
-              <Plus className="h-3 w-3" />
-              Add item
-            </button>
-          </PostItIconTooltip>
-        )}
       </div>
 
       {showResize && (

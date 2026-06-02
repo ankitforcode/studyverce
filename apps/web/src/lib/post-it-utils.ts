@@ -14,14 +14,16 @@ export const POST_IT_COLOR_STYLES = {
   lavender: "text-[#323338]",
 } as const;
 
-/** Miro-style pastel fills */
+/** Flat sticky-note fills */
 export const POST_IT_BG: Record<keyof typeof POST_IT_COLOR_STYLES, string> = {
-  yellow: "#FFF476",
-  sky: "#85C8FF",
-  pink: "#FF9EBB",
-  lavender: "#C5A3FF",
-  mint: "#85E0A9",
+  yellow: "#FFF4A3",
+  sky: "#A8D4FF",
+  pink: "#FFB8D9",
+  lavender: "#B1AFFF",
+  mint: "#A8E6CF",
 };
+
+export const POST_IT_RADIUS = 0;
 
 export const POST_IT_COLOR_LABELS: Record<keyof typeof POST_IT_COLOR_STYLES, string> = {
   yellow: "Yellow",
@@ -31,11 +33,9 @@ export const POST_IT_COLOR_LABELS: Record<keyof typeof POST_IT_COLOR_STYLES, str
   mint: "Green",
 };
 
-export const POST_IT_SHADOW =
-  "0 2px 6px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.2), 0 16px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)";
+/** Soft lift along the bottom edge — no outline ring */
+export const POST_IT_SHADOW = "0 3px 8px rgba(0, 0, 0, 0.1)";
 
-export const POST_IT_SHADOW_HOVER =
-  "0 4px 10px rgba(0,0,0,0.18), 0 12px 28px rgba(0,0,0,0.24), 0 20px 48px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.08)";
+export const POST_IT_SHADOW_HOVER = "0 5px 12px rgba(0, 0, 0, 0.12)";
 
-export const POST_IT_SHADOW_ACTIVE =
-  "0 6px 14px rgba(0,0,0,0.2), 0 16px 36px rgba(0,0,0,0.28), 0 24px 56px rgba(0,0,0,0.16)";
+export const POST_IT_SHADOW_ACTIVE = "0 8px 16px rgba(0, 0, 0, 0.14)";
