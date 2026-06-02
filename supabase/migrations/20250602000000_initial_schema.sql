@@ -1,4 +1,4 @@
--- StudyVerse initial schema
+-- StudyVerce initial schema
 
 -- Profiles (extends auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (

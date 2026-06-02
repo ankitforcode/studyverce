@@ -1,7 +1,7 @@
 "use client";
 
 import { Pause, Play, RotateCcw, Timer } from "lucide-react";
-import type { PomodoroState } from "@studyverse/shared";
+import type { PomodoroState } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

@@ -17,7 +17,7 @@ importers:
 
   apps/socket-server:
     dependencies:
-      '@studyverse/shared':
+      '@studyverce/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@supabase/supabase-js':
@@ -69,10 +69,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@studyverse/db':
+      '@studyverce/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@studyverse/shared':
+      '@studyverce/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@supabase/ssr':
@@ -145,7 +145,7 @@ importers:
 
   packages/ai:
     dependencies:
-      '@studyverse/shared':
+      '@studyverce/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -155,7 +155,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@studyverse/shared':
+      '@studyverce/shared':
         specifier: workspace:*
         version: link:../shared
       zod:

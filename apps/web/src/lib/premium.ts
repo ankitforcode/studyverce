@@ -1,5 +1,5 @@
-import type { PlanTier } from "@studyverse/shared";
-import { PLAN_LIMITS, FEATURE_FLAGS } from "@studyverse/shared";
+import type { PlanTier } from "@studyverce/shared";
+import { PLAN_LIMITS, FEATURE_FLAGS } from "@studyverce/shared";
 
 export function canCreatePrivateRoom(planTier: PlanTier, currentPrivateRoomCount: number): boolean {
   return currentPrivateRoomCount < PLAN_LIMITS[planTier].maxPrivateRooms;

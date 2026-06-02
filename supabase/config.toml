@@ -1,5 +1,5 @@
 # A string used to distinguish different Supabase projects on the same host.
-project_id = "studyverse"
+project_id = "studyverce"
 
 [api]
 enabled = true

@@ -14,8 +14,8 @@ import {
   User,
   Pencil,
 } from "lucide-react";
-import type { RoomTrack, RoomTrackRequest } from "@studyverse/shared";
-import { TRACK_CATEGORIES, PROVIDER_LINK_EXAMPLES } from "@studyverse/shared";
+import type { RoomTrack, RoomTrackRequest } from "@studyverce/shared";
+import { TRACK_CATEGORIES, PROVIDER_LINK_EXAMPLES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

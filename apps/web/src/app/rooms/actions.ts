@@ -9,8 +9,8 @@ import {
   slugify,
   mergeRoomSettings,
   type CreateRoomInput,
-} from "@studyverse/db";
-import { PLAN_LIMITS } from "@studyverse/shared";
+} from "@studyverce/db";
+import { PLAN_LIMITS } from "@studyverce/shared";
 import crypto from "crypto";
 
 export async function createRoom(input: CreateRoomInput) {

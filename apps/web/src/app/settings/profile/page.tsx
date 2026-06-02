@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { SUBJECT_TAGS } from "@studyverse/shared";
+import { SUBJECT_TAGS } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
 import { updateProfile } from "@/app/settings/profile/actions";
 import { Button } from "@/components/ui/button";

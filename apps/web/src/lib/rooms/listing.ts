@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import type { StudyRoomSettings } from "@studyverse/shared";
-import { mergeRoomSettings } from "@studyverse/db";
+import type { StudyRoomSettings } from "@studyverce/shared";
+import { mergeRoomSettings } from "@studyverce/db";
 
 export type RoomListingItem = {
   id: string;

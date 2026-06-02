@@ -1,5 +1,5 @@
 {
-  "name": "@studyverse/socket-server",
+  "name": "@studyverce/socket-server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@studyverse/shared": "workspace:*",
+    "@studyverce/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.8",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { StickyNote } from "lucide-react";
-import type { UserPostItTask } from "@studyverse/shared";
+import type { UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import { PostItNote } from "@/components/dashboard/post-it-note";
 

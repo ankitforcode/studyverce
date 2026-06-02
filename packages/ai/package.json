@@ -1,5 +1,5 @@
 {
-  "name": "@studyverse/ai",
+  "name": "@studyverce/ai",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@studyverse/shared": "workspace:*"
+    "@studyverce/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

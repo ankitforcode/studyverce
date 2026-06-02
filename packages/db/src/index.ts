@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_ROOM_SETTINGS, SUBJECT_TAGS } from "@studyverse/shared";
+import { DEFAULT_ROOM_SETTINGS, SUBJECT_TAGS } from "@studyverce/shared";
 
 export const profileSchema = z.object({
   username: z

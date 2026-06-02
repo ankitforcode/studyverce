@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { POST_IT_COLORS, type PostItColor } from "@studyverse/shared";
+import { POST_IT_COLORS, type PostItColor } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import {
   POST_IT_BG,

@@ -9,7 +9,7 @@ import type {
   ChatMessage,
   PomodoroState,
   RoomMusicState,
-} from "@studyverse/shared";
+} from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/client";
 import { sendRoomMessage, deleteRoomMessage } from "@/app/rooms/chat-actions";
 

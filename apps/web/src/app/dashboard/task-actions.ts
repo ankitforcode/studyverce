@@ -7,7 +7,7 @@ import {
   type PostItItem,
   type UserPostItTask,
   POST_IT_COLORS,
-} from "@studyverse/shared";
+} from "@studyverce/shared";
 
 import type { PostItTaskRow } from "@/lib/post-it-mapper";
 import { mapPostItRow } from "@/lib/post-it-mapper";

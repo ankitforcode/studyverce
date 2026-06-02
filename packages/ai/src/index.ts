@@ -1,4 +1,4 @@
-import { FEATURE_FLAGS } from "@studyverse/shared";
+import { FEATURE_FLAGS } from "@studyverce/shared";
 
 export interface StudyPlanInput {
   subjects: string[];

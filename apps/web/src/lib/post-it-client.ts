@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { UserPostItTask } from "@studyverse/shared";
+import type { UserPostItTask } from "@studyverce/shared";
 import { mapPostItRow, type PostItTaskRow } from "@/lib/post-it-mapper";
 
 export async function fetchUserPostItTasks(): Promise<UserPostItTask[]> {

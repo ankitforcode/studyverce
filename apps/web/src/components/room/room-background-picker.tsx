@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { ImageIcon, Upload, Globe, Lock, X, Check, Trash2 } from "lucide-react";
-import type { RoomWallpaper } from "@studyverse/shared";
-import { WALLPAPER_CATEGORIES } from "@studyverse/shared";
+import type { RoomWallpaper } from "@studyverce/shared";
+import { WALLPAPER_CATEGORIES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

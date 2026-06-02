@@ -31,7 +31,7 @@ export async function Navbar() {
           className="relative z-10 flex shrink-0 items-center gap-2.5 font-bold text-lg leading-none"
         >
           <BookOpen className="h-6 w-6 shrink-0 text-primary" />
-          <span>StudyVerse</span>
+          <span>StudyVerce</span>
         </Link>
 
         <nav

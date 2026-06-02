@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { ChatMessage } from "@studyverse/shared";
+import type { ChatMessage } from "@studyverce/shared";
 
 type MessageRow = {
   id: string;

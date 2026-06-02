@@ -62,7 +62,7 @@ export default function HomePage() {
             Focus better.
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
-            StudyVerse combines virtual study rooms, real-time accountability, and focus tracking —
+            StudyVerce combines virtual study rooms, real-time accountability, and focus tracking —
             so you never have to study alone again.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@studyverse/db": "workspace:*",
-    "@studyverse/shared": "workspace:*",
+    "@studyverce/db": "workspace:*",
+    "@studyverce/shared": "workspace:*",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.8",
     "class-variance-authority": "^0.7.1",

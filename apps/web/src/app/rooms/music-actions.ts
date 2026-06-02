@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   type RoomTrack,
   type RoomTrackRequest,
-} from "@studyverse/shared";
+} from "@studyverce/shared";
 import { parseMusicProviderUrl } from "@/lib/music/providers";
 
 function mapTrack(row: {

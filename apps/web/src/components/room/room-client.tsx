@@ -16,8 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Wifi, WifiOff } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, RoomTrack, UserPostItTask } from "@studyverse/shared";
-import { roomTrackToMusicState } from "@studyverse/shared";
+import type { ChatMessage, RoomTrack, UserPostItTask } from "@studyverce/shared";
+import { roomTrackToMusicState } from "@studyverce/shared";
 
 interface RoomClientProps {
   roomId: string;

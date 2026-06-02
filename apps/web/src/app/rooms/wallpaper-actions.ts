@@ -6,7 +6,7 @@ import {
   ALLOWED_WALLPAPER_TYPES,
   MAX_WALLPAPER_SIZE_BYTES,
   type RoomWallpaper,
-} from "@studyverse/shared";
+} from "@studyverce/shared";
 import crypto from "crypto";
 
 function mapWallpaper(row: {

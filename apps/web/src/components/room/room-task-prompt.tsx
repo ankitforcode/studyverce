@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { StickyNote, X } from "lucide-react";
-import { POST_IT_COLORS, type PostItColor } from "@studyverse/shared";
+import { POST_IT_COLORS, type PostItColor } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ interface RoomTaskPromptProps {
 }
 
 function skipKey(roomId: string) {
-  return `studyverse-skip-room-task-${roomId}`;
+  return `studyverce-skip-room-task-${roomId}`;
 }
 
 export function RoomTaskPrompt({

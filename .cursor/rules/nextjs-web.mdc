@@ -1,0 +1,13 @@
+---
+description: Next.js 16 and React 19 patterns for apps/web
+globs: apps/web/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# Web app (Next.js 16)
+
+- Read `node_modules/next/dist/docs/` when using App Router APIs — differs from Next 14 training data.
+- Server Components by default; `"use client"` only when needed (hooks, events, browser APIs).
+- Supabase: `createClient()` from `@/lib/supabase/server` in actions/RSC; `@/lib/supabase/client` in client components.
+- Prefer existing UI in `components/ui/` before adding dependencies.
+- Analytics: `trackEvent` from `@/lib/analytics` for user actions in rooms.

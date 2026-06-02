@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Music2, Pause, Play, Volume2 } from "lucide-react";
-import type { RoomMusicState } from "@studyverse/shared";
+import type { RoomMusicState } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isEmbedProvider } from "@/lib/music/providers";

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ChevronDown, ChevronUp, ListTodo, RotateCcw } from "lucide-react";
-import type { UserPostItTask } from "@studyverse/shared";
+import type { UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import { POST_IT_BG } from "@/lib/post-it-utils";
 import {

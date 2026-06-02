@@ -1,4 +1,4 @@
-import type { MusicProvider } from "@studyverse/shared";
+import type { MusicProvider } from "@studyverce/shared";
 
 export interface ParsedProviderTrack {
   provider: MusicProvider;
@@ -93,7 +93,7 @@ export function parseMusicProviderUrl(raw: string): ParsedProviderTrack | null {
 }
 
 export const PROVIDER_LABELS: Record<MusicProvider, string> = {
-  builtin: "StudyVerse",
+  builtin: "StudyVerce",
   youtube: "YouTube",
   soundcloud: "SoundCloud",
   spotify: "Spotify",

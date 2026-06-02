@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Send, Trash2 } from "lucide-react";
-import type { ChatMessage } from "@studyverse/shared";
+import type { ChatMessage } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/badge";

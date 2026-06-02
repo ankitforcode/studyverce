@@ -9,7 +9,7 @@ import {
   useTransition,
 } from "react";
 import { Layers, Pin, Plus, Trash2, CircleCheck } from "lucide-react";
-import type { PostItItem, UserPostItTask } from "@studyverse/shared";
+import type { PostItItem, UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import {
   POST_IT_BG,

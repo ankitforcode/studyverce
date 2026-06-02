@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Trophy, Construction } from "lucide-react";
-import { FEATURE_FLAGS } from "@studyverse/shared";
+import { FEATURE_FLAGS } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/badge";

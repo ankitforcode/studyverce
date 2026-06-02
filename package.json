@@ -1,5 +1,5 @@
 {
-  "name": "studyverse",
+  "name": "studyverce",
   "private": true,
   "scripts": {
     "dev": "turbo dev",

@@ -141,11 +141,11 @@ CREATE POLICY "Users can delete own music files"
 
 -- Built-in ambient/focus tracks (royalty-free demo URLs)
 INSERT INTO public.room_tracks (name, artist, audio_url, is_builtin, is_public, category, duration_seconds) VALUES
-  ('Calm Focus', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', TRUE, TRUE, 'focus', 372),
-  ('Deep Work', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', TRUE, TRUE, 'focus', 425),
-  ('Ambient Flow', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', TRUE, TRUE, 'ambient', 390),
-  ('Lo-Fi Study', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', TRUE, TRUE, 'lofi', 410),
-  ('Rainy Day', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', TRUE, TRUE, 'nature', 355),
-  ('Night Library', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', TRUE, TRUE, 'study', 380),
-  ('Soft Piano', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', TRUE, TRUE, 'classical', 400),
-  ('Gentle Waves', 'StudyVerse', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', TRUE, TRUE, 'nature', 365);
+  ('Calm Focus', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', TRUE, TRUE, 'focus', 372),
+  ('Deep Work', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', TRUE, TRUE, 'focus', 425),
+  ('Ambient Flow', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', TRUE, TRUE, 'ambient', 390),
+  ('Lo-Fi Study', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', TRUE, TRUE, 'lofi', 410),
+  ('Rainy Day', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', TRUE, TRUE, 'nature', 355),
+  ('Night Library', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', TRUE, TRUE, 'study', 380),
+  ('Soft Piano', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', TRUE, TRUE, 'classical', 400),
+  ('Gentle Waves', 'StudyVerce', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', TRUE, TRUE, 'nature', 365);

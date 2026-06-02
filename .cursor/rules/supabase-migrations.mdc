@@ -1,0 +1,34 @@
+---
+description: Supabase migrations, RLS, and database.types sync for StudyVerce
+globs: supabase/**,apps/web/src/lib/supabase/**,apps/web/src/lib/post-it-mapper.ts
+alwaysApply: false
+---
+
+# Supabase
+
+## Migrations
+
+- Add numbered files under `supabase/migrations/` (timestamp prefix).
+- Apply locally: `supabase db push` (or run SQL against local Docker Postgres).
+- Post-it migrations: `20250602000006` (table), `07` (pinned), `08` (width/height), `09` (closed).
+
+## Post-it table RLS
+
+All policies filter `auth.uid() = user_id`. Inserts must set `user_id` to authenticated user.
+
+## Type sync checklist
+
+When changing schema:
+
+1. SQL migration
+2. `apps/web/src/lib/supabase/database.types.ts` (Row/Insert/Update)
+3. Row mapper (e.g. `post-it-mapper.ts`)
+4. `packages/shared` interfaces
+5. Server actions + client fetch selects
+
+## Server vs client
+
+- **Server actions / RSC**: `@/lib/supabase/server`
+- **Client components**: `@/lib/supabase/client` (post-it fetch in room)
+
+Use `unstable_noStore()` / `force-dynamic` on server reads that must not be cached stale.

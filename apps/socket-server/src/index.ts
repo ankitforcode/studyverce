@@ -14,8 +14,8 @@ import type {
   ChatMessage,
   RoomMusicState,
   RoomTrack,
-} from "@studyverse/shared";
-import { roomTrackToMusicState } from "@studyverse/shared";
+} from "@studyverce/shared";
+import { roomTrackToMusicState } from "@studyverce/shared";
 
 const PORT = parseInt(process.env.PORT ?? "3002", 10);
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";

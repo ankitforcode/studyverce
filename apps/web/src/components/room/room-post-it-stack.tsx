@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { UserPostItTask } from "@studyverse/shared";
+import type { UserPostItTask } from "@studyverce/shared";
 import { PostItCanvas } from "@/components/dashboard/post-it-canvas";
 import { fetchPostItsForRoom } from "@/lib/post-it-client";
 import { RoomPostItToolbar } from "@/components/room/room-post-it-toolbar";

@@ -1,4 +1,4 @@
-# StudyVerse
+# StudyVerce
 
 **Discord for studying** — virtual study rooms, shared Pomodoro timers, real-time chat, and focus tracking.
 
@@ -15,7 +15,7 @@
 ## Project Structure
 
 ```
-studyverse/
+studyverce/
 ├── apps/
 │   ├── web/              # Next.js frontend
 │   └── socket-server/    # Socket.IO real-time server
@@ -112,7 +112,7 @@ pnpm dev
 ## Phase 2 (Scaffolded)
 
 - LiveKit video/audio rooms (`RoomVideo` component stub)
-- AI study planner, flashcards, quizzes (`@studyverse/ai` package)
+- AI study planner, flashcards, quizzes (`@studyverce/ai` package)
 - Social features (friendships, study groups, challenges)
 - Premium billing via Stripe
 - React Native mobile app

@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomParticipant } from "@studyverse/shared";
+import type { RoomParticipant } from "@studyverce/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/badge";
 import { Users } from "lucide-react";

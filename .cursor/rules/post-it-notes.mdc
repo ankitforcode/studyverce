@@ -1,0 +1,41 @@
+---
+description: Post-it note UI, data model, drag/resize/z-index, and room integration
+globs: apps/web/src/**/*post-it*,apps/web/src/**/task-actions.ts,packages/shared/src/index.ts,supabase/migrations/*post_it*
+alwaysApply: false
+---
+
+# Post-it notes
+
+## Data model (`user_post_it_tasks`)
+
+- Scoped: `user_id` + `room_id` (RLS: users see only own rows).
+- Fields: `title`, `items` (JSONB `{ id, text, done }[]`), `pos_x/y`, `width/height`, `color`, `z_index`, `pinned`, `closed`, `title_done`.
+- **Closed**: `closePostItTask` sets `closed`, `title_done`, all items `done`; hidden from canvas, listed in `RoomTodoPanel`. **Reopen** restores at saved position via `reopenPostItTask`.
+
+## Code map
+
+| Layer | File |
+|-------|------|
+| UI note | `components/dashboard/post-it-note.tsx` |
+| Canvas | `components/dashboard/post-it-canvas.tsx` |
+| Room stack | `components/room/room-post-it-stack.tsx` |
+| Todo panel | `components/room/room-todo-panel.tsx` |
+| Actions | `app/dashboard/task-actions.ts` |
+| Client fetch | `lib/post-it-client.ts` |
+| Mapper | `lib/post-it-mapper.ts` |
+| Constants | `lib/post-it-utils.ts` |
+
+## UI behavior (do not regress)
+
+- **Drag**: content uses `pointer-events-none` in view mode; document-level pointer listeners; direct DOM `left/top` updates while dragging.
+- **Resize**: smooth drag (no step snap until release); border handles on hover; hide resize ring + toolbar while `dragging`.
+- **Z-index**: use raw `task.zIndex` (no `Math.max(..., 10)`); optimistic `onFocus()` returns new z; persist with `updatePostItTask`.
+- **Shadow**: background + shadow on same outer element; no extra 1px outline on active shadow.
+- **Tooltips**: wrap icon buttons in `PostItIconTooltip` (instant CSS), not native `title`.
+- **Edit**: double-click; title + bullet items; auto-shrink font via `use-post-it-fit-font.ts`.
+
+## Adding features
+
+1. Migration if new columns → mapper → shared type → `task-actions.ts` → UI.
+2. Filter open notes: `tasks.filter(t => !t.closed)` for canvas; full list for todo panel.
+3. Use `onTaskUpdate` / `onTaskFocus` on canvas when merging closed + open task state in stack.

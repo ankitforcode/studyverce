@@ -3,7 +3,7 @@ import {
   type PostItItem,
   type UserPostItTask,
   POST_IT_COLORS,
-} from "@studyverse/shared";
+} from "@studyverce/shared";
 
 export type PostItTaskRow = {
   id: string;

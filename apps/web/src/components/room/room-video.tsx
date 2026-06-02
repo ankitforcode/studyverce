@@ -1,6 +1,6 @@
 "use client";
 
-import { FEATURE_FLAGS } from "@studyverse/shared";
+import { FEATURE_FLAGS } from "@studyverce/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Video, Construction } from "lucide-react";
 

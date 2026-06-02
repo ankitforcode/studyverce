@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StudyVerse — Discord for Studying",
+  title: "StudyVerce — Discord for Studying",
   description: "Virtual study rooms, shared Pomodoro timers, and real-time accountability.",
 };
 

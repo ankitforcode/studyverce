@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { updateProfileSchema } from "@studyverse/db";
+import { updateProfileSchema } from "@studyverce/db";
 
 export async function updateProfile(formData: FormData): Promise<void> {
   const supabase = await createClient();

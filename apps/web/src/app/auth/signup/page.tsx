@@ -55,7 +55,7 @@ function SignupForm() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle>Create your account</CardTitle>
-        <CardDescription>Join StudyVerse and start studying together</CardDescription>
+        <CardDescription>Join StudyVerce and start studying together</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSignup} className="space-y-4">
