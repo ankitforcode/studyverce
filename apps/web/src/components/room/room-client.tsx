@@ -77,7 +77,7 @@ export function RoomClient({
   const [roomTasks, setRoomTasks] = useState<UserPostItTask[]>([]);
   const [goalText, setGoalText] = useState(roomTask?.title ?? "");
   const [tasksCollapsed, setTasksCollapsed] = useState(true);
-  const [assistantCollapsed, setAssistantCollapsed] = useState(false);
+  const [assistantCollapsed, setAssistantCollapsed] = useState(true);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const roomRootRef = useRef<HTMLDivElement>(null);
   const initialMusic = roomTrackToMusicState(initialTrack, !!initialTrack);
