@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@studyverce/rate-limit": "workspace:*",
     "@studyverce/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.8",
     "cors": "^2.8.5",

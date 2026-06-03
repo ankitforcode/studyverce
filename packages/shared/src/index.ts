@@ -381,6 +381,16 @@ export interface UserPostItTask {
   updatedAt: string;
 }
 
+export const ROOM_SIDEBAR_PANEL_IDS = ["tasks", "assistant", "chat"] as const;
+
+export type RoomSidebarPanelId = (typeof ROOM_SIDEBAR_PANEL_IDS)[number];
+
+export const DEFAULT_ROOM_SIDEBAR_PANEL_ORDER: RoomSidebarPanelId[] = [
+  "tasks",
+  "assistant",
+  "chat",
+];
+
 export const FEATURE_FLAGS = {
   livekit: false,
   aiStudyPlanner: false,

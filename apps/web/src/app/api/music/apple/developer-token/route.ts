@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAppleDeveloperToken } from "@/lib/music/apple-developer-token";
 import { isStreamingProviderConfigured } from "@/lib/music/oauth-config";
+import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = await rateLimitOrNull(request);
+  if (limited) return limited;
+
   if (!isStreamingProviderConfigured("apple_music")) {
     return NextResponse.json(
       { error: "Apple Music is not configured on this server." },

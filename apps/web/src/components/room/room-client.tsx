@@ -9,12 +9,14 @@ import { RoomAppearanceToggle } from "@/components/room/room-appearance-toggle";
 import { RoomFullscreenToggle } from "@/components/room/room-fullscreen-toggle";
 import { PomodoroTimer } from "@/components/room/pomodoro-timer";
 import { RoomChat } from "@/components/room/room-chat";
+import { RoomSidebarPanels } from "@/components/room/room-sidebar-panels";
 import { ParticipantList } from "@/components/room/participant-list";
 import { RoomBackgroundPicker } from "@/components/room/room-background-picker";
 import { RoomMusicPicker } from "@/components/room/room-music-picker";
 import { RoomMusicPlayer } from "@/components/room/room-music-player";
 import { RoomPostItStack } from "@/components/room/room-post-it-stack";
 import { RoomTaskPrompt } from "@/components/room/room-task-prompt";
+import { RoomStudyAssistant } from "@/components/room/room-study-assistant";
 import { RoomTodoPanel } from "@/components/room/room-todo-panel";
 import { RoomVideoHint } from "@/components/room/room-video";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +25,12 @@ import { trackEvent } from "@/lib/analytics";
 import { ROOM_CHROME_PANEL, ROOM_GLASS_PANEL } from "@/lib/room-ui";
 import { wallpaperImageFilter } from "@/lib/wallpaper-overlay";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, RoomTrack, UserPostItTask } from "@studyverce/shared";
+import type {
+  ChatMessage,
+  RoomSidebarPanelId,
+  RoomTrack,
+  UserPostItTask,
+} from "@studyverce/shared";
 import { roomTrackToMusicState } from "@studyverce/shared";
 
 interface RoomClientProps {
@@ -42,6 +49,7 @@ interface RoomClientProps {
   hasRoomTasks: boolean;
   pomodoroFocusMinutes?: number;
   pomodoroBreakMinutes?: number;
+  initialSidebarPanelOrder: RoomSidebarPanelId[];
 }
 
 export function RoomClient({
@@ -60,6 +68,7 @@ export function RoomClient({
   hasRoomTasks,
   pomodoroFocusMinutes,
   pomodoroBreakMinutes,
+  initialSidebarPanelOrder,
 }: RoomClientProps) {
   const [wallpaperId, setWallpaperId] = useState(initialWallpaperId);
   const [backgroundUrl, setBackgroundUrl] = useState(initialBackgroundUrl);
@@ -67,6 +76,9 @@ export function RoomClient({
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
   const [roomTasks, setRoomTasks] = useState<UserPostItTask[]>([]);
   const [goalText, setGoalText] = useState(roomTask?.title ?? "");
+  const [tasksCollapsed, setTasksCollapsed] = useState(true);
+  const [assistantCollapsed, setAssistantCollapsed] = useState(false);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   const roomRootRef = useRef<HTMLDivElement>(null);
   const initialMusic = roomTrackToMusicState(initialTrack, !!initialTrack);
 
@@ -268,10 +280,13 @@ export function RoomClient({
             roomId={roomId}
             refreshKey={taskRefreshKey}
             tasks={roomTasks}
-            onTasksChange={(tasks) => {
-              setRoomTasks(tasks);
-              const active = tasks.find((t) => !t.closed);
-              if (active?.title) setGoalText(active.title);
+            onTasksChange={(update) => {
+              setRoomTasks((prev) => {
+                const next = typeof update === "function" ? update(prev) : update;
+                const active = next.find((t) => !t.closed);
+                if (active?.title) setGoalText(active.title);
+                return next;
+              });
             }}
           />
           <div className="pointer-events-none relative z-10 flex flex-1 items-center justify-center overflow-y-auto p-4 sm:p-6">
@@ -292,18 +307,51 @@ export function RoomClient({
 
         <aside
           className={cn(
-            "flex min-h-0 shrink-0 flex-col border-t border-border/50 lg:w-80 lg:border-l lg:border-t-0 xl:w-96",
+            "flex min-h-0 shrink-0 flex-col border-t border-border/50 lg:w-80 lg:border-l lg:border-t-0 xl:w-[26rem]",
             ROOM_CHROME_PANEL
           )}
         >
-          <RoomTodoPanel tasks={roomTasks} onTasksChange={setRoomTasks} />
-          <RoomChat
-            messages={messages}
-            currentUserId={currentUserId}
-            isModerator={isOwner || isModerator}
-            onSend={sendMessage}
-            onDelete={deleteMessage}
-            className="min-h-[240px] flex-1 lg:min-h-0"
+          <RoomSidebarPanels
+            roomId={roomId}
+            initialOrder={initialSidebarPanelOrder}
+            panelExpanded={{
+              tasks: !tasksCollapsed,
+              assistant: !assistantCollapsed,
+              chat: !chatCollapsed,
+            }}
+            panels={{
+              tasks: (
+                <RoomTodoPanel
+                  tasks={roomTasks}
+                  onTasksChange={setRoomTasks}
+                  collapsed={tasksCollapsed}
+                  onCollapsedChange={setTasksCollapsed}
+                />
+              ),
+              assistant: (
+                <RoomStudyAssistant
+                  roomId={roomId}
+                  roomName={roomName}
+                  goalText={goalText}
+                  collapsed={assistantCollapsed}
+                  onCollapsedChange={(collapsed) => {
+                    setAssistantCollapsed(collapsed);
+                    if (collapsed) setChatCollapsed(false);
+                  }}
+                />
+              ),
+              chat: (
+                <RoomChat
+                  messages={messages}
+                  currentUserId={currentUserId}
+                  isModerator={isOwner || isModerator}
+                  onSend={sendMessage}
+                  onDelete={deleteMessage}
+                  collapsed={chatCollapsed}
+                  onCollapsedChange={setChatCollapsed}
+                />
+              ),
+            }}
           />
         </aside>
       </div>

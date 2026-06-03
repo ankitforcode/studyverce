@@ -6,6 +6,7 @@ import { consumeMusicOAuthState, safeReturnPath } from "@/lib/music/oauth-state"
 import { upsertMusicConnection } from "@/lib/music/connection-store";
 import { fetchSpotifyProfile } from "@/lib/music/spotify-api";
 import { fetchYouTubeProfile } from "@/lib/music/youtube-api";
+import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 
 async function exchangeSpotifyCode(code: string, redirectUri: string) {
   const clientId = process.env.SPOTIFY_CLIENT_ID!;
@@ -62,6 +63,9 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ provider: string }> }
 ) {
+  const limited = await rateLimitOrNull(request);
+  if (limited) return limited;
+
   const { provider: raw } = await context.params;
   const provider = raw as StreamingMusicProvider;
   const appOrigin = resolveAppOrigin(request);

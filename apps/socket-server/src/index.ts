@@ -14,6 +14,7 @@ import type {
   RoomMusicState,
   RoomTrack,
 } from "@studyverce/shared";
+import { expressRateLimitMiddleware } from "@studyverce/rate-limit/express";
 import {
   roomTrackToMusicState,
   ROOM_PRESENCE_AWAY_THRESHOLD_MS,
@@ -75,6 +76,7 @@ app.use(
     credentials: true,
   })
 );
+app.use(expressRateLimitMiddleware());
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 const httpServer = createServer(app);

@@ -1,35 +1,52 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ChevronDown, ChevronUp, ListTodo, RotateCcw } from "lucide-react";
+import { useState, useTransition, type Dispatch, type SetStateAction } from "react";
+import { ChevronDown, ChevronUp, ListTodo, RotateCcw, Trash2 } from "lucide-react";
 import type { UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import { POST_IT_BG } from "@/lib/post-it-utils";
 import { PostItRichTextView } from "@/components/dashboard/post-it-rich-text-view";
 import {
   closePostItTask,
+  deletePostItTask,
   reopenPostItTask,
 } from "@/app/dashboard/task-actions";
+import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 
 interface RoomTodoPanelProps {
   tasks: UserPostItTask[];
-  onTasksChange: (tasks: UserPostItTask[]) => void;
+  onTasksChange: Dispatch<SetStateAction<UserPostItTask[]>>;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
   className?: string;
 }
 
 export function RoomTodoPanel({
   tasks,
   onTasksChange,
+  collapsed: collapsedProp,
+  onCollapsedChange,
   className,
 }: RoomTodoPanelProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsedInternal, setCollapsedInternal] = useState(true);
+  const collapsed = collapsedProp ?? collapsedInternal;
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    if (collapsedProp === undefined) {
+      setCollapsedInternal(next);
+    }
+    onCollapsedChange?.(next);
+  }
   const [pending, startTransition] = useTransition();
 
   const openTasks = tasks.filter((t) => !t.closed);
   const closedTasks = tasks.filter((t) => t.closed);
 
   function mergeTask(updated: UserPostItTask) {
-    onTasksChange(tasks.map((t) => (t.id === updated.id ? updated : t)));
+    onTasksChange((prev) =>
+      prev.map((t) => (t.id === updated.id ? updated : t))
+    );
   }
 
   function handleClose(taskId: string) {
@@ -46,6 +63,15 @@ export function RoomTodoPanel({
     });
   }
 
+  function handleDelete(taskId: string) {
+    startTransition(async () => {
+      const { error } = await deletePostItTask(taskId);
+      if (!error) {
+        onTasksChange((prev) => prev.filter((t) => t.id !== taskId));
+      }
+    });
+  }
+
   const totalItems = tasks.reduce(
     (sum, task) => sum + 1 + task.items.length,
     0
@@ -54,14 +80,14 @@ export function RoomTodoPanel({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col border-b border-border/50",
-        collapsed ? "min-h-0" : "max-h-[45%] min-h-[140px]",
+        "flex min-h-0 flex-col border-b border-border/50",
+        collapsed ? "shrink-0" : "h-full min-h-0 flex-1 basis-0",
         className
       )}
     >
       <button
         type="button"
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={toggleCollapsed}
         className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/25"
         aria-expanded={!collapsed}
       >
@@ -101,6 +127,7 @@ export function RoomTodoPanel({
                         task={task}
                         pending={pending}
                         onClose={() => handleClose(task.id)}
+                        onDelete={() => handleDelete(task.id)}
                       />
                     ))}
                   </ul>
@@ -120,6 +147,7 @@ export function RoomTodoPanel({
                         pending={pending}
                         closed
                         onReopen={() => handleReopen(task.id)}
+                        onDelete={() => handleDelete(task.id)}
                       />
                     ))}
                   </ul>
@@ -139,17 +167,36 @@ function TodoNoteCard({
   pending,
   onClose,
   onReopen,
+  onDelete,
 }: {
   task: UserPostItTask;
   closed?: boolean;
   pending: boolean;
   onClose?: () => void;
   onReopen?: () => void;
+  onDelete?: () => void;
 }) {
   const done = closed || task.titleDone;
 
+  const deleteButton = onDelete ? (
+    <PostItIconTooltip label="Delete">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        disabled={pending}
+        className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted/50 hover:text-destructive group-hover:opacity-100 disabled:opacity-50"
+        aria-label="Delete task"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </PostItIconTooltip>
+  ) : null;
+
   const content = (
-    <div className="flex items-start gap-2">
+    <div className="flex items-start gap-2 pr-6">
       <span
         className="mt-0.5 h-3 w-3 shrink-0 rounded-sm border border-black/10"
         style={{ backgroundColor: POST_IT_BG[task.color] }}
@@ -193,11 +240,14 @@ function TodoNoteCard({
     return (
       <li
         className={cn(
-          "rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm transition-colors",
+          "group relative rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm transition-colors",
           "cursor-pointer hover:border-primary/30 hover:bg-card/35",
           pending && "opacity-70"
         )}
       >
+        {deleteButton && (
+          <div className="absolute right-2 top-2 z-10">{deleteButton}</div>
+        )}
         <button
           type="button"
           disabled={pending}
@@ -217,10 +267,13 @@ function TodoNoteCard({
   return (
     <li
       className={cn(
-        "rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm",
+        "group relative rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm",
         pending && "opacity-70"
       )}
     >
+      {deleteButton && (
+        <div className="absolute right-2 top-2 z-10">{deleteButton}</div>
+      )}
       {content}
       {onClose && (
         <button

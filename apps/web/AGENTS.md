@@ -17,6 +17,7 @@ Load the skill that matches your task before editing related files.
 
 ## App specifics
 
+- **Post-it lazy persist**: with `REDIS_URL` set, edits cache in Redis and flush to Postgres after `POST_IT_FLUSH_DEBOUNCE_MS` (default 2000). Disable via `POST_IT_LAZY_PERSIST=false`. Close/delete/reopen flush immediately.
 - Dev server: **port 3001** (`pnpm --filter web dev`)
 - Path alias: `@/` → `apps/web/src`
 - Server actions in `src/app/**`; client room/post-it code in `src/components/`

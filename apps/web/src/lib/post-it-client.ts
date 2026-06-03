@@ -1,48 +1,18 @@
-import { createClient } from "@/lib/supabase/client";
 import type { UserPostItTask } from "@studyverce/shared";
-import { mapPostItRow, type PostItTaskRow } from "@/lib/post-it-mapper";
+import {
+  getPostItsForRoom,
+  getUserPostItTasks,
+} from "@/app/dashboard/task-actions";
 
+/** Room post-its via server action (Redis overlay + lazy DB flush). */
 export async function fetchUserPostItTasks(): Promise<UserPostItTask[]> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
-
-  const { data, error } = await supabase
-    .from("user_post_it_tasks")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    console.error("fetchUserPostItTasks:", error.message);
-    return [];
-  }
-
-  return (data ?? []).map((row) => mapPostItRow(row as PostItTaskRow));
+  return getUserPostItTasks();
 }
 
 export async function fetchPostItsForRoom(
   roomId: string
 ): Promise<UserPostItTask[]> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
-
-  const { data, error } = await supabase
-    .from("user_post_it_tasks")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("room_id", roomId)
-    .order("created_at", { ascending: true });
-
-  if (error || !data) return [];
-  return data.map((row) => mapPostItRow(row as PostItTaskRow));
+  return getPostItsForRoom(roomId);
 }
 
 export async function fetchPostItForRoom(

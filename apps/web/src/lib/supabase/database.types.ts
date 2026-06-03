@@ -387,6 +387,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_room_sidebar_layout: {
+        Row: {
+          user_id: string;
+          room_id: string;
+          panel_order: string[];
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          room_id: string;
+          panel_order?: string[];
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          room_id?: string;
+          panel_order?: string[];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_post_it_tasks: {
         Row: {
           id: string;

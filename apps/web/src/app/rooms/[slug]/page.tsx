@@ -5,6 +5,7 @@ import { getRoomWallpaper } from "@/app/rooms/wallpaper-actions";
 import { getRoomTrack } from "@/app/rooms/music-actions";
 import { getPostItForRoom, hasPostItForRoom } from "@/app/dashboard/task-actions";
 import { getRoomChatHistory } from "@/app/rooms/chat-actions";
+import { getRoomSidebarPanelOrder } from "@/app/rooms/sidebar-actions";
 import { RoomClient } from "@/components/room/room-client";
 import { mergeRoomSettings } from "@studyverce/db";
 import type { StudyRoomSettings } from "@studyverce/shared";
@@ -64,6 +65,7 @@ export default async function RoomPage({
   const wallpaper = await getRoomWallpaper(room.wallpaper_id);
   const track = await getRoomTrack(room.track_id);
   const chatHistory = await getRoomChatHistory(room.id);
+  const sidebarPanelOrder = await getRoomSidebarPanelOrder(room.id);
   const roomTask = await getPostItForRoom(room.id);
   const hasRoomTasks = await hasPostItForRoom(room.id);
   const roomSettings = mergeRoomSettings(
@@ -88,6 +90,7 @@ export default async function RoomPage({
       hasRoomTasks={hasRoomTasks}
       pomodoroFocusMinutes={roomSettings.pomodoroDefaults.focusMinutes}
       pomodoroBreakMinutes={roomSettings.pomodoroDefaults.breakMinutes}
+      initialSidebarPanelOrder={sidebarPanelOrder}
     />
   );
 }

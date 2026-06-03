@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type Dispatch, type SetStateAction } from "react";
 import { StickyNote } from "lucide-react";
 import type { UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ interface PostItCanvasProps {
   emptyMessage?: string;
   className?: string;
   minHeight?: number;
-  onTasksChange?: (tasks: UserPostItTask[]) => void;
+  onTasksChange?: Dispatch<SetStateAction<UserPostItTask[]>>;
   onTaskUpdate?: (task: UserPostItTask) => void;
   onTaskDelete?: (taskId: string) => void;
   onTaskFocus?: (taskId: string) => number;
@@ -41,7 +41,9 @@ export function PostItCanvas({
       onTaskUpdate(task);
       return;
     }
-    onTasksChange?.(tasks.map((t) => (t.id === task.id ? task : t)));
+    onTasksChange?.((prev) =>
+      prev.map((t) => (t.id === task.id ? task : t))
+    );
   }
 
   function handleDelete(taskId: string) {
@@ -49,7 +51,7 @@ export function PostItCanvas({
       onTaskDelete(taskId);
       return;
     }
-    onTasksChange?.(tasks.filter((t) => t.id !== taskId));
+    onTasksChange?.((prev) => prev.filter((t) => t.id !== taskId));
   }
 
   function handleFocus(taskId: string): number {
@@ -58,10 +60,8 @@ export function PostItCanvas({
     }
     const maxZ = Math.max(...tasks.map((t) => t.zIndex), 0);
     const nextZ = maxZ + 1;
-    onTasksChange?.(
-      tasks.map((t) =>
-        t.id === taskId ? { ...t, zIndex: nextZ } : t
-      )
+    onTasksChange?.((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, zIndex: nextZ } : t))
     );
     return nextZ;
   }

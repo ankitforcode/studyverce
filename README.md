@@ -59,18 +59,29 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SOCKET_URL=http://localhost:3002
 NEXT_PUBLIC_POSTHOG_KEY=           # optional
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+# Rate limiting (same Redis as socket-server; optional — fails open if unset)
+REDIS_URL=redis://localhost:6379
+# RATE_LIMIT_ENABLED=false
+# RATE_LIMIT_FAIL_CLOSED=true
 ```
 
-**apps/socket-server/.env**
+**apps/socket-server/.env** (copy from example — **required** for “Live” in rooms)
+
+```bash
+cp apps/socket-server/.env.example apps/socket-server/.env
+# Local: paste JWT secret from `supabase status` → JWT Secret
+```
+
 ```bash
 PORT=3002
 REDIS_URL=redis://localhost:6379
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_JWT_SECRET=your-jwt-secret
-DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
-# Comma-separated; include every web origin (localhost + ngrok HTTPS)
-CORS_ORIGIN=http://localhost:3001,https://your-subdomain.ngrok-free.app
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_JWT_SECRET=your-jwt-secret-from-supabase-status
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+CORS_ORIGIN=http://localhost:3001
 ```
+
+`pnpm dev` starts **web** (3001) and **socket-server** (3002). If the room shows **Offline**, check the terminal for `@studyverce/socket-server` and that `SUPABASE_JWT_SECRET` matches your Supabase project.
 
 Room realtime uses Socket.io through the **same origin** as the web app (`/socket.io` → Next.js rewrite → port 3002). You do not need a separate ngrok tunnel for the socket server unless you set `NEXT_PUBLIC_SOCKET_URL` explicitly.
 

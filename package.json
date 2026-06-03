@@ -2,7 +2,7 @@
   "name": "studyverce",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=web --filter=@studyverce/socket-server",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck"

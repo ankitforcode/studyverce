@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { POST_IT_RICH_TEXT_CLASS, sanitizePostItHtml } from "@/lib/post-it-rich-text";
 
@@ -8,6 +8,7 @@ interface PostItRichTextFieldProps {
   value: string;
   onChange: (html: string) => void;
   onFocus?: (element: HTMLDivElement) => void;
+  onBlur?: () => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   placeholder?: string;
   className?: string;
@@ -19,6 +20,7 @@ export function PostItRichTextField({
   value,
   onChange,
   onFocus,
+  onBlur,
   onKeyDown,
   placeholder,
   className,
@@ -26,11 +28,24 @@ export function PostItRichTextField({
   field = "item",
 }: PostItRichTextFieldProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const lastEmittedRef = useRef(value);
+  const composingRef = useRef(false);
+
+  const emitChange = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const html = sanitizePostItHtml(el.innerHTML);
+    if (html === lastEmittedRef.current) return;
+    lastEmittedRef.current = html;
+    onChange(html);
+  }, [onChange]);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || document.activeElement === el) return;
+    if (!el || document.activeElement === el || composingRef.current) return;
     const next = value || "";
+    if (next === lastEmittedRef.current && el.innerHTML === next) return;
+    lastEmittedRef.current = next;
     if (el.innerHTML !== next) {
       el.innerHTML = next;
     }
@@ -51,10 +66,17 @@ export function PostItRichTextField({
         const el = ref.current;
         if (el) onFocus?.(el);
       }}
-      onInput={() => {
-        const el = ref.current;
-        if (!el) return;
-        onChange(sanitizePostItHtml(el.innerHTML));
+      onBlur={() => {
+        emitChange();
+        onBlur?.();
+      }}
+      onInput={emitChange}
+      onCompositionStart={() => {
+        composingRef.current = true;
+      }}
+      onCompositionEnd={() => {
+        composingRef.current = false;
+        emitChange();
       }}
       onKeyDown={onKeyDown}
       className={cn(

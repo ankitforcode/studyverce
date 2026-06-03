@@ -45,6 +45,16 @@ import {
 const NO_DRAG_SELECTOR =
   "button, input, textarea, [contenteditable], [data-no-drag], [data-resize-handle]";
 
+/** Background Redis/DB save while still editing. */
+const PERSIST_DEBOUNCE_MS = 200;
+
+function postItDraftKey(title: string, items: PostItItem[]): string {
+  return JSON.stringify({
+    title,
+    items: items.map((i) => ({ id: i.id, text: i.text, done: i.done })),
+  });
+}
+
 interface PostItNoteProps {
   task: UserPostItTask;
   boardRef: React.RefObject<HTMLDivElement | null>;
@@ -94,6 +104,15 @@ export function PostItNote({
     edge: ResizeEdge;
   } | null>(null);
   const interactingRef = useRef(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPersistedKeyRef = useRef<string | null>(null);
+  const saveInFlightRef = useRef(false);
+  const pendingSaveKeyRef = useRef<string | null>(null);
+  const pendingSavePayloadRef = useRef<{
+    title: string;
+    items: PostItItem[];
+    immediate?: boolean;
+  } | null>(null);
 
   const [draftTitle, setDraftTitle] = useState(task.title);
   const [draftItems, setDraftItems] = useState<PostItItem[]>(task.items);
@@ -325,6 +344,143 @@ export function PostItNote({
     });
   }, [draftTitle, draftItems]);
 
+  const buildDraftFromFlush = useCallback(
+    (flushed: { title: string; items: PostItItem[] }, filterEmpty: boolean) => {
+      const title = sanitizePostItHtml(flushed.title);
+      const finalTitle = isPostItHtmlEmpty(title) ? "New note" : title;
+      const items = flushed.items
+        .map((item) => ({ ...item, text: sanitizePostItHtml(item.text) }))
+        .filter((item) => !filterEmpty || !isPostItHtmlEmpty(item.text));
+      const nextTask: UserPostItTask = {
+        ...task,
+        title: finalTitle,
+        items,
+        updatedAt: new Date().toISOString(),
+      };
+      return { finalTitle, items, nextTask };
+    },
+    [task]
+  );
+
+  /** Push current editor DOM into room/todo state immediately (no server wait). */
+  const syncDraftToParent = useCallback(
+    (filterEmpty = false) => {
+      const flushed = flushDraftFromEditors();
+      const { finalTitle, items, nextTask } = buildDraftFromFlush(
+        flushed,
+        filterEmpty
+      );
+      setDraftTitle(finalTitle);
+      setDraftItems(items);
+      onUpdate(nextTask);
+      return { finalTitle, items, nextTask };
+    },
+    [flushDraftFromEditors, buildDraftFromFlush, onUpdate]
+  );
+
+  const runServerSave = useCallback(
+    async (
+      title: string,
+      items: PostItItem[],
+      options?: { immediate?: boolean }
+    ) => {
+      const key = postItDraftKey(title, items);
+      if (saveInFlightRef.current) {
+        pendingSaveKeyRef.current = key;
+        pendingSavePayloadRef.current = { title, items, immediate: options?.immediate };
+        return;
+      }
+
+      saveInFlightRef.current = true;
+
+      const { task: updated, error } = await updatePostItTask(
+        task.id,
+        { title, items },
+        options?.immediate ? { flush: "immediate" } : undefined
+      );
+
+      saveInFlightRef.current = false;
+
+      if (!error) {
+        lastPersistedKeyRef.current = key;
+        if (updated) {
+          const serverKey = postItDraftKey(updated.title, updated.items);
+          if (serverKey !== key) {
+            onUpdate(updated);
+            lastPersistedKeyRef.current = serverKey;
+          }
+        }
+      }
+
+      const pendingKey = pendingSaveKeyRef.current;
+      const pendingPayload = pendingSavePayloadRef.current;
+      pendingSaveKeyRef.current = null;
+      pendingSavePayloadRef.current = null;
+
+      if (pendingPayload && pendingKey && pendingKey !== lastPersistedKeyRef.current) {
+        void runServerSave(
+          pendingPayload.title,
+          pendingPayload.items,
+          pendingPayload.immediate ? { immediate: true } : undefined
+        );
+      }
+    },
+    [task.id, onUpdate]
+  );
+
+  const persistDraft = useCallback(
+    async (exitEdit: boolean) => {
+      if (!editing) return;
+
+      const flushed = flushDraftFromEditors();
+      const { finalTitle, items, nextTask } = buildDraftFromFlush(
+        flushed,
+        exitEdit
+      );
+      const key = postItDraftKey(finalTitle, items);
+
+      setDraftTitle(finalTitle);
+      setDraftItems(items);
+      onUpdate(nextTask);
+
+      if (exitEdit) {
+        if (key !== lastPersistedKeyRef.current) {
+          await runServerSave(finalTitle, items, { immediate: true });
+        }
+        flushSync(() => setEditing(false));
+        lastPersistedKeyRef.current = null;
+        return;
+      }
+
+      if (key !== lastPersistedKeyRef.current) {
+        void runServerSave(finalTitle, items);
+      }
+    },
+    [editing, flushDraftFromEditors, buildDraftFromFlush, onUpdate, runServerSave]
+  );
+
+  const flushPersist = useCallback(() => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    persistDraft(false);
+  }, [persistDraft]);
+
+  const schedulePersist = useCallback(() => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      persistTimerRef.current = null;
+      persistDraft(false);
+    }, PERSIST_DEBOUNCE_MS);
+  }, [persistDraft]);
+
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, []);
+
   const handleTextFormat = useCallback(
     (format: PostItTextFormat) => {
       const el = activeEditorRef.current;
@@ -339,55 +495,28 @@ export function PostItNote({
           )
         );
       }
+      requestAnimationFrame(() => {
+        syncDraftToParent(false);
+        schedulePersist();
+      });
     },
-    []
+    [syncDraftToParent, schedulePersist]
   );
 
   const saveEdits = useCallback(() => {
-    if (!editing) return;
-
-    const flushed = flushDraftFromEditors();
-    const title = sanitizePostItHtml(flushed.title);
-    const finalTitle = isPostItHtmlEmpty(title) ? "New note" : title;
-    const items = flushed.items
-      .map((item) => ({ ...item, text: sanitizePostItHtml(item.text) }))
-      .filter((item) => !isPostItHtmlEmpty(item.text));
-
-    const nextTask: UserPostItTask = {
-      ...task,
-      title: finalTitle,
-      items,
-    };
-
-    setDraftTitle(finalTitle);
-    setDraftItems(items);
-
-    flushSync(() => {
-      onUpdate(nextTask);
-      setEditing(false);
-    });
-
-    const titleChanged = finalTitle !== task.title;
-    const itemsChanged =
-      JSON.stringify(items) !== JSON.stringify(task.items);
-
-    if (!titleChanged && !itemsChanged) return;
-
-    void (async () => {
-      const { task: updated } = await updatePostItTask(task.id, {
-        title: finalTitle,
-        items,
-      });
-      if (updated) onUpdate(updated);
-    })();
-  }, [
-    editing,
-    flushDraftFromEditors,
-    task,
-    onUpdate,
-  ]);
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    void persistDraft(true);
+  }, [persistDraft]);
 
   function cancelEdits() {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    lastPersistedKeyRef.current = null;
     setDraftTitle(task.title);
     setDraftItems(task.items);
     setEditing(false);
@@ -396,6 +525,7 @@ export function PostItNote({
   function enterEditMode() {
     setDraftTitle(task.title);
     setDraftItems(task.items);
+    lastPersistedKeyRef.current = postItDraftKey(task.title, task.items);
     setEditing(true);
     requestAnimationFrame(() => {
       const titleEl = noteRef.current?.querySelector<HTMLDivElement>(
@@ -419,7 +549,14 @@ export function PostItNote({
 
     function handlePointerDown(e: PointerEvent) {
       if (!noteRef.current?.contains(e.target as Node)) {
-        requestAnimationFrame(() => saveEdits());
+        const active = document.activeElement;
+        if (
+          active instanceof HTMLElement &&
+          noteRef.current?.contains(active)
+        ) {
+          active.blur();
+        }
+        saveEdits();
       }
     }
 
@@ -455,15 +592,37 @@ export function PostItNote({
     setDraftItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, text } : item))
     );
+    requestAnimationFrame(() => {
+      syncDraftToParent(false);
+      schedulePersist();
+    });
+  }
+
+  function handleTitleChange(html: string) {
+    setDraftTitle(html);
+    requestAnimationFrame(() => {
+      syncDraftToParent(false);
+      schedulePersist();
+    });
+  }
+
+  function handleFieldBlur() {
+    flushPersist();
   }
 
   function removeDraftItem(id: string) {
     setDraftItems((prev) => prev.filter((item) => item.id !== id));
+    requestAnimationFrame(() => {
+      syncDraftToParent(false);
+      schedulePersist();
+    });
   }
 
   function addDraftItem() {
     setDraftItems((prev) => [...prev, newItem()]);
     requestAnimationFrame(() => {
+      syncDraftToParent(false);
+      schedulePersist();
       const fields = noteRef.current?.querySelectorAll<HTMLDivElement>(
         '[data-field="item"]'
       );
@@ -604,7 +763,8 @@ export function PostItNote({
               <PostItRichTextField
                 field="title"
                 value={draftTitle}
-                onChange={setDraftTitle}
+                onChange={handleTitleChange}
+                onBlur={handleFieldBlur}
                 onFocus={(el) => {
                   activeEditorRef.current = el;
                 }}
@@ -632,6 +792,7 @@ export function PostItNote({
                       itemId={item.id}
                       value={item.text}
                       onChange={(html) => updateDraftItem(item.id, html)}
+                      onBlur={handleFieldBlur}
                       onFocus={(el) => {
                         activeEditorRef.current = el;
                       }}
@@ -643,10 +804,15 @@ export function PostItNote({
                           );
                           updateDraftItem(item.id, html);
                           addDraftItem();
+                          schedulePersist();
                         }
                         if (
                           e.key === "Backspace" &&
-                          isPostItHtmlEmpty(item.text) &&
+                          isPostItHtmlEmpty(
+                            sanitizePostItHtml(
+                              (e.currentTarget as HTMLDivElement).innerHTML
+                            )
+                          ) &&
                           draftItems.length > 0
                         ) {
                           e.preventDefault();

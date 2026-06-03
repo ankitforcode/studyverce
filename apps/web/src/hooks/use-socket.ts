@@ -29,6 +29,19 @@ function mergeMessages(existing: ChatMessage[], incoming: ChatMessage[]): ChatMe
   );
 }
 
+function attachSocketListeners(
+  activeSocket: AppSocket,
+  handlers: {
+    onConnect: () => void;
+    onDisconnect: () => void;
+    onConnectError: (message: string) => void;
+  }
+) {
+  activeSocket.on("connect", handlers.onConnect);
+  activeSocket.on("disconnect", handlers.onDisconnect);
+  activeSocket.on("connect_error", (err) => handlers.onConnectError(err.message));
+}
+
 export function useSocket() {
   const [socket, setSocket] = useState<AppSocket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -37,47 +50,81 @@ export function useSocket() {
   useEffect(() => {
     let activeSocket: AppSocket | null = null;
     let cancelled = false;
+    const supabase = createClient();
 
-    async function connect() {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    function bindSocket(accessToken: string) {
+      if (cancelled) return;
+
+      if (activeSocket) {
+        activeSocket.auth = { token: accessToken };
+        if (!activeSocket.connected) {
+          activeSocket.connect();
+        }
+        return;
+      }
 
       const url = getSocketIoClientUrl();
       activeSocket = io(url, {
         path: "/socket.io",
-        auth: { token: session?.access_token ?? "dev" },
+        auth: { token: accessToken },
         autoConnect: true,
         transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 10,
       });
 
-      activeSocket.on("connect", () => {
-        if (cancelled) return;
-        setConnectionError(null);
-        setConnected(true);
+      attachSocketListeners(activeSocket, {
+        onConnect: () => {
+          if (cancelled) return;
+          setConnectionError(null);
+          setConnected(true);
+        },
+        onDisconnect: () => {
+          if (cancelled) return;
+          setConnected(false);
+        },
+        onConnectError: (message) => {
+          if (cancelled) return;
+          setConnected(false);
+          const hint =
+            message.includes("xhr poll error") || message.includes("websocket error")
+              ? "Live server unreachable — run `pnpm dev` (starts web + socket-server) and ensure Redis is up."
+              : message;
+          setConnectionError(hint);
+        },
       });
 
-      activeSocket.on("disconnect", () => {
-        if (cancelled) return;
-        setConnected(false);
-      });
-
-      activeSocket.on("connect_error", (err) => {
-        if (cancelled) return;
-        setConnected(false);
-        setConnectionError(err.message);
-      });
-
-      if (!cancelled) {
-        setSocket(activeSocket);
-      }
+      setSocket(activeSocket);
     }
 
-    void connect();
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (!session?.access_token) {
+        setConnectionError("Sign in to use live room features");
+        return;
+      }
+
+      bindSocket(session.access_token);
+    })();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session?.access_token) {
+        setConnectionError(null);
+        bindSocket(session.access_token);
+      }
+    });
 
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
       activeSocket?.disconnect();
       setSocket(null);
       setConnected(false);
@@ -130,7 +177,6 @@ export function useRoomSocket(
     }
   }, [connected]);
 
-  // Sync when server-rendered history arrives (e.g. navigation)
   useEffect(() => {
     if (initialMessages.length > 0) {
       setMessages((prev) => mergeMessages(prev, initialMessages));
@@ -143,7 +189,8 @@ export function useRoomSocket(
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    socket.emit("room:join", { roomId, token: session?.access_token ?? "dev" });
+    if (!session?.access_token) return;
+    socket.emit("room:join", { roomId, token: session.access_token });
     joinedRef.current = true;
   }, [socket, roomId]);
 
@@ -210,7 +257,6 @@ export function useRoomSocket(
     };
   }, [socket, connected, roomId, joinRoom]);
 
-  // Heartbeat while the room page is open (tab hidden still counts as in-room).
   useEffect(() => {
     if (!socket || !connected || !joinedRef.current) return;
 

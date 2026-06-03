@@ -22,6 +22,15 @@ import {
   sanitizePostItTitle,
   stripPostItHtml,
 } from "@/lib/post-it-rich-text";
+import {
+  cachePostItUpdate,
+  flushPostItTaskNow,
+  getCachedPostItTask,
+  invalidatePostItCache,
+  isPostItCacheEnabled,
+  mergeDbTasksWithCache,
+  type PostItTaskPatch,
+} from "@/lib/post-it-cache";
 
 function clampPostItSize(value: number | undefined) {
   const n = value ?? POST_IT_DEFAULT_SIZE;
@@ -52,7 +61,8 @@ export async function getUserPostItTasks(): Promise<UserPostItTask[]> {
     return [];
   }
   if (!data) return [];
-  return data.map((row) => mapPostItRow(row as PostItTaskRow));
+  const tasks = data.map((row) => mapPostItRow(row as PostItTaskRow));
+  return mergeDbTasksWithCache(user.id, tasks);
 }
 
 export async function getPostItsForRoom(
@@ -74,7 +84,8 @@ export async function getPostItsForRoom(
     .order("created_at", { ascending: true });
 
   if (error || !data) return [];
-  return data.map((row) => mapPostItRow(row as PostItTaskRow));
+  const tasks = data.map((row) => mapPostItRow(row as PostItTaskRow));
+  return mergeDbTasksWithCache(user.id, tasks);
 }
 
 export async function getPostItForRoom(
@@ -138,6 +149,115 @@ export async function createPostItTask(input: {
   return { task: mapPostItRow(data as PostItTaskRow), error: null };
 }
 
+type UpdatePostItOptions = {
+  /** When cache is on: `lazy` writes Redis and flushes DB after debounce (default). */
+  flush?: "lazy" | "immediate";
+};
+
+function buildSanitizedPostItPatch(patch: {
+  title?: string;
+  titleDone?: boolean;
+  items?: PostItItem[];
+  posX?: number;
+  posY?: number;
+  width?: number;
+  height?: number;
+  color?: PostItColor;
+  zIndex?: number;
+  pinned?: boolean;
+  closed?: boolean;
+}): { error: string | null; patch?: PostItTaskPatch } {
+  const sanitized: PostItTaskPatch = {};
+
+  if (patch.title !== undefined) {
+    sanitized.title = sanitizePostItTitle(patch.title);
+    if (stripPostItHtml(sanitized.title).length > 120) {
+      return { error: "Title is too long" };
+    }
+  }
+  if (patch.titleDone !== undefined) sanitized.titleDone = patch.titleDone;
+  if (patch.items !== undefined) sanitized.items = sanitizePostItItems(patch.items);
+  if (patch.posX !== undefined) sanitized.posX = patch.posX;
+  if (patch.posY !== undefined) sanitized.posY = patch.posY;
+  if (patch.width !== undefined) sanitized.width = clampPostItSize(patch.width);
+  if (patch.height !== undefined) sanitized.height = clampPostItSize(patch.height);
+  if (patch.color !== undefined) sanitized.color = patch.color;
+  if (patch.zIndex !== undefined) sanitized.zIndex = patch.zIndex;
+  if (patch.pinned !== undefined) sanitized.pinned = patch.pinned;
+  if (patch.closed !== undefined) sanitized.closed = patch.closed;
+
+  if (Object.keys(sanitized).length === 0) {
+    return { error: "No changes" };
+  }
+
+  return { error: null, patch: sanitized };
+}
+
+async function loadOwnedPostItTask(
+  userId: string,
+  taskId: string
+): Promise<UserPostItTask | null> {
+  const cached = await getCachedPostItTask(userId, taskId);
+  if (cached) return cached;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_post_it_tasks")
+    .select("*")
+    .eq("id", taskId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !data) return null;
+  return mapPostItRow(data as PostItTaskRow);
+}
+
+async function updatePostItTaskInDatabase(
+  userId: string,
+  taskId: string,
+  patch: PostItTaskPatch
+): Promise<{ error: string | null; task?: UserPostItTask }> {
+  const supabase = await createClient();
+  const update: {
+    title?: string;
+    title_done?: boolean;
+    items?: PostItItem[];
+    pos_x?: number;
+    pos_y?: number;
+    width?: number;
+    height?: number;
+    color?: PostItColor;
+    z_index?: number;
+    pinned?: boolean;
+    closed?: boolean;
+  } = {};
+
+  if (patch.title !== undefined) update.title = patch.title;
+  if (patch.titleDone !== undefined) update.title_done = patch.titleDone;
+  if (patch.items !== undefined) update.items = patch.items;
+  if (patch.posX !== undefined) update.pos_x = patch.posX;
+  if (patch.posY !== undefined) update.pos_y = patch.posY;
+  if (patch.width !== undefined) update.width = patch.width;
+  if (patch.height !== undefined) update.height = patch.height;
+  if (patch.color !== undefined) update.color = patch.color;
+  if (patch.zIndex !== undefined) update.z_index = patch.zIndex;
+  if (patch.pinned !== undefined) update.pinned = patch.pinned;
+  if (patch.closed !== undefined) update.closed = patch.closed;
+
+  const { data, error } = await supabase
+    .from("user_post_it_tasks")
+    .update(update)
+    .eq("id", taskId)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+
+  if (error || !data) return { error: error?.message ?? "Failed to update task" };
+
+  revalidateDashboard();
+  return { task: mapPostItRow(data as PostItTaskRow), error: null };
+}
+
 export async function updatePostItTask(
   taskId: string,
   patch: {
@@ -152,7 +272,8 @@ export async function updatePostItTask(
     zIndex?: number;
     pinned?: boolean;
     closed?: boolean;
-  }
+  },
+  options?: UpdatePostItOptions
 ): Promise<{ error: string | null; task?: UserPostItTask }> {
   const supabase = await createClient();
   const {
@@ -161,48 +282,33 @@ export async function updatePostItTask(
 
   if (!user) return { error: "Not authenticated" };
 
-  const update: {
-    title?: string;
-    title_done?: boolean;
-    items?: PostItItem[];
-    pos_x?: number;
-    pos_y?: number;
-    width?: number;
-    height?: number;
-    color?: PostItColor;
-    z_index?: number;
-    pinned?: boolean;
-    closed?: boolean;
-  } = {};
-  if (patch.title !== undefined) {
-    update.title = sanitizePostItTitle(patch.title);
-    if (stripPostItHtml(update.title).length > 120) {
-      return { error: "Title is too long" };
-    }
+  const { error: patchError, patch: sanitized } = buildSanitizedPostItPatch(patch);
+  if (patchError || !sanitized) return { error: patchError ?? "No changes" };
+
+  if (!isPostItCacheEnabled()) {
+    return updatePostItTaskInDatabase(user.id, taskId, sanitized);
   }
-  if (patch.titleDone !== undefined) update.title_done = patch.titleDone;
-  if (patch.items !== undefined) update.items = sanitizePostItItems(patch.items);
-  if (patch.posX !== undefined) update.pos_x = patch.posX;
-  if (patch.posY !== undefined) update.pos_y = patch.posY;
-  if (patch.width !== undefined) update.width = clampPostItSize(patch.width);
-  if (patch.height !== undefined) update.height = clampPostItSize(patch.height);
-  if (patch.color !== undefined) update.color = patch.color;
-  if (patch.zIndex !== undefined) update.z_index = patch.zIndex;
-  if (patch.pinned !== undefined) update.pinned = patch.pinned;
-  if (patch.closed !== undefined) update.closed = patch.closed;
 
-  const { data, error } = await supabase
-    .from("user_post_it_tasks")
-    .update(update)
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .select("*")
-    .single();
+  try {
+    const base = await loadOwnedPostItTask(user.id, taskId);
+    if (!base) return { error: "Task not found" };
 
-  if (error || !data) return { error: error?.message ?? "Failed to update task" };
+    const merged = await cachePostItUpdate(user.id, base, sanitized, {
+      scheduleFlush: options?.flush !== "immediate",
+    });
 
-  revalidateDashboard();
-  return { task: mapPostItRow(data as PostItTaskRow), error: null };
+    if (options?.flush === "immediate") {
+      await flushPostItTaskNow(user.id, taskId);
+      const refreshed =
+        (await getCachedPostItTask(user.id, taskId)) ?? merged;
+      return { task: refreshed, error: null };
+    }
+
+    return { task: merged, error: null };
+  } catch (err) {
+    console.error("[post-it-cache] falling back to DB:", err);
+    return updatePostItTaskInDatabase(user.id, taskId, sanitized);
+  }
 }
 
 export async function deletePostItTask(
@@ -223,6 +329,7 @@ export async function deletePostItTask(
 
   if (error) return { error: error.message };
 
+  await invalidatePostItCache(user.id, taskId);
   revalidateDashboard();
   return { error: null };
 }
@@ -242,16 +349,9 @@ export async function addPostItItem(
 
   if (!user) return { error: "Not authenticated" };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("user_post_it_tasks")
-    .select("*")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .single();
+  const task = await loadOwnedPostItTask(user.id, taskId);
+  if (!task) return { error: "Task not found" };
 
-  if (fetchError || !existing) return { error: "Task not found" };
-
-  const task = mapPostItRow(existing as PostItTaskRow);
   const items: PostItItem[] = [
     ...task.items,
     { id: crypto.randomUUID(), text: trimmed, done: false },
@@ -271,16 +371,9 @@ export async function togglePostItItem(
 
   if (!user) return { error: "Not authenticated" };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("user_post_it_tasks")
-    .select("*")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .single();
+  const task = await loadOwnedPostItTask(user.id, taskId);
+  if (!task) return { error: "Task not found" };
 
-  if (fetchError || !existing) return { error: "Task not found" };
-
-  const task = mapPostItRow(existing as PostItTaskRow);
   const items = task.items.map((item) =>
     item.id === itemId ? { ...item, done: !item.done } : item
   );
@@ -298,16 +391,10 @@ export async function togglePostItTitle(
 
   if (!user) return { error: "Not authenticated" };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("user_post_it_tasks")
-    .select("title_done")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .single();
+  const task = await loadOwnedPostItTask(user.id, taskId);
+  if (!task) return { error: "Task not found" };
 
-  if (fetchError || !existing) return { error: "Task not found" };
-
-  return updatePostItTask(taskId, { titleDone: !existing.title_done });
+  return updatePostItTask(taskId, { titleDone: !task.titleDone });
 }
 
 export async function togglePostItPin(
@@ -320,16 +407,10 @@ export async function togglePostItPin(
 
   if (!user) return { error: "Not authenticated" };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("user_post_it_tasks")
-    .select("pinned, room_id")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .single();
+  const task = await loadOwnedPostItTask(user.id, taskId);
+  if (!task) return { error: "Task not found" };
 
-  if (fetchError || !existing) return { error: "Task not found" };
-
-  return updatePostItTask(taskId, { pinned: !existing.pinned });
+  return updatePostItTask(taskId, { pinned: !task.pinned });
 }
 
 export async function bringPostItToFront(
@@ -342,22 +423,16 @@ export async function bringPostItToFront(
 
   if (!user) return { error: "Not authenticated" };
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("user_post_it_tasks")
-    .select("room_id")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (fetchError || !existing) return { error: "Task not found" };
+  const task = await loadOwnedPostItTask(user.id, taskId);
+  if (!task) return { error: "Task not found" };
 
   let query = supabase
     .from("user_post_it_tasks")
     .select("z_index")
     .eq("user_id", user.id);
 
-  if (existing.room_id) {
-    query = query.eq("room_id", existing.room_id);
+  if (task.roomId) {
+    query = query.eq("room_id", task.roomId);
   }
 
   const { data: siblings } = await query;
@@ -374,15 +449,9 @@ async function getOwnedPostItTask(taskId: string) {
 
   if (!user) return { error: "Not authenticated" as const, task: null };
 
-  const { data, error } = await supabase
-    .from("user_post_it_tasks")
-    .select("*")
-    .eq("id", taskId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (error || !data) return { error: "Task not found", task: null };
-  return { error: null, task: mapPostItRow(data as PostItTaskRow) };
+  const task = await loadOwnedPostItTask(user.id, taskId);
+  if (!task) return { error: "Task not found", task: null };
+  return { error: null, task };
 }
 
 export async function closePostItTask(
@@ -393,11 +462,15 @@ export async function closePostItTask(
 
   const items = task.items.map((item) => ({ ...item, done: true }));
 
-  return updatePostItTask(taskId, {
-    closed: true,
-    titleDone: true,
-    items,
-  });
+  return updatePostItTask(
+    taskId,
+    {
+      closed: true,
+      titleDone: true,
+      items,
+    },
+    { flush: "immediate" }
+  );
 }
 
 export async function reopenPostItTask(
@@ -427,10 +500,14 @@ export async function reopenPostItTask(
 
   const items = task.items.map((item) => ({ ...item, done: false }));
 
-  return updatePostItTask(taskId, {
-    closed: false,
-    titleDone: false,
-    items,
-    zIndex: maxZ + 1,
-  });
+  return updatePostItTask(
+    taskId,
+    {
+      closed: false,
+      titleDone: false,
+      items,
+      zIndex: maxZ + 1,
+    },
+    { flush: "immediate" }
+  );
 }

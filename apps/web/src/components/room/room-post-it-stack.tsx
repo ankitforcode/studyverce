@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { UserPostItTask } from "@studyverce/shared";
 import { PostItCanvas } from "@/components/dashboard/post-it-canvas";
 import { fetchPostItsForRoom } from "@/lib/post-it-client";
+import { mergeFetchedPostItTasks } from "@/lib/post-it-merge";
 import { RoomPostItToolbar } from "@/components/room/room-post-it-toolbar";
 
 interface RoomPostItStackProps {
   roomId: string;
   refreshKey?: number;
   tasks?: UserPostItTask[];
-  onTasksChange?: (tasks: UserPostItTask[]) => void;
+  onTasksChange?: Dispatch<SetStateAction<UserPostItTask[]>>;
 }
 
 export function RoomPostItStack({
@@ -25,11 +26,12 @@ export function RoomPostItStack({
 
   const tasks = controlledTasks ?? internalTasks;
 
-  function updateTasks(next: UserPostItTask[]) {
-    if (controlledTasks === undefined) {
-      setInternalTasks(next);
+  function applyTasks(update: SetStateAction<UserPostItTask[]>) {
+    if (onTasksChange) {
+      onTasksChange(update);
+    } else {
+      setInternalTasks(update);
     }
-    onTasksChange?.(next);
   }
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function RoomPostItStack({
       setLoading(true);
       const roomTasks = await fetchPostItsForRoom(roomId);
       if (!cancelled) {
-        updateTasks(roomTasks);
+        applyTasks((prev) => mergeFetchedPostItTasks(prev, roomTasks));
         setLoading(false);
       }
     }
@@ -62,20 +64,20 @@ export function RoomPostItStack({
   const openTasks = tasks.filter((t) => !t.closed);
 
   function handleCanvasUpdate(task: UserPostItTask) {
-    updateTasks(tasks.map((t) => (t.id === task.id ? task : t)));
+    applyTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? task : t))
+    );
   }
 
   function handleCanvasDelete(taskId: string) {
-    updateTasks(tasks.filter((t) => t.id !== taskId));
+    applyTasks((prev) => prev.filter((t) => t.id !== taskId));
   }
 
   function handleCanvasFocus(taskId: string): number {
     const maxZ = Math.max(...openTasks.map((t) => t.zIndex), 0);
     const nextZ = maxZ + 1;
-    updateTasks(
-      tasks.map((t) =>
-        t.id === taskId ? { ...t, zIndex: nextZ } : t
-      )
+    applyTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, zIndex: nextZ } : t))
     );
     return nextZ;
   }
@@ -99,7 +101,9 @@ export function RoomPostItStack({
         roomId={roomId}
         noteCount={openTasks.length}
         onCreated={() => {
-          fetchPostItsForRoom(roomId).then(updateTasks);
+          fetchPostItsForRoom(roomId).then((roomTasks) => {
+            applyTasks((prev) => mergeFetchedPostItTasks(prev, roomTasks));
+          });
         }}
       />
     </>

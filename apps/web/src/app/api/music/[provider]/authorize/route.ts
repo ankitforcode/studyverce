@@ -7,6 +7,7 @@ import {
   resolveAppOrigin,
 } from "@/lib/music/oauth-config";
 import { setMusicOAuthState, safeReturnPath } from "@/lib/music/oauth-state";
+import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 
 const PROVIDERS: StreamingMusicProvider[] = ["spotify", "youtube_music", "apple_music"];
 
@@ -54,6 +55,9 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ provider: string }> }
 ) {
+  const limited = await rateLimitOrNull(request);
+  if (limited) return limited;
+
   const { provider: raw } = await context.params;
   const provider = raw as StreamingMusicProvider;
 
