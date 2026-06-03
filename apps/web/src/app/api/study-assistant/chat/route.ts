@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 import {
+  buildStudyAssistantLlmMessages,
+  STUDY_ASSISTANT_MAX_CONTENT_LEN,
+} from "@/lib/study-assistant-compliance";
+import {
   stubStudyAssistantReply,
   type StudyAssistantMessage,
 } from "@/lib/study-assistant";
 import { stripPostItHtml } from "@/lib/post-it-rich-text";
 
 const MAX_MESSAGES = 24;
-const MAX_CONTENT_LEN = 4000;
 
 type ChatRequestBody = {
   roomId?: string;
@@ -44,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
-  if (lastUser.content.length > MAX_CONTENT_LEN) {
+  if (lastUser.content.length > STUDY_ASSISTANT_MAX_CONTENT_LEN) {
     return NextResponse.json({ error: "Message is too long" }, { status: 400 });
   }
 
@@ -69,16 +72,11 @@ export async function POST(request: Request) {
     });
   }
 
-  const systemPrompt = [
-    "You are a concise study coach inside a virtual study room app.",
-    "Help with focus, planning, motivation, and breaking down goals.",
-    "Keep replies under 200 words unless the user asks for detail.",
-    "Use markdown sparingly (bold, lists). No code unless asked.",
-    body.roomName ? `Room: ${body.roomName}.` : "",
-    goalText ? `The student's current session goal: ${goalText}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const { system, messages: llmMessages } = buildStudyAssistantLlmMessages({
+    history,
+    roomName: body.roomName,
+    goalText,
+  });
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -89,15 +87,9 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
-        temperature: 0.7,
+        temperature: 0.5,
         max_tokens: 600,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...history.map((m) => ({
-            role: m.role,
-            content: m.content.slice(0, MAX_CONTENT_LEN),
-          })),
-        ],
+        messages: [{ role: "system", content: system }, ...llmMessages],
       }),
     });
 

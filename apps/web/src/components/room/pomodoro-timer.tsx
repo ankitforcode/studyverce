@@ -5,6 +5,7 @@ import type { PomodoroState } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PomodoroWaterCircle } from "@/components/room/pomodoro-water-circle";
 import { formatTimer } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +34,12 @@ export function PomodoroTimer({
   const focusMinutes = state?.focusMinutes ?? 25;
   const breakMinutes = state?.breakMinutes ?? 5;
   const totalSeconds = phase === "break" ? breakMinutes * 60 : focusMinutes * 60;
-  const progress =
-    phase === "idle" ? 0 : Math.max(0, Math.min(1, 1 - remaining / totalSeconds));
+  const fillLevel =
+    phase === "idle"
+      ? 0
+      : totalSeconds > 0
+        ? remaining / totalSeconds
+        : 0;
 
   const phaseColors = {
     idle: "text-muted-foreground",
@@ -54,42 +59,12 @@ export function PomodoroTimer({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="relative mx-auto h-44 w-44 sm:h-48 sm:w-48">
-          <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden>
-            <circle
-              cx="50"
-              cy="50"
-              r="42"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="text-border/60"
-            />
-            {progress > 0 && (
-              <circle
-                cx="50"
-                cy="50"
-                r="42"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeDasharray={`${progress * 264} 264`}
-                className={phase === "break" ? "text-accent" : "text-primary"}
-              />
-            )}
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center p-8">
-            <span
-              className={cn(
-                "font-mono text-4xl font-bold tabular-nums leading-none tracking-tight sm:text-5xl",
-                phaseColors[phase]
-              )}
-            >
-              {formatTimer(remaining)}
-            </span>
-          </div>
-        </div>
+        <PomodoroWaterCircle
+          fillLevel={fillLevel}
+          phase={phase}
+          timeLabel={formatTimer(remaining)}
+          timeClassName={fillLevel > 0.35 ? undefined : phaseColors[phase]}
+        />
 
         {onGoalChange && (
           <input
