@@ -28,6 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { getRoomPortalTarget, lockRoomScroll } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import { PROVIDER_LABELS } from "@/lib/music/providers";
+import { usePathname } from "next/navigation";
+import { RoomMusicStreaming } from "@/components/room/room-music-streaming";
 import {
   getTrackLibrary,
   getMyTracks,
@@ -53,7 +55,7 @@ interface RoomMusicPickerProps {
   portalContainerRef?: RefObject<HTMLElement | null>;
 }
 
-type Tab = "library" | "community" | "mine" | "add-link" | "requests";
+type Tab = "library" | "community" | "mine" | "streaming" | "add-link" | "requests";
 
 export function RoomMusicPicker({
   roomId,
@@ -74,6 +76,7 @@ export function RoomMusicPicker({
   const [actionError, setActionError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -200,7 +203,7 @@ export function RoomMusicPicker({
             </h2>
             <p className="text-sm text-muted-foreground">
               {isOwner
-                ? "Play from SoundCloud, YouTube, or Spotify — or review member requests"
+                ? "Connect Spotify, YouTube Music, or Apple Music — or paste a link"
                 : "Browse tracks and request one — the room owner must approve"}
             </p>
           </div>
@@ -219,7 +222,8 @@ export function RoomMusicPicker({
               ["library", "Library"],
               ["community", "Community"],
               ["mine", "My Links"],
-              ["add-link", "Add Link"],
+              ["streaming", "Streaming"],
+              ["add-link", "Paste link"],
               ...(isOwner ? ([["requests", `Requests (${requests.length})`]] as const) : []),
             ] as const
           ).map(([id, label]) => (
@@ -325,10 +329,26 @@ export function RoomMusicPicker({
             />
           )}
 
+          {tab === "streaming" && (
+            <RoomMusicStreaming
+              returnPath={pathname || "/rooms"}
+              isOwner={isOwner}
+              pending={pending}
+              onAdded={(track) => {
+                setMine((prev) => [track, ...prev.filter((t) => t.id !== track.id)]);
+                setTab("mine");
+              }}
+              onPlay={handleOwnerPlay}
+              onRequest={handleRequest}
+            />
+          )}
+
           {tab === "add-link" && (
             <form onSubmit={handleAddLink} className="max-w-md space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="track-source-url">SoundCloud, YouTube, or Spotify URL</Label>
+                <Label htmlFor="track-source-url">
+                  SoundCloud, YouTube, Spotify, or Apple Music URL
+                </Label>
                 <Input
                   id="track-source-url"
                   name="source_url"

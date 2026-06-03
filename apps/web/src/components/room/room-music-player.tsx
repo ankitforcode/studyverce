@@ -1,78 +1,63 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Music2, Pause, Play, Volume2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Pause, Play, RotateCcw, Volume2, VolumeX, Music2 } from "lucide-react";
 import type { RoomMusicState } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ScrollingTrackRibbon } from "@/components/room/scrolling-track-ribbon";
 import { isEmbedProvider } from "@/lib/music/providers";
+import {
+  postEmbedCommand,
+  postEmbedVolume,
+  resolveEmbedSrc,
+  supportsEmbedTransport,
+} from "@/lib/music/embed-controls";
 
 interface RoomMusicPlayerProps {
   music: RoomMusicState;
   isOwner: boolean;
   onTogglePlay: (isPlaying: boolean) => void;
+  onRestart?: () => void;
   onOpenPicker: () => void;
   className?: string;
-}
-
-function ScrollingTrackRibbon({
-  trackName,
-  artist,
-  isPlaying,
-}: {
-  trackName: string;
-  artist: string | null;
-  isPlaying: boolean;
-}) {
-  const label = artist ? `${trackName} · ${artist}` : trackName;
-  const segments = Array.from({ length: 4 }, (_, i) => (
-    <span key={i} className="flex shrink-0 items-center gap-6 pr-6">
-      <Music2 className="h-3.5 w-3.5 text-primary" aria-hidden />
-      <span className="text-sm font-medium">{trackName}</span>
-      {artist && <span className="text-sm text-muted-foreground">{artist}</span>}
-      <span className="text-primary/40" aria-hidden>
-        ♪
-      </span>
-    </span>
-  ));
-
-  return (
-    <div
-      className={cn(
-        "relative min-w-0 flex-1 overflow-hidden rounded-full border px-3 py-1.5",
-        isPlaying
-          ? "border-primary/30 bg-primary/10"
-          : "border-border/50 bg-muted/30"
-      )}
-    >
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-primary/10 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-primary/10 to-transparent" />
-
-      {isPlaying ? (
-        <div className="track-marquee flex w-max">
-          {segments}
-          {segments}
-        </div>
-      ) : (
-        <p className="truncate text-sm" title={label}>
-          <span className="font-medium">{trackName}</span>
-          {artist && <span className="text-muted-foreground"> · {artist}</span>}
-        </p>
-      )}
-    </div>
-  );
 }
 
 export function RoomMusicPlayer({
   music,
   isOwner,
   onTogglePlay,
+  onRestart,
   onOpenPicker,
   className,
 }: RoomMusicPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const usesEmbed = isEmbedProvider(music.provider);
+  const embedRef = useRef<HTMLIFrameElement>(null);
+  const embedReadyRef = useRef(false);
+  const lastTransportRef = useRef<"play" | "pause" | null>(null);
 
+  const [volume, setVolume] = useState(0.7);
+  const [muted, setMuted] = useState(false);
+  const [embedOrigin, setEmbedOrigin] = useState("");
+
+  const usesEmbed = isEmbedProvider(music.provider);
+  const hasTrack = !!music.trackId && (!!music.audioUrl || !!music.embedUrl);
+  const canTransportEmbed = supportsEmbedTransport(music.provider);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setEmbedOrigin(window.location.origin);
+    }
+  }, []);
+
+  const applyAudioOutput = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = volume;
+    audio.muted = muted;
+  }, [volume, muted]);
+
+  // Direct audio: load on track/seq change; play/pause without reloading src
   useEffect(() => {
     if (usesEmbed) return;
 
@@ -85,7 +70,9 @@ export function RoomMusicPlayer({
       return;
     }
 
-    if (audio.src !== music.audioUrl) {
+    const trackKey = `${music.trackId ?? ""}-${music.playbackSeq}`;
+    if (audio.dataset.trackKey !== trackKey) {
+      audio.dataset.trackKey = trackKey;
       audio.src = music.audioUrl;
       audio.load();
     }
@@ -97,22 +84,72 @@ export function RoomMusicPlayer({
     } else {
       audio.pause();
     }
-  }, [music.audioUrl, music.isPlaying, usesEmbed]);
 
-  const hasTrack =
-    !!music.trackId && (!!music.audioUrl || !!music.embedUrl);
+    applyAudioOutput();
+  }, [
+    music.trackId,
+    music.audioUrl,
+    music.isPlaying,
+    music.playbackSeq,
+    usesEmbed,
+    applyAudioOutput,
+  ]);
+
+  useEffect(() => {
+    applyAudioOutput();
+  }, [applyAudioOutput]);
+
+  // Embed: keep mounted; use postMessage where supported
+  useEffect(() => {
+    if (!usesEmbed || !embedRef.current || !embedReadyRef.current) return;
+
+    const command = music.isPlaying ? "play" : "pause";
+    if (canTransportEmbed && lastTransportRef.current !== command) {
+      const sent = postEmbedCommand(embedRef.current, music.provider, command);
+      if (sent) {
+        lastTransportRef.current = command;
+        return;
+      }
+    }
+    lastTransportRef.current = command;
+  }, [music.isPlaying, music.provider, usesEmbed, canTransportEmbed]);
+
+  useEffect(() => {
+    if (!usesEmbed || !embedRef.current || !embedReadyRef.current) return;
+    const level = muted ? 0 : Math.round(volume * 100);
+    postEmbedVolume(embedRef.current, music.provider, level);
+  }, [muted, volume, music.provider, usesEmbed]);
+
+  const embedSrc =
+    usesEmbed && music.embedUrl
+      ? resolveEmbedSrc(music.embedUrl, music.provider, {
+          autoplay: music.isPlaying,
+          origin: embedOrigin,
+        })
+      : null;
+
+  const embedMountKey = `${music.trackId ?? "none"}-${music.playbackSeq}`;
 
   return (
-    <div className={cn("flex items-center gap-3 px-4 py-2", className)}>
+    <div className={cn("flex items-center gap-2 px-4 py-2 sm:gap-3", className)}>
       {!usesEmbed && <audio ref={audioRef} loop preload="none" className="hidden" />}
 
-      {usesEmbed && music.embedUrl && music.isPlaying && (
+      {usesEmbed && embedSrc && (
         <iframe
-          key={music.embedUrl}
-          src={music.embedUrl}
+          key={embedMountKey}
+          ref={embedRef}
+          src={embedSrc}
           title={music.trackName ?? "Room music"}
           className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0"
           allow="autoplay; encrypted-media"
+          onLoad={() => {
+            embedReadyRef.current = true;
+            lastTransportRef.current = null;
+            if (music.isPlaying) {
+              postEmbedCommand(embedRef.current, music.provider, "play");
+              lastTransportRef.current = "play";
+            }
+          }}
         />
       )}
 
@@ -124,41 +161,64 @@ export function RoomMusicPlayer({
       {hasTrack ? (
         <>
           <ScrollingTrackRibbon
+            className="flex-1"
             trackName={music.trackName ?? "Unknown track"}
             artist={music.artist}
             isPlaying={music.isPlaying}
           />
 
           {isOwner && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              onClick={() => onTogglePlay(!music.isPlaying)}
-              aria-label={music.isPlaying ? "Pause music" : "Play music"}
-            >
-              {music.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => onTogglePlay(!music.isPlaying)}
+                aria-label={music.isPlaying ? "Pause music" : "Resume music"}
+              >
+                {music.isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+              {onRestart && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={onRestart}
+                  aria-label="Restart playback"
+                  title="Restart from beginning"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+            </>
           )}
 
-          {!usesEmbed && (
-            <>
-              <Volume2 className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                defaultValue={0.7}
-                className="hidden w-20 accent-primary sm:block"
-                onChange={(e) => {
-                  if (audioRef.current) {
-                    audioRef.current.volume = Number(e.target.value);
-                  }
-                }}
-                aria-label="Volume"
-              />
-            </>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? "Unmute" : "Mute"}
+            title={muted ? "Unmute (only affects you)" : "Mute (only affects you)"}
+          >
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+
+          {!muted && (
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              className="hidden w-16 accent-primary sm:block md:w-20"
+              onChange={(e) => setVolume(Number(e.target.value))}
+              aria-label="Volume"
+            />
           )}
         </>
       ) : (

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRoomAppearance } from "@/hooks/use-room-appearance";
 import { useRoomFullscreen } from "@/hooks/use-room-fullscreen";
+import { useLocalPomodoro } from "@/hooks/use-local-pomodoro";
 import { useRoomSocket } from "@/hooks/use-socket";
 import { RoomAppearanceToggle } from "@/components/room/room-appearance-toggle";
 import { RoomFullscreenToggle } from "@/components/room/room-fullscreen-toggle";
@@ -39,6 +40,8 @@ interface RoomClientProps {
   initialMessages: ChatMessage[];
   roomTask: UserPostItTask | null;
   hasRoomTasks: boolean;
+  pomodoroFocusMinutes?: number;
+  pomodoroBreakMinutes?: number;
 }
 
 export function RoomClient({
@@ -55,6 +58,8 @@ export function RoomClient({
   initialMessages,
   roomTask,
   hasRoomTasks,
+  pomodoroFocusMinutes,
+  pomodoroBreakMinutes,
 }: RoomClientProps) {
   const [wallpaperId, setWallpaperId] = useState(initialWallpaperId);
   const [backgroundUrl, setBackgroundUrl] = useState(initialBackgroundUrl);
@@ -70,16 +75,23 @@ export function RoomClient({
   const { isFullscreen, toggleFullscreen } = useRoomFullscreen(roomRootRef);
 
   const {
+    state: pomodoro,
+    start: startPomodoro,
+    pause: pausePomodoro,
+    reset: resetPomodoro,
+  } = useLocalPomodoro(roomId, currentUserId, {
+    focusMinutes: pomodoroFocusMinutes,
+    breakMinutes: pomodoroBreakMinutes,
+  });
+
+  const {
     connected,
+    connectionError,
     participants,
     messages,
-    pomodoro,
     music,
     sendMessage,
     deleteMessage,
-    startPomodoro,
-    pausePomodoro,
-    resetPomodoro,
     wallpaperOverlayOpacity,
     broadcastWallpaper,
     broadcastWallpaperOverlay,
@@ -105,6 +117,15 @@ export function RoomClient({
 
   function handleTogglePlay(isPlaying: boolean) {
     broadcastMusic({ ...music, isPlaying });
+  }
+
+  function handleRestartPlayback() {
+    if (!music.trackId) return;
+    broadcastMusic({
+      ...music,
+      isPlaying: true,
+      playbackSeq: music.playbackSeq + 1,
+    });
   }
 
   return (
@@ -153,15 +174,30 @@ export function RoomClient({
               <Badge variant={isPublic ? "default" : "secondary"} className="text-xs">
                 {isPublic ? "Public" : "Private"}
               </Badge>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  "flex items-center gap-1 text-xs",
+                  connected
+                    ? "text-primary"
+                    : connectionError
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                )}
+                title={connectionError ?? undefined}
+              >
                 {connected ? (
                   <>
-                    <Wifi className="h-3 w-3 text-primary" />
-                    Connected
+                    <Wifi className="h-3 w-3" />
+                    Live
+                  </>
+                ) : connectionError ? (
+                  <>
+                    <WifiOff className="h-3 w-3" />
+                    Offline
                   </>
                 ) : (
                   <>
-                    <WifiOff className="h-3 w-3" />
+                    <WifiOff className="h-3 w-3 animate-pulse" />
                     Connecting…
                   </>
                 )}
@@ -210,6 +246,7 @@ export function RoomClient({
           music={music}
           isOwner={isOwner}
           onTogglePlay={handleTogglePlay}
+          onRestart={isOwner ? handleRestartPlayback : undefined}
           onOpenPicker={() => setMusicPickerOpen(true)}
           className="border-t border-border/50"
         />

@@ -9,13 +9,17 @@ import pg from "pg";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
-  PomodoroState,
   RoomParticipant,
   ChatMessage,
   RoomMusicState,
   RoomTrack,
 } from "@studyverce/shared";
-import { roomTrackToMusicState } from "@studyverce/shared";
+import {
+  roomTrackToMusicState,
+  ROOM_PRESENCE_OFFLINE_THRESHOLD_MS,
+  ROOM_PRESENCE_REMOVE_THRESHOLD_MS,
+  ROOM_PRESENCE_SWEEP_INTERVAL_MS,
+} from "@studyverce/shared";
 
 const PORT = parseInt(process.env.PORT ?? "3002", 10);
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -53,8 +57,24 @@ interface SocketData {
   };
 }
 
+function parseCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGIN ?? "http://localhost:3001";
+  const origins = raw
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  return origins.length > 0 ? origins : ["http://localhost:3001"];
+}
+
+const corsOrigins = parseCorsOrigins();
+
 const app = express();
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? "http://localhost:3001" }));
+app.use(
+  cors({
+    origin: corsOrigins,
+    credentials: true,
+  })
+);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 const httpServer = createServer(app);
@@ -62,8 +82,9 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string,
   httpServer,
   {
     cors: {
-      origin: process.env.CORS_ORIGIN ?? "http://localhost:3001",
+      origin: corsOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   }
 );
@@ -75,10 +96,6 @@ if (!pgPool) {
   console.warn("DATABASE_URL not configured — chat persistence disabled on socket server");
 } else {
   console.log("Chat persistence enabled via Postgres");
-}
-
-function pomodoroKey(roomId: string) {
-  return `room:${roomId}:pomodoro`;
 }
 
 function participantsKey(roomId: string) {
@@ -135,7 +152,7 @@ async function syncRoomMusic(roomId: string) {
   let state = await getCachedMusic(roomId);
   if (!state?.trackId) return;
 
-  if (participants.length === 0) {
+  if (countActiveParticipants(participants) === 0) {
     state = { ...state, isPlaying: false };
     await redis.set(musicKey(roomId), JSON.stringify(state));
     return;
@@ -147,18 +164,6 @@ async function syncRoomMusic(roomId: string) {
   }
 
   io.to(roomId).emit("room:music", { roomId, state });
-}
-
-function defaultPomodoroState(): PomodoroState {
-  return {
-    phase: "idle",
-    remainingSeconds: 25 * 60,
-    focusMinutes: 25,
-    breakMinutes: 5,
-    startedBy: null,
-    isPaused: false,
-    updatedAt: new Date().toISOString(),
-  };
 }
 
 async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
@@ -206,40 +211,88 @@ async function getProfile(userId: string) {
   };
 }
 
+function parseStoredParticipant(userId: string, json: string): RoomParticipant {
+  const raw = JSON.parse(json) as Partial<RoomParticipant>;
+  const lastSeenAt = raw.lastSeenAt ?? new Date(0).toISOString();
+  return {
+    userId,
+    username: raw.username ?? `user_${userId.slice(0, 8)}`,
+    displayName: raw.displayName ?? "Anonymous",
+    avatarUrl: raw.avatarUrl ?? null,
+    socketId: raw.socketId ?? "",
+    lastSeenAt,
+    isActive: raw.isActive ?? true,
+  };
+}
+
 async function getParticipants(roomId: string): Promise<RoomParticipant[]> {
   const data = await redis.hgetall(participantsKey(roomId));
-  return Object.entries(data).map(([userId, json]) => {
-    const parsed = JSON.parse(json) as RoomParticipant;
-    return { ...parsed, userId };
-  });
+  return Object.entries(data).map(([userId, json]) => parseStoredParticipant(userId, json));
+}
+
+function countActiveParticipants(participants: RoomParticipant[]): number {
+  return participants.filter((p) => p.isActive).length;
+}
+
+async function saveParticipant(roomId: string, participant: RoomParticipant): Promise<void> {
+  await redis.hset(participantsKey(roomId), participant.userId, JSON.stringify(participant));
+}
+
+async function touchParticipant(
+  roomId: string,
+  userId: string,
+  socketId: string
+): Promise<RoomParticipant | null> {
+  const raw = await redis.hget(participantsKey(roomId), userId);
+  if (!raw) return null;
+
+  const existing = parseStoredParticipant(userId, raw);
+  const now = new Date().toISOString();
+  const updated: RoomParticipant = {
+    ...existing,
+    socketId,
+    lastSeenAt: now,
+    isActive: true,
+  };
+  await saveParticipant(roomId, updated);
+  return updated;
+}
+
+async function sweepStaleParticipants(): Promise<void> {
+  const keys = await redis.keys("room:*:participants");
+  const now = Date.now();
+
+  for (const key of keys) {
+    const roomId = key.slice("room:".length, -":participants".length);
+    const data = await redis.hgetall(key);
+    let changed = false;
+
+    for (const [userId, json] of Object.entries(data)) {
+      const participant = parseStoredParticipant(userId, json);
+      const idleMs = now - new Date(participant.lastSeenAt).getTime();
+
+      if (idleMs > ROOM_PRESENCE_REMOVE_THRESHOLD_MS) {
+        await redis.hdel(participantsKey(roomId), userId);
+        changed = true;
+        continue;
+      }
+
+      if (idleMs > ROOM_PRESENCE_OFFLINE_THRESHOLD_MS && participant.isActive) {
+        await saveParticipant(roomId, { ...participant, isActive: false });
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await broadcastPresence(roomId);
+      await syncRoomMusic(roomId);
+    }
+  }
 }
 
 async function broadcastPresence(roomId: string) {
   const participants = await getParticipants(roomId);
   io.to(roomId).emit("room:presence", { roomId, participants });
-}
-
-async function getPomodoroState(roomId: string): Promise<PomodoroState> {
-  const raw = await redis.get(pomodoroKey(roomId));
-  if (!raw) return defaultPomodoroState();
-  const state = JSON.parse(raw) as PomodoroState;
-
-  if (!state.isPaused && state.phase !== "idle" && state.remainingSeconds > 0) {
-    const elapsed = Math.floor(
-      (Date.now() - new Date(state.updatedAt).getTime()) / 1000
-    );
-    state.remainingSeconds = Math.max(0, state.remainingSeconds - elapsed);
-    state.updatedAt = new Date().toISOString();
-    await redis.set(pomodoroKey(roomId), JSON.stringify(state));
-  }
-
-  return state;
-}
-
-async function setPomodoroState(roomId: string, state: PomodoroState) {
-  state.updatedAt = new Date().toISOString();
-  await redis.set(pomodoroKey(roomId), JSON.stringify(state));
-  io.to(roomId).emit("pomodoro:sync", { roomId, state });
 }
 
 async function loadChatHistory(roomId: string): Promise<ChatMessage[]> {
@@ -367,61 +420,6 @@ async function endStudySession(sessionId: string, focusMinutes: number, breakMin
   }
 }
 
-// Pomodoro tick interval
-setInterval(async () => {
-  const roomKeys = await redis.keys("room:*:pomodoro");
-  for (const key of roomKeys) {
-    const roomId = key.split(":")[1];
-    const state = await getPomodoroState(roomId);
-
-    if (state.phase === "idle" || state.isPaused || state.remainingSeconds <= 0) {
-      if (state.remainingSeconds <= 0 && state.phase !== "idle" && !state.isPaused) {
-        if (state.phase === "focus") {
-          const newState: PomodoroState = {
-            ...state,
-            phase: "break",
-            remainingSeconds: state.breakMinutes * 60,
-            isPaused: false,
-          };
-          await setPomodoroState(roomId, newState);
-        } else {
-          const newState: PomodoroState = {
-            ...defaultPomodoroState(),
-            focusMinutes: state.focusMinutes,
-            breakMinutes: state.breakMinutes,
-          };
-          await setPomodoroState(roomId, newState);
-        }
-      }
-      continue;
-    }
-
-    state.remainingSeconds -= 1;
-    state.updatedAt = new Date().toISOString();
-    await redis.set(pomodoroKey(roomId), JSON.stringify(state));
-    io.to(roomId).emit("pomodoro:sync", { roomId, state });
-
-    if (state.remainingSeconds <= 0) {
-      if (state.phase === "focus") {
-        const newState: PomodoroState = {
-          ...state,
-          phase: "break",
-          remainingSeconds: state.breakMinutes * 60,
-          isPaused: false,
-        };
-        await setPomodoroState(roomId, newState);
-      } else {
-        const newState: PomodoroState = {
-          ...defaultPomodoroState(),
-          focusMinutes: state.focusMinutes,
-          breakMinutes: state.breakMinutes,
-        };
-        await setPomodoroState(roomId, newState);
-      }
-    }
-  }
-}, 1000);
-
 io.use(async (socket, next) => {
   const token = socket.handshake.auth.token as string | undefined;
   if (!token) {
@@ -450,25 +448,21 @@ io.on("connection", (socket) => {
 
       await socket.join(roomId);
 
+      const now = new Date().toISOString();
       const participant: RoomParticipant = {
         userId: user.id,
         username: profile.username,
         displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
         socketId: socket.id,
+        lastSeenAt: now,
+        isActive: true,
       };
 
-      await redis.hset(
-        participantsKey(roomId),
-        user.id,
-        JSON.stringify(participant)
-      );
+      await saveParticipant(roomId, participant);
 
       const history = await loadChatHistory(roomId);
       socket.emit("chat:history", { messages: history });
-
-      const pomodoro = await getPomodoroState(roomId);
-      socket.emit("pomodoro:sync", { roomId, state: pomodoro });
 
       const music = await getCachedMusic(roomId);
       if (music) {
@@ -488,6 +482,21 @@ io.on("connection", (socket) => {
     await redis.hdel(participantsKey(roomId), user.id);
     await broadcastPresence(roomId);
     await syncRoomMusic(roomId);
+  });
+
+  socket.on("room:ping", async ({ roomId }) => {
+    if (!socket.rooms.has(roomId)) return;
+
+    const raw = await redis.hget(participantsKey(roomId), user.id);
+    if (!raw) return;
+
+    const wasInactive = !parseStoredParticipant(user.id, raw).isActive;
+    await touchParticipant(roomId, user.id, socket.id);
+
+    if (wasInactive) {
+      await broadcastPresence(roomId);
+      await syncRoomMusic(roomId);
+    }
   });
 
   socket.on("chat:send", async ({ roomId, content }) => {
@@ -539,34 +548,6 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("chat:deleted", { messageId });
   });
 
-  socket.on("pomodoro:start", async ({ roomId, phase, focusMinutes, breakMinutes }) => {
-    const state = await getPomodoroState(roomId);
-    const focus = focusMinutes ?? state.focusMinutes;
-    const breakM = breakMinutes ?? state.breakMinutes;
-    const newState: PomodoroState = {
-      phase,
-      remainingSeconds: (phase === "focus" ? focus : breakM) * 60,
-      focusMinutes: focus,
-      breakMinutes: breakM,
-      startedBy: user.id,
-      isPaused: false,
-      updatedAt: new Date().toISOString(),
-    };
-    await setPomodoroState(roomId, newState);
-  });
-
-  socket.on("pomodoro:pause", async ({ roomId }) => {
-    const state = await getPomodoroState(roomId);
-    state.isPaused = !state.isPaused;
-    state.updatedAt = new Date().toISOString();
-    await setPomodoroState(roomId, state);
-  });
-
-  socket.on("pomodoro:reset", async ({ roomId }) => {
-    const state = defaultPomodoroState();
-    await setPomodoroState(roomId, state);
-  });
-
   socket.on("room:wallpaper:set", async ({ roomId, wallpaperId, imageUrl }) => {
     const canManage = await isRoomOwnerOrMod(roomId, user.id);
     if (!canManage) {
@@ -596,7 +577,7 @@ io.on("connection", (socket) => {
 
     const participants = await getParticipants(roomId);
     const nextState =
-      participants.length > 0 && state.trackId
+      countActiveParticipants(participants) > 0 && state.trackId
         ? { ...state, isPlaying: state.isPlaying ?? true }
         : state;
 
@@ -625,6 +606,10 @@ io.on("connection", (socket) => {
     }
   });
 });
+
+setInterval(() => {
+  void sweepStaleParticipants();
+}, ROOM_PRESENCE_SWEEP_INTERVAL_MS);
 
 httpServer.listen(PORT, () => {
   console.log(`Socket server running on port ${PORT}`);

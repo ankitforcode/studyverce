@@ -86,6 +86,8 @@ export default async function RoomPage({
       initialMessages={chatHistory}
       roomTask={roomTask}
       hasRoomTasks={hasRoomTasks}
+      pomodoroFocusMinutes={roomSettings.pomodoroDefaults.focusMinutes}
+      pomodoroBreakMinutes={roomSettings.pomodoroDefaults.breakMinutes}
     />
   );
 }

@@ -183,6 +183,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_music_connections: {
+        Row: {
+          user_id: string;
+          provider: "spotify" | "youtube_music" | "apple_music";
+          access_token: string;
+          refresh_token: string | null;
+          expires_at: string | null;
+          token_type: string;
+          scope: string | null;
+          provider_account_id: string | null;
+          display_name: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          provider: "spotify" | "youtube_music" | "apple_music";
+          access_token: string;
+          refresh_token?: string | null;
+          expires_at?: string | null;
+          token_type?: string;
+          scope?: string | null;
+          provider_account_id?: string | null;
+          display_name?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          provider?: "spotify" | "youtube_music" | "apple_music";
+          access_token?: string;
+          refresh_token?: string | null;
+          expires_at?: string | null;
+          token_type?: string;
+          scope?: string | null;
+          provider_account_id?: string | null;
+          display_name?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       room_track_requests: {
         Row: {
           id: string;

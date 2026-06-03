@@ -151,13 +151,17 @@ export async function addProviderTrackLink(
   const category = (formData.get("category") as string) || "ambient";
 
   if (!sourceUrl) {
-    return { error: "Paste a SoundCloud, YouTube, or Spotify link.", success: false };
+    return {
+      error: "Paste a SoundCloud, YouTube, Spotify, or Apple Music link.",
+      success: false,
+    };
   }
 
   const parsed = parseMusicProviderUrl(sourceUrl);
   if (!parsed) {
     return {
-      error: "Unsupported link. Use SoundCloud, YouTube, YouTube Music, or Spotify URLs.",
+      error:
+        "Unsupported link. Use SoundCloud, YouTube, YouTube Music, Spotify, or Apple Music URLs.",
       success: false,
     };
   }

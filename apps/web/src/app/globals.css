@@ -74,7 +74,7 @@ html.light {
 }
 
 .track-marquee {
-  animation: track-marquee 18s linear infinite;
+  animation: track-marquee 36s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

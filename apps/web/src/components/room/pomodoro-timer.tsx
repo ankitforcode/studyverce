@@ -122,7 +122,7 @@ export function PomodoroTimer({
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          {focusMinutes} min focus · {breakMinutes} min break · synced with the room
+          {focusMinutes} min focus · {breakMinutes} min break · your timer only
         </p>
       </CardContent>
     </Card>

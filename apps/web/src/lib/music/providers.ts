@@ -63,6 +63,34 @@ function parseSoundCloud(url: URL): ParsedProviderTrack | null {
   };
 }
 
+function parseAppleMusic(url: URL): ParsedProviderTrack | null {
+  if (!url.hostname.includes("music.apple.com")) return null;
+
+  const parts = url.pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const country = parts[0]?.length === 2 ? parts[0] : "us";
+  const typeIndex = parts[0]?.length === 2 ? 1 : 0;
+  const type = parts[typeIndex];
+  const id = parts[parts.length - 1];
+
+  if (!type || !id) return null;
+  if (!["song", "album", "playlist", "station"].includes(type)) return null;
+
+  const embedType = type === "song" ? "song" : type;
+  const sourceUrl = url.toString();
+  const embedUrl = `https://embed.music.apple.com/${country}/${embedType}/${id}`;
+
+  return {
+    provider: "apple_music",
+    externalId: `${embedType}:${id}`,
+    sourceUrl,
+    embedUrl,
+    audioUrl: embedUrl,
+    defaultName: `Apple Music ${type}`,
+  };
+}
+
 function parseSpotify(url: URL): ParsedProviderTrack | null {
   if (!url.hostname.includes("spotify.com")) return null;
 
@@ -89,7 +117,12 @@ export function parseMusicProviderUrl(raw: string): ParsedProviderTrack | null {
   const url = normalizeUrl(raw);
   if (!url) return null;
 
-  return parseYouTube(url) ?? parseSoundCloud(url) ?? parseSpotify(url);
+  return (
+    parseYouTube(url) ??
+    parseSoundCloud(url) ??
+    parseSpotify(url) ??
+    parseAppleMusic(url)
+  );
 }
 
 export const PROVIDER_LABELS: Record<MusicProvider, string> = {
@@ -97,9 +130,15 @@ export const PROVIDER_LABELS: Record<MusicProvider, string> = {
   youtube: "YouTube",
   soundcloud: "SoundCloud",
   spotify: "Spotify",
+  apple_music: "Apple Music",
   direct: "Direct",
 };
 
 export function isEmbedProvider(provider: MusicProvider | null | undefined): boolean {
-  return provider === "youtube" || provider === "soundcloud" || provider === "spotify";
+  return (
+    provider === "youtube" ||
+    provider === "soundcloud" ||
+    provider === "spotify" ||
+    provider === "apple_music"
+  );
 }

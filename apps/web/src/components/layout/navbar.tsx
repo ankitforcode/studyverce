@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen, LayoutDashboard, Users, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { NavbarProfileMenu } from "@/components/layout/navbar-profile-menu";
+import { NavLink } from "@/components/layout/nav-link";
 import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -40,20 +41,20 @@ export async function Navbar() {
           className={cn("hidden flex-1 items-center justify-center gap-1 md:flex")}
           aria-label="Main"
         >
-          <Link href="/rooms" className={navLinkClass}>
+          <NavLink href="/rooms" match="prefix" className={navLinkClass}>
             <Users className="h-4 w-4 shrink-0" />
             Rooms
-          </Link>
+          </NavLink>
           {user && (
-            <Link href="/dashboard" className={navLinkClass}>
+            <NavLink href="/dashboard" match="exact" className={navLinkClass}>
               <LayoutDashboard className="h-4 w-4 shrink-0" />
               Dashboard
-            </Link>
+            </NavLink>
           )}
-          <Link href="/leaderboard" className={navLinkClass}>
+          <NavLink href="/leaderboard" match="exact" className={navLinkClass}>
             <Trophy className="h-4 w-4 shrink-0" />
             Leaderboard
-          </Link>
+          </NavLink>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">

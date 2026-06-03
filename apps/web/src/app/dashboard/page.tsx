@@ -43,14 +43,16 @@ export default async function DashboardPage() {
 
   if (!profile.onboarding_completed) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-center">
-        <div>
-          <p className="text-muted-foreground mb-4">
-            Complete your profile to get started
-          </p>
-          <Link href="/onboarding" className="text-primary hover:underline">
-            Continue onboarding
-          </Link>
+      <div className="min-h-[calc(100dvh-4rem)] bg-background">
+        <div className="mx-auto flex max-w-7xl flex-1 items-center justify-center px-4 py-16 text-center sm:px-6">
+          <div>
+            <p className="mb-4 text-muted-foreground">
+              Complete your profile to get started
+            </p>
+            <Link href="/onboarding" className="text-primary hover:underline">
+              Continue onboarding
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -97,14 +99,25 @@ export default async function DashboardPage() {
       .reduce((acc, s) => acc + s.focus_minutes, 0) ?? 0;
 
   return (
-    <div className="space-y-6 p-6">
-      <header>
-        <h1 className="text-2xl font-bold text-primary">{getGreeting()}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Welcome back to your workspace
-        </p>
-      </header>
+    <div className="min-h-[calc(100dvh-4rem)] bg-background">
+      <div className="sticky top-16 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-4 px-4 py-4 sm:px-6">
+          <div>
+            <h1 className="text-2xl font-bold text-primary">{getGreeting()}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Welcome back, {profile.display_name}
+            </p>
+          </div>
+          <Link
+            href="/rooms"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90"
+          >
+            Join a study room
+          </Link>
+        </div>
+      </div>
 
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardStatCard
           label="Sessions Today"
@@ -185,6 +198,7 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

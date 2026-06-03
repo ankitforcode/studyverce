@@ -68,8 +68,11 @@ REDIS_URL=redis://localhost:6379
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_JWT_SECRET=your-jwt-secret
 DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
-CORS_ORIGIN=http://localhost:3001
+# Comma-separated; include every web origin (localhost + ngrok HTTPS)
+CORS_ORIGIN=http://localhost:3001,https://your-subdomain.ngrok-free.app
 ```
+
+Room realtime uses Socket.io through the **same origin** as the web app (`/socket.io` → Next.js rewrite → port 3002). You do not need a separate ngrok tunnel for the socket server unless you set `NEXT_PUBLIC_SOCKET_URL` explicitly.
 
 Find your JWT secret in Supabase Dashboard → Settings → API → JWT Secret.
 
@@ -82,11 +85,67 @@ Apply migrations via Supabase CLI or paste SQL from `supabase/migrations/` into 
 supabase db push
 ```
 
-### 4. Start Redis
+### 4. Start Redis and ngrok (OAuth / HTTPS redirects)
+
+Copy the **repo root** env file (this is separate from `apps/web/.env.local`) and add your [ngrok authtoken](https://dashboard.ngrok.com/get-started/your-authtoken):
 
 ```bash
-docker compose up -d redis
+cp .env.example .env
+# Edit .env at the repo root:
+#   NGROK_AUTHTOKEN=your_token
+#   NGROK_DOMAIN=patient-pika-evident.ngrok-free.app   # your reserved domain
 ```
+
+Start the web app first (`pnpm dev` on port 3001), then start the tunnel:
+
+```bash
+docker compose up -d redis ngrok
+docker compose logs ngrok   # should show "Starting ngrok on domain ..."
+```
+
+If you see **ERR_NGROK_3200 endpoint is offline**, the ngrok container is not running — usually a missing `NGROK_AUTHTOKEN` in root `.env`. Fix `.env` and run `docker compose up -d ngrok` again.
+
+- Ngrok inspector: [http://127.0.0.1:4040](http://127.0.0.1:4040)
+- Print the public HTTPS URL (after `pnpm dev` is running on port 3001):
+
+```bash
+./scripts/ngrok-public-url.sh
+```
+
+Set that URL in **apps/web/.env.local** so music OAuth callbacks work (restart `pnpm dev` after changing):
+
+```bash
+NEXT_PUBLIC_APP_URL=https://your-subdomain.ngrok-free.app
+```
+
+`next.config.ts` reads that host into `allowedDevOrigins` so HMR works through ngrok. Use the **ngrok URL only** in the browser (not `localhost:3001`) and sign in there before connecting streaming accounts — otherwise the OAuth callback returns `?error=music_auth` because Supabase session cookies are on a different host.
+
+Register the same base URL + callback paths in each provider dashboard, for example:
+
+- Spotify: `{NEXT_PUBLIC_APP_URL}/api/music/spotify/callback`
+- Google (YouTube Music): `{NEXT_PUBLIC_APP_URL}/api/music/youtube_music/callback`
+
+#### Google / YouTube Music (fix `403 access_denied`)
+
+In [Google Cloud Console](https://console.cloud.google.com/) for the project that owns `GOOGLE_CLIENT_ID`:
+
+1. **APIs & Services → Library** — enable **YouTube Data API v3**.
+2. **APIs & Services → Credentials** — create an **OAuth 2.0 Client ID** (type **Web application**).
+   - **Authorized JavaScript origins**: `https://your-subdomain.ngrok-free.app` (your `NEXT_PUBLIC_APP_URL`, no trailing slash)
+   - **Authorized redirect URIs**: `https://your-subdomain.ngrok-free.app/api/music/youtube_music/callback`
+3. **APIs & Services → OAuth consent screen**
+   - **User type**: External (or Internal for Workspace-only)
+   - **Publishing status**: Testing (normal for dev)
+   - **Test users**: add every Google account that will connect (e.g. `luv.ankit@gmail.com`). Without this, Google shows *“Access blocked … has not completed the Google verification process”* (`403 access_denied`).
+4. Put the client ID and secret in `apps/web/.env.local` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then restart `pnpm dev`.
+
+Use the **same** OAuth client as Supabase Google login only if redirect URIs for both are listed on that client; otherwise create a separate client for music.
+
+For a **stable** redirect URL on each restart, reserve a domain in ngrok and set `NGROK_DOMAIN=your-subdomain.ngrok-free.app` in `.env`.
+
+Also add the ngrok URL under Supabase **Authentication → URL configuration → Redirect URLs** if you sign in through the tunnel.
+
+Add the same ngrok HTTPS origin to **apps/socket-server/.env** `CORS_ORIGIN` (comma-separated with `http://localhost:3001`) so the room shows **Live** instead of stuck on **Connecting…**.
 
 ### 5. Start development servers
 

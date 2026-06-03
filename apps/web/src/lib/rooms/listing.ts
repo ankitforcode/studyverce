@@ -21,6 +21,11 @@ export type RoomListingItem = {
     label: string;
     type: "camera" | "focus" | "study";
   };
+  nowPlaying: {
+    trackName: string;
+    artist: string | null;
+    isPlaying: boolean;
+  } | null;
 };
 
 const DEFAULT_THUMBNAILS = [
@@ -54,7 +59,9 @@ export async function getPublicRooms(search?: string): Promise<RoomListingItem[]
 
   let query = supabase
     .from("study_rooms")
-    .select("id, slug, name, description, is_public, max_participants, settings, created_at, owner_id, wallpaper_id")
+    .select(
+      "id, slug, name, description, is_public, max_participants, settings, created_at, owner_id, wallpaper_id, track_id"
+    )
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
@@ -67,18 +74,31 @@ export async function getPublicRooms(search?: string): Promise<RoomListingItem[]
 
   const ownerIds = [...new Set(rooms.map((r) => r.owner_id))];
   const wallpaperIds = rooms.map((r) => r.wallpaper_id).filter(Boolean) as string[];
+  const trackIds = [
+    ...new Set(rooms.map((r) => r.track_id).filter(Boolean)),
+  ] as string[];
   const roomIds = rooms.map((r) => r.id);
 
-  const [{ data: profiles }, { data: wallpapers }, { data: members }] = await Promise.all([
-    supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", ownerIds),
-    wallpaperIds.length
-      ? supabase.from("room_wallpapers").select("id, image_url, thumbnail_url").in("id", wallpaperIds)
-      : Promise.resolve({ data: [] as { id: string; image_url: string; thumbnail_url: string | null }[] }),
-    supabase.from("room_members").select("room_id").in("room_id", roomIds),
-  ]);
+  const [{ data: profiles }, { data: wallpapers }, { data: members }, { data: tracks }] =
+    await Promise.all([
+      supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", ownerIds),
+      wallpaperIds.length
+        ? supabase
+            .from("room_wallpapers")
+            .select("id, image_url, thumbnail_url")
+            .in("id", wallpaperIds)
+        : Promise.resolve({
+            data: [] as { id: string; image_url: string; thumbnail_url: string | null }[],
+          }),
+      supabase.from("room_members").select("room_id").in("room_id", roomIds),
+      trackIds.length
+        ? supabase.from("room_tracks").select("id, name, artist").in("id", trackIds)
+        : Promise.resolve({ data: [] as { id: string; name: string; artist: string | null }[] }),
+    ]);
 
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);
   const wallpaperMap = new Map(wallpapers?.map((w) => [w.id, w]) ?? []);
+  const trackMap = new Map(tracks?.map((t) => [t.id, t]) ?? []);
 
   const memberCounts = new Map<string, number>();
   for (const m of members ?? []) {
@@ -89,6 +109,8 @@ export async function getPublicRooms(search?: string): Promise<RoomListingItem[]
     const owner = profileMap.get(room.owner_id);
     const wallpaper = room.wallpaper_id ? wallpaperMap.get(room.wallpaper_id) : null;
     const thumb = wallpaper?.thumbnail_url ?? wallpaper?.image_url ?? null;
+    const track = room.track_id ? trackMap.get(room.track_id) : null;
+    const memberCount = memberCounts.get(room.id) ?? 0;
 
     return {
       id: room.id,
@@ -97,7 +119,7 @@ export async function getPublicRooms(search?: string): Promise<RoomListingItem[]
       description: room.description,
       isPublic: room.is_public,
       maxParticipants: room.max_participants,
-      memberCount: memberCounts.get(room.id) ?? 0,
+      memberCount,
       createdAt: room.created_at,
       thumbnailUrl: pickThumbnail(room.id, thumb),
       owner: {
@@ -106,6 +128,13 @@ export async function getPublicRooms(search?: string): Promise<RoomListingItem[]
         avatarUrl: owner?.avatar_url ?? null,
       },
       mode: resolveMode(room.settings),
+      nowPlaying: track
+        ? {
+            trackName: track.name,
+            artist: track.artist,
+            isPlaying: memberCount > 0,
+          }
+        : null,
     };
   });
 }

@@ -14,6 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import type { RoomListingItem } from "@/lib/rooms/listing";
+import { ScrollingTrackRibbon } from "@/components/room/scrolling-track-ribbon";
 import { Avatar } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -184,6 +185,18 @@ function RoomCard({ room, isTrending }: { room: RoomListingItem; isTrending: boo
             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
             {liveCount}
           </div>
+
+          {room.nowPlaying && (
+            <div className="absolute bottom-2 left-2 right-2 z-10">
+              <ScrollingTrackRibbon
+                trackName={room.nowPlaying.trackName}
+                artist={room.nowPlaying.artist}
+                isPlaying={room.nowPlaying.isPlaying}
+                compact
+                className="border-white/20 bg-black/55 backdrop-blur-md"
+              />
+            </div>
+          )}
         </div>
 
         {/* Host avatar — outside overflow-hidden so it isn't clipped */}

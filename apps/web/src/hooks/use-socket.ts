@@ -4,14 +4,16 @@ import { io, type Socket } from "socket.io-client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   DEFAULT_WALLPAPER_OVERLAY,
+  ROOM_PRESENCE_PING_INTERVAL_MS,
   type ClientToServerEvents,
   type ServerToClientEvents,
   type RoomPresenceState,
   type ChatMessage,
-  type PomodoroState,
+  normalizeRoomMusicState,
   type RoomMusicState,
 } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/client";
+import { getSocketIoClientUrl } from "@/lib/socket-client";
 import { sendRoomMessage, deleteRoomMessage } from "@/app/rooms/chat-actions";
 
 type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -27,11 +29,13 @@ function mergeMessages(existing: ChatMessage[], incoming: ChatMessage[]): ChatMe
 }
 
 export function useSocket() {
-  const socketRef = useRef<AppSocket | null>(null);
+  const [socket, setSocket] = useState<AppSocket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
-    let socket: AppSocket;
+    let activeSocket: AppSocket | null = null;
+    let cancelled = false;
 
     async function connect() {
       const supabase = createClient();
@@ -39,24 +43,47 @@ export function useSocket() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      socket = io(process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:3002", {
+      const url = getSocketIoClientUrl();
+      activeSocket = io(url, {
+        path: "/socket.io",
         auth: { token: session?.access_token ?? "dev" },
         autoConnect: true,
+        transports: ["websocket", "polling"],
       });
 
-      socket.on("connect", () => setConnected(true));
-      socket.on("disconnect", () => setConnected(false));
-      socketRef.current = socket;
+      activeSocket.on("connect", () => {
+        if (cancelled) return;
+        setConnectionError(null);
+        setConnected(true);
+      });
+
+      activeSocket.on("disconnect", () => {
+        if (cancelled) return;
+        setConnected(false);
+      });
+
+      activeSocket.on("connect_error", (err) => {
+        if (cancelled) return;
+        setConnected(false);
+        setConnectionError(err.message);
+      });
+
+      if (!cancelled) {
+        setSocket(activeSocket);
+      }
     }
 
-    connect();
+    void connect();
 
     return () => {
-      socket?.disconnect();
+      cancelled = true;
+      activeSocket?.disconnect();
+      setSocket(null);
+      setConnected(false);
     };
   }, []);
 
-  return { socket: socketRef.current, connected };
+  return { socket, connected, connectionError };
 }
 
 export function useRoomSocket(
@@ -65,26 +92,28 @@ export function useRoomSocket(
   initialMusic?: RoomMusicState,
   initialWallpaperOverlay = DEFAULT_WALLPAPER_OVERLAY
 ) {
-  const { socket, connected } = useSocket();
+  const { socket, connected, connectionError } = useSocket();
   const [participants, setParticipants] = useState<RoomPresenceState["participants"]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [pomodoro, setPomodoro] = useState<PomodoroState | null>(null);
   const [wallpaperId, setWallpaperId] = useState<string | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [wallpaperOverlayOpacity, setWallpaperOverlayOpacity] = useState(
     initialWallpaperOverlay
   );
   const [music, setMusic] = useState<RoomMusicState>(
-    initialMusic ?? {
-      trackId: null,
-      audioUrl: null,
-      embedUrl: null,
-      sourceUrl: null,
-      provider: null,
-      trackName: null,
-      artist: null,
-      isPlaying: false,
-    }
+    normalizeRoomMusicState(
+      initialMusic ?? {
+        trackId: null,
+        audioUrl: null,
+        embedUrl: null,
+        sourceUrl: null,
+        provider: null,
+        trackName: null,
+        artist: null,
+        isPlaying: false,
+        playbackSeq: 0,
+      }
+    )
   );
   const joinedRef = useRef(false);
 
@@ -113,8 +142,9 @@ export function useRoomSocket(
     socket.on("room:presence", (payload) => {
       if (payload.roomId === roomId) {
         setParticipants(payload.participants);
+        const activeCount = payload.participants.filter((p) => p.isActive).length;
         setMusic((prev) => {
-          if (!prev.trackId || payload.participants.length === 0) return prev;
+          if (!prev.trackId || activeCount === 0) return prev;
           if (prev.isPlaying) return prev;
           return { ...prev, isPlaying: true };
         });
@@ -130,9 +160,6 @@ export function useRoomSocket(
     socket.on("chat:deleted", ({ messageId }) =>
       setMessages((prev) => prev.filter((m) => m.id !== messageId))
     );
-    socket.on("pomodoro:sync", (payload) => {
-      if (payload.roomId === roomId) setPomodoro(payload.state);
-    });
     socket.on("room:wallpaper", (payload) => {
       if (payload.roomId === roomId) {
         setWallpaperId(payload.wallpaperId);
@@ -146,7 +173,7 @@ export function useRoomSocket(
     });
     socket.on("room:music", (payload) => {
       if (payload.roomId === roomId) {
-        setMusic(payload.state);
+        setMusic(normalizeRoomMusicState(payload.state));
       }
     });
 
@@ -157,12 +184,34 @@ export function useRoomSocket(
       socket.off("chat:history");
       socket.off("chat:message");
       socket.off("chat:deleted");
-      socket.off("pomodoro:sync");
       socket.off("room:wallpaper");
       socket.off("room:wallpaperOverlay");
       socket.off("room:music");
     };
   }, [socket, connected, roomId, joinRoom]);
+
+  // Activity heartbeat — server marks users offline if pings stop
+  useEffect(() => {
+    if (!socket || !connected || !joinedRef.current) return;
+
+    const sendPing = () => {
+      if (document.visibilityState === "hidden") return;
+      socket.emit("room:ping", { roomId });
+    };
+
+    sendPing();
+    const intervalId = window.setInterval(sendPing, ROOM_PRESENCE_PING_INTERVAL_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sendPing();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [socket, connected, roomId]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -195,21 +244,6 @@ export function useRoomSocket(
     [socket, roomId]
   );
 
-  const startPomodoro = useCallback(
-    (phase: "focus" | "break", focusMinutes?: number, breakMinutes?: number) => {
-      socket?.emit("pomodoro:start", { roomId, phase, focusMinutes, breakMinutes });
-    },
-    [socket, roomId]
-  );
-
-  const pausePomodoro = useCallback(() => {
-    socket?.emit("pomodoro:pause", { roomId });
-  }, [socket, roomId]);
-
-  const resetPomodoro = useCallback(() => {
-    socket?.emit("pomodoro:reset", { roomId });
-  }, [socket, roomId]);
-
   const broadcastWallpaper = useCallback(
     (id: string | null, imageUrl: string | null) => {
       socket?.emit("room:wallpaper:set", { roomId, wallpaperId: id, imageUrl });
@@ -227,17 +261,18 @@ export function useRoomSocket(
 
   const broadcastMusic = useCallback(
     (state: RoomMusicState) => {
-      setMusic(state);
-      socket?.emit("room:music:sync", { roomId, state });
+      const next = normalizeRoomMusicState(state);
+      setMusic(next);
+      socket?.emit("room:music:sync", { roomId, state: next });
     },
     [socket, roomId]
   );
 
   return {
     connected,
+    connectionError,
     participants,
     messages,
-    pomodoro,
     wallpaperId,
     backgroundUrl,
     wallpaperOverlayOpacity,
@@ -245,9 +280,6 @@ export function useRoomSocket(
     music,
     sendMessage,
     deleteMessage,
-    startPomodoro,
-    pausePomodoro,
-    resetPomodoro,
     broadcastWallpaper,
     broadcastMusic,
   };

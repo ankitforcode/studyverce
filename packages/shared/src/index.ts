@@ -20,7 +20,23 @@ export interface RoomParticipant {
   displayName: string;
   avatarUrl: string | null;
   socketId: string;
+  /** Updated by periodic room:ping; false when pings are missed. */
+  isActive: boolean;
+  /** ISO timestamp of the last activity ping. */
+  lastSeenAt: string;
 }
+
+/** Client sends room:ping on this interval while in a room. */
+export const ROOM_PRESENCE_PING_INTERVAL_MS = 30_000;
+
+/** No ping within this window → participant marked away (still listed in room). */
+export const ROOM_PRESENCE_OFFLINE_THRESHOLD_MS = 90_000;
+
+/** No ping within this window → participant removed from the room. */
+export const ROOM_PRESENCE_REMOVE_THRESHOLD_MS = 30 * 60 * 1000;
+
+/** Server sweep interval to detect stale participants. */
+export const ROOM_PRESENCE_SWEEP_INTERVAL_MS = 15_000;
 
 export interface ChatMessage {
   id: string;
@@ -93,9 +109,51 @@ export interface RoomTrack {
   createdAt: string;
 }
 
-export type MusicProvider = "builtin" | "youtube" | "soundcloud" | "spotify" | "direct";
+export type MusicProvider =
+  | "builtin"
+  | "youtube"
+  | "soundcloud"
+  | "spotify"
+  | "apple_music"
+  | "direct";
 
-export const MUSIC_PROVIDERS = ["youtube", "soundcloud", "spotify"] as const;
+/** OAuth-connected streaming services (browse playlists in-app). */
+export type StreamingMusicProvider = "spotify" | "youtube_music" | "apple_music";
+
+export const STREAMING_MUSIC_PROVIDERS: StreamingMusicProvider[] = [
+  "spotify",
+  "youtube_music",
+  "apple_music",
+];
+
+export const MUSIC_PROVIDERS = ["youtube", "soundcloud", "spotify", "apple_music"] as const;
+
+export interface StreamingMusicConnection {
+  provider: StreamingMusicProvider;
+  connected: boolean;
+  displayName: string | null;
+  expiresAt: string | null;
+}
+
+export interface StreamingPlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  trackCount: number | null;
+  imageUrl: string | null;
+  provider: StreamingMusicProvider;
+}
+
+export interface StreamingPlaylistItem {
+  id: string;
+  name: string;
+  artist: string | null;
+  durationSeconds: number | null;
+  sourceUrl: string;
+  imageUrl: string | null;
+  /** track | playlist | album */
+  itemType: "track" | "playlist" | "album";
+}
 
 export type TrackRequestStatus = "pending" | "approved" | "rejected";
 
@@ -121,6 +179,15 @@ export interface RoomMusicState {
   trackName: string | null;
   artist: string | null;
   isPlaying: boolean;
+  /** Bumped by the room owner to restart playback for everyone. */
+  playbackSeq: number;
+}
+
+export function normalizeRoomMusicState(state: RoomMusicState): RoomMusicState {
+  return {
+    ...state,
+    playbackSeq: state.playbackSeq ?? 0,
+  };
 }
 
 export function roomTrackToMusicState(
@@ -137,13 +204,15 @@ export function roomTrackToMusicState(
       trackName: null,
       artist: null,
       isPlaying: false,
+      playbackSeq: 0,
     };
   }
 
   const isEmbed =
     track.provider === "youtube" ||
     track.provider === "soundcloud" ||
-    track.provider === "spotify";
+    track.provider === "spotify" ||
+    track.provider === "apple_music";
 
   return {
     trackId: track.id,
@@ -154,6 +223,7 @@ export function roomTrackToMusicState(
     trackName: track.name,
     artist: track.artist,
     isPlaying,
+    playbackSeq: 0,
   };
 }
 
@@ -176,6 +246,7 @@ export const PROVIDER_LINK_EXAMPLES = [
   "https://music.youtube.com/watch?v=...",
   "https://open.spotify.com/track/...",
   "https://open.spotify.com/playlist/...",
+  "https://music.apple.com/us/playlist/...",
 ] as const;
 
 export const DEFAULT_ROOM_SETTINGS: StudyRoomSettings = {
@@ -197,6 +268,7 @@ export interface RoomPresenceState {
 export interface ClientToServerEvents {
   "room:join": (payload: { roomId: string; token: string }) => void;
   "room:leave": (payload: { roomId: string }) => void;
+  "room:ping": (payload: { roomId: string }) => void;
   "chat:send": (payload: { roomId: string; content: string }) => void;
   "chat:broadcast": (payload: { roomId: string; message: ChatMessage }) => void;
   "chat:broadcast-delete": (payload: { roomId: string; messageId: string }) => void;

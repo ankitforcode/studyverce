@@ -13,12 +13,27 @@ interface ParticipantListProps {
   className?: string;
 }
 
+function PresenceDot({ isActive }: { isActive: boolean }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full ring-2 ring-card/80",
+        isActive ? "bg-primary" : "bg-muted-foreground/50",
+        "absolute bottom-0 right-0 h-2 w-2"
+      )}
+      title={isActive ? "Active" : "Away"}
+    />
+  );
+}
+
 export function ParticipantList({
   participants,
   currentUserId,
   variant = "card",
   className,
 }: ParticipantListProps) {
+  const activeCount = participants.filter((p) => p.isActive).length;
+
   if (variant === "compact") {
     return (
       <div className={cn("flex items-center gap-2 min-w-0", className)}>
@@ -36,13 +51,16 @@ export function ParticipantList({
                     size="sm"
                     className="ring-2 ring-card/80"
                   />
-                  <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-primary ring-2 ring-card/80" />
+                  <PresenceDot isActive={p.isActive} />
                 </div>
               ))}
             </div>
             <span className="text-xs text-muted-foreground truncate">
-              {participants.length} online
-              {participants.some((p) => p.userId === currentUserId) && " · you're here"}
+              {activeCount} active
+              {participants.length > activeCount &&
+                ` · ${participants.length - activeCount} away`}
+              {participants.some((p) => p.userId === currentUserId && p.isActive) &&
+                " · you're here"}
             </span>
           </>
         )}
@@ -56,7 +74,9 @@ export function ParticipantList({
         <CardTitle className="flex items-center gap-2 text-lg">
           <Users className="h-5 w-5" />
           Participants
-          <span className="text-sm font-normal text-muted-foreground">({participants.length})</span>
+          <span className="text-sm font-normal text-muted-foreground">
+            ({activeCount} active{participants.length > activeCount ? ` · ${participants.length} in room` : ""})
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -66,14 +86,19 @@ export function ParticipantList({
           <ul className="space-y-2">
             {participants.map((p) => (
               <li key={p.userId} className="flex items-center gap-2">
-                <Avatar src={p.avatarUrl} fallback={p.displayName} size="sm" />
-                <span className="text-sm">
+                <div className="relative">
+                  <Avatar src={p.avatarUrl} fallback={p.displayName} size="sm" />
+                  <PresenceDot isActive={p.isActive} />
+                </div>
+                <span className={cn("text-sm", !p.isActive && "text-muted-foreground")}>
                   {p.displayName}
                   {p.userId === currentUserId && (
                     <span className="text-muted-foreground ml-1">(you)</span>
                   )}
+                  {!p.isActive && (
+                    <span className="text-muted-foreground ml-1">· away</span>
+                  )}
                 </span>
-                <span className="ml-auto h-2 w-2 rounded-full bg-primary" title="Online" />
               </li>
             ))}
           </ul>
