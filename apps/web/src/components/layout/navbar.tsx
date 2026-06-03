@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { BookOpen, LayoutDashboard, Users, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { NavbarProfileMenu } from "@/components/layout/navbar-profile-menu";
+import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +19,7 @@ export async function Navbar() {
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("username, display_name")
+      .select("username, display_name, avatar_url")
       .eq("id", user.id)
       .single();
     profile = data;
@@ -25,20 +27,17 @@ export async function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="relative mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+      <div className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="relative z-10 flex shrink-0 items-center gap-2.5 font-bold text-lg leading-none"
+          className="flex shrink-0 items-center gap-2.5 font-bold text-lg leading-none"
         >
           <BookOpen className="h-6 w-6 shrink-0 text-primary" />
           <span>StudyVerce</span>
         </Link>
 
         <nav
-          className={cn(
-            "absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2",
-            "md:flex items-center gap-1"
-          )}
+          className={cn("hidden flex-1 items-center justify-center gap-1 md:flex")}
           aria-label="Main"
         >
           <Link href="/rooms" className={navLinkClass}>
@@ -57,26 +56,25 @@ export async function Navbar() {
           </Link>
         </nav>
 
-        <div className="relative z-10 ml-auto flex shrink-0 items-center gap-4">
+        <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
           {user ? (
             <>
               <Link
                 href={`/profile/${profile?.username ?? "me"}`}
-                className="hidden max-w-[140px] truncate text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block"
+                className="rounded-lg p-1 sm:hidden"
+                aria-label="Your profile"
               >
-                {profile?.display_name ?? "Profile"}
+                <Avatar
+                  src={profile?.avatar_url ?? null}
+                  fallback={profile?.display_name ?? "Profile"}
+                  size="sm"
+                />
               </Link>
-              <form
-                action={async () => {
-                  "use server";
-                  const { signOutAction } = await import("@/app/auth/actions");
-                  await signOutAction();
-                }}
-              >
-                <Button variant="outline" size="sm" type="submit" className="h-9">
-                  Sign out
-                </Button>
-              </form>
+              <NavbarProfileMenu
+                username={profile?.username ?? "me"}
+                displayName={profile?.display_name ?? "Profile"}
+                avatarUrl={profile?.avatar_url ?? null}
+              />
             </>
           ) : (
             <>

@@ -2,19 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  Video,
-  DoorOpen,
-  Users,
-  Timer,
-  CheckSquare,
-  Bell,
-  Settings,
-  RefreshCw,
-  MessageCircle,
-} from "lucide-react";
+import { Home, Settings, RefreshCw, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { appNavSections } from "@/lib/app-nav";
 import { DashboardTopBar } from "@/components/dashboard/dashboard-top-bar";
 import { Avatar } from "@/components/ui/badge";
 
@@ -24,28 +14,6 @@ interface DashboardShellProps {
   displayName: string;
   avatarUrl: string | null;
 }
-
-const navSections = [
-  {
-    label: "Chill",
-    items: [
-      { href: "/rooms", label: "Stream", icon: Video },
-      { href: "/rooms", label: "My Room", icon: DoorOpen },
-      { href: "/rooms?tab=friends", label: "Friends", icon: Users },
-    ],
-  },
-  {
-    label: "Study",
-    items: [{ href: "/rooms", label: "Pomodoro", icon: Timer }],
-  },
-  {
-    label: "Work",
-    items: [
-      { href: "/rooms", label: "Task", icon: CheckSquare },
-      { href: "/dashboard#reminders", label: "Reminder", icon: Bell },
-    ],
-  },
-];
 
 export function DashboardShell({
   children,
@@ -74,7 +42,7 @@ export function DashboardShell({
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
-          {navSections.map((section) => (
+          {appNavSections.map((section) => (
             <div key={section.label}>
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {section.label}
