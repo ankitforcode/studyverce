@@ -20,22 +20,27 @@ export interface RoomParticipant {
   displayName: string;
   avatarUrl: string | null;
   socketId: string;
-  /** Updated by periodic room:ping; false when pings are missed. */
+  /**
+   * True while the user is in the study room (socket joined + heartbeat).
+   * False after leaving the room page; tab visibility does not affect this.
+   */
   isActive: boolean;
-  /** ISO timestamp of the last activity ping. */
+  /** ISO timestamp of the last in-room heartbeat. */
   lastSeenAt: string;
+  /** ISO timestamp when isActive became false; used for auto-removal. */
+  awaySinceAt?: string | null;
 }
 
-/** Client sends room:ping on this interval while in a room. */
+/** Client sends room:ping on this interval while the room page is open. */
 export const ROOM_PRESENCE_PING_INTERVAL_MS = 30_000;
 
-/** No ping within this window → participant marked away (still listed in room). */
-export const ROOM_PRESENCE_OFFLINE_THRESHOLD_MS = 90_000;
+/** Not in the room (no heartbeat) for this long → marked away. */
+export const ROOM_PRESENCE_AWAY_THRESHOLD_MS = 5 * 60 * 1000;
 
-/** No ping within this window → participant removed from the room. */
-export const ROOM_PRESENCE_REMOVE_THRESHOLD_MS = 30 * 60 * 1000;
+/** Away for this long → removed from room membership (room owner exempt). */
+export const ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS = 30 * 60 * 1000;
 
-/** Server sweep interval to detect stale participants. */
+/** Server sweep interval to detect away / inactive members. */
 export const ROOM_PRESENCE_SWEEP_INTERVAL_MS = 15_000;
 
 export interface ChatMessage {
@@ -301,6 +306,10 @@ export interface ServerToClientEvents {
   "room:wallpaper": (payload: { roomId: string; wallpaperId: string | null; imageUrl: string | null }) => void;
   "room:wallpaperOverlay": (payload: { roomId: string; overlayOpacity: number }) => void;
   "room:music": (payload: { roomId: string; state: RoomMusicState }) => void;
+  "room:membership-revoked": (payload: {
+    roomId: string;
+    reason: "inactive";
+  }) => void;
   "session:started": (payload: { sessionId: string }) => void;
   "session:ended": (payload: { sessionId: string }) => void;
   error: (payload: { message: string }) => void;

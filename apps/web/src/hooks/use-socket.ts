@@ -2,6 +2,7 @@
 
 import { io, type Socket } from "socket.io-client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_WALLPAPER_OVERLAY,
   ROOM_PRESENCE_PING_INTERVAL_MS,
@@ -92,7 +93,13 @@ export function useRoomSocket(
   initialMusic?: RoomMusicState,
   initialWallpaperOverlay = DEFAULT_WALLPAPER_OVERLAY
 ) {
+  const router = useRouter();
+  const routerRef = useRef(router);
   const { socket, connected, connectionError } = useSocket();
+
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
   const [participants, setParticipants] = useState<RoomPresenceState["participants"]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [wallpaperId, setWallpaperId] = useState<string | null>(null);
@@ -116,6 +123,12 @@ export function useRoomSocket(
     )
   );
   const joinedRef = useRef(false);
+
+  useEffect(() => {
+    if (!connected) {
+      joinedRef.current = false;
+    }
+  }, [connected]);
 
   // Sync when server-rendered history arrives (e.g. navigation)
   useEffect(() => {
@@ -177,6 +190,12 @@ export function useRoomSocket(
       }
     });
 
+    socket.on("room:membership-revoked", (payload) => {
+      if (payload.roomId !== roomId) return;
+      joinedRef.current = false;
+      routerRef.current.push("/rooms?removed=inactive");
+    });
+
     return () => {
       socket.emit("room:leave", { roomId });
       joinedRef.current = false;
@@ -187,29 +206,23 @@ export function useRoomSocket(
       socket.off("room:wallpaper");
       socket.off("room:wallpaperOverlay");
       socket.off("room:music");
+      socket.off("room:membership-revoked");
     };
   }, [socket, connected, roomId, joinRoom]);
 
-  // Activity heartbeat — server marks users offline if pings stop
+  // Heartbeat while the room page is open (tab hidden still counts as in-room).
   useEffect(() => {
     if (!socket || !connected || !joinedRef.current) return;
 
     const sendPing = () => {
-      if (document.visibilityState === "hidden") return;
       socket.emit("room:ping", { roomId });
     };
 
     sendPing();
     const intervalId = window.setInterval(sendPing, ROOM_PRESENCE_PING_INTERVAL_MS);
 
-    const onVisible = () => {
-      if (document.visibilityState === "visible") sendPing();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
     return () => {
       window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [socket, connected, roomId]);
 

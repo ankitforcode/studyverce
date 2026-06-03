@@ -16,8 +16,8 @@ import type {
 } from "@studyverce/shared";
 import {
   roomTrackToMusicState,
-  ROOM_PRESENCE_OFFLINE_THRESHOLD_MS,
-  ROOM_PRESENCE_REMOVE_THRESHOLD_MS,
+  ROOM_PRESENCE_AWAY_THRESHOLD_MS,
+  ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS,
   ROOM_PRESENCE_SWEEP_INTERVAL_MS,
 } from "@studyverce/shared";
 
@@ -222,6 +222,7 @@ function parseStoredParticipant(userId: string, json: string): RoomParticipant {
     socketId: raw.socketId ?? "",
     lastSeenAt,
     isActive: raw.isActive ?? true,
+    awaySinceAt: raw.awaySinceAt ?? null,
   };
 }
 
@@ -253,9 +254,43 @@ async function touchParticipant(
     socketId,
     lastSeenAt: now,
     isActive: true,
+    awaySinceAt: null,
   };
   await saveParticipant(roomId, updated);
   return updated;
+}
+
+async function markParticipantLeft(roomId: string, userId: string): Promise<void> {
+  const raw = await redis.hget(participantsKey(roomId), userId);
+  if (!raw) return;
+
+  const existing = parseStoredParticipant(userId, raw);
+  const now = new Date().toISOString();
+  await saveParticipant(roomId, {
+    ...existing,
+    socketId: "",
+    lastSeenAt: now,
+  });
+}
+
+async function removeParticipantFromRoom(roomId: string, userId: string): Promise<void> {
+  const owner = await isRoomOwner(roomId, userId);
+  await redis.hdel(participantsKey(roomId), userId);
+
+  if (!owner && pgPool) {
+    await pgPool.query(`DELETE FROM room_members WHERE room_id = $1 AND user_id = $2`, [
+      roomId,
+      userId,
+    ]);
+  }
+
+  const sockets = await io.in(roomId).fetchSockets();
+  for (const s of sockets) {
+    if (s.data.user.id === userId) {
+      s.emit("room:membership-revoked", { roomId, reason: "inactive" });
+      await s.leave(roomId);
+    }
+  }
 }
 
 async function sweepStaleParticipants(): Promise<void> {
@@ -271,14 +306,23 @@ async function sweepStaleParticipants(): Promise<void> {
       const participant = parseStoredParticipant(userId, json);
       const idleMs = now - new Date(participant.lastSeenAt).getTime();
 
-      if (idleMs > ROOM_PRESENCE_REMOVE_THRESHOLD_MS) {
-        await redis.hdel(participantsKey(roomId), userId);
-        changed = true;
+      if (!participant.isActive) {
+        const awaySince = participant.awaySinceAt ?? participant.lastSeenAt;
+        const awayMs = now - new Date(awaySince).getTime();
+        if (awayMs > ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS) {
+          await removeParticipantFromRoom(roomId, userId);
+          changed = true;
+        }
         continue;
       }
 
-      if (idleMs > ROOM_PRESENCE_OFFLINE_THRESHOLD_MS && participant.isActive) {
-        await saveParticipant(roomId, { ...participant, isActive: false });
+      if (idleMs > ROOM_PRESENCE_AWAY_THRESHOLD_MS) {
+        const awaySinceAt = new Date().toISOString();
+        await saveParticipant(roomId, {
+          ...participant,
+          isActive: false,
+          awaySinceAt,
+        });
         changed = true;
       }
     }
@@ -457,6 +501,7 @@ io.on("connection", (socket) => {
         socketId: socket.id,
         lastSeenAt: now,
         isActive: true,
+        awaySinceAt: null,
       };
 
       await saveParticipant(roomId, participant);
@@ -479,7 +524,7 @@ io.on("connection", (socket) => {
 
   socket.on("room:leave", async ({ roomId }) => {
     await socket.leave(roomId);
-    await redis.hdel(participantsKey(roomId), user.id);
+    await markParticipantLeft(roomId, user.id);
     await broadcastPresence(roomId);
     await syncRoomMusic(roomId);
   });
@@ -600,7 +645,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", async () => {
     const rooms = Array.from(socket.rooms).filter((r) => r !== socket.id);
     for (const roomId of rooms) {
-      await redis.hdel(participantsKey(roomId), user.id);
+      await markParticipantLeft(roomId, user.id);
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
     }

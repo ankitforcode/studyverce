@@ -14,6 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import type { RoomListingItem } from "@/lib/rooms/listing";
+import { loginPath, signupPath } from "@/lib/auth/paths";
 import { ScrollingTrackRibbon } from "@/components/room/scrolling-track-ribbon";
 import { Avatar } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -24,9 +25,17 @@ interface RoomsDirectoryProps {
   rooms: RoomListingItem[];
   initialQuery?: string;
   initialTab?: Tab;
+  isLoggedIn?: boolean;
+  removedNotice?: "inactive" | null;
 }
 
-function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trending" }: RoomsDirectoryProps) {
+function RoomsDirectoryContent({
+  rooms,
+  initialQuery = "",
+  initialTab = "trending",
+  isLoggedIn = false,
+  removedNotice = null,
+}: RoomsDirectoryProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(initialQuery);
@@ -41,6 +50,7 @@ function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trendin
   }
 
   function switchTab(next: Tab) {
+    if (!isLoggedIn && next !== "trending") return;
     setTab(next);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", next);
@@ -72,14 +82,39 @@ function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trendin
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
+        {removedNotice === "inactive" && (
+          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
+            You were removed from a study room after 30 minutes away. Rejoin any room
+            to continue studying.
+          </p>
+        )}
+
+        {!isLoggedIn && (
+          <p className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Browsing public study rooms.{" "}
+            <Link href={loginPath("/rooms")} className="font-medium text-primary hover:underline">
+              Sign in
+            </Link>{" "}
+            or{" "}
+            <Link href={signupPath("/rooms")} className="font-medium text-primary hover:underline">
+              sign up
+            </Link>{" "}
+            to join a room or create your own.
+          </p>
+        )}
+
         {/* Tabs + create */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
             {(
               [
-                ["trending", "Trending"],
-                ["friends", "Friends"],
-                ["favorites", "Favorites"],
+                ["trending", "Public rooms"],
+                ...(isLoggedIn
+                  ? ([
+                      ["friends", "Friends"],
+                      ["favorites", "Favorites"],
+                    ] as const)
+                  : []),
               ] as const
             ).map(([id, label]) => (
               <button
@@ -99,7 +134,7 @@ function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trendin
           </div>
 
           <Link
-            href="/rooms/new"
+            href={isLoggedIn ? "/rooms/new" : loginPath("/rooms/new")}
             className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
           >
             <Plus className="h-4 w-4" />
@@ -123,7 +158,12 @@ function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trendin
         {rooms.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {rooms.map((room) => (
-              <RoomCard key={room.id} room={room} isTrending={tab === "trending"} />
+              <RoomCard
+                key={room.id}
+                room={room}
+                isTrending={tab === "trending"}
+                isLoggedIn={isLoggedIn}
+              />
             ))}
           </div>
         ) : (
@@ -141,7 +181,7 @@ function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trendin
             </p>
             {tab === "trending" && (
               <Link
-                href="/rooms/new"
+                href={isLoggedIn ? "/rooms/new" : loginPath("/rooms/new")}
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 <Plus className="h-4 w-4" />
@@ -155,7 +195,17 @@ function RoomsDirectoryContent({ rooms, initialQuery = "", initialTab = "trendin
   );
 }
 
-function RoomCard({ room, isTrending }: { room: RoomListingItem; isTrending: boolean }) {
+function RoomCard({
+  room,
+  isTrending,
+  isLoggedIn,
+}: {
+  room: RoomListingItem;
+  isTrending: boolean;
+  isLoggedIn: boolean;
+}) {
+  const roomPath = `/rooms/${room.slug}`;
+  const joinHref = isLoggedIn ? roomPath : loginPath(roomPath);
   const ModeIcon =
     room.mode.type === "camera" ? Video : room.mode.type === "study" ? BookOpen : Timer;
 
@@ -228,7 +278,7 @@ function RoomCard({ room, isTrending }: { room: RoomListingItem; isTrending: boo
             <span className="truncate">{room.mode.label}</span>
           </div>
           <Link
-            href={`/rooms/${room.slug}`}
+            href={joinHref}
             className="shrink-0 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-md shadow-primary/30"
           >
             Join

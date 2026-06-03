@@ -21,7 +21,7 @@ function PresenceDot({ isActive }: { isActive: boolean }) {
         isActive ? "bg-primary" : "bg-muted-foreground/50",
         "absolute bottom-0 right-0 h-2 w-2"
       )}
-      title={isActive ? "Active" : "Away"}
+      title={isActive ? "In room" : "Away"}
     />
   );
 }
@@ -60,7 +60,7 @@ export function ParticipantList({
               {participants.length > activeCount &&
                 ` · ${participants.length - activeCount} away`}
               {participants.some((p) => p.userId === currentUserId && p.isActive) &&
-                " · you're here"}
+                " · you're in the room"}
             </span>
           </>
         )}

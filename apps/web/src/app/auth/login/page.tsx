@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trackEvent } from "@/lib/analytics";
+import { signupPath } from "@/lib/auth/paths";
 
 function LoginForm() {
   const router = useRouter();
@@ -52,7 +53,11 @@ function LoginForm() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to continue studying together</CardDescription>
+          <CardDescription>
+            {redirect.startsWith("/rooms/") && redirect !== "/rooms/new"
+              ? "Sign in to join this study room"
+              : "Sign in to continue studying together"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
@@ -97,7 +102,7 @@ function LoginForm() {
 
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/auth/signup" className="text-primary hover:underline">
+            <Link href={signupPath(redirect)} className="text-primary hover:underline">
               Sign up
             </Link>
           </p>

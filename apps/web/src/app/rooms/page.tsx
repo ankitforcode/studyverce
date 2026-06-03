@@ -9,19 +9,25 @@ import { RoomsDirectory } from "@/components/rooms/rooms-directory";
 export default async function RoomsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tab?: string }>;
+  searchParams: Promise<{ q?: string; tab?: string; removed?: string }>;
 }) {
-  const { q, tab = "trending" } = await searchParams;
+  const { q, tab: tabParam = "trending", removed } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const isLoggedIn = !!user;
+  const tab =
+    isLoggedIn && (tabParam === "friends" || tabParam === "favorites")
+      ? tabParam
+      : "trending";
+
   let rooms = await getPublicRooms(q);
 
-  if (tab === "friends" && user) {
+  if (isLoggedIn && tab === "friends") {
     rooms = await getFriendRooms(user.id);
-  } else if (tab === "favorites" && user) {
+  } else if (isLoggedIn && tab === "favorites") {
     rooms = await getFavoriteRooms(user.id);
   }
 
@@ -29,7 +35,9 @@ export default async function RoomsPage({
     <RoomsDirectory
       rooms={rooms}
       initialQuery={q ?? ""}
-      initialTab={tab as "trending" | "friends" | "favorites"}
+      initialTab={tab}
+      isLoggedIn={isLoggedIn}
+      removedNotice={removed === "inactive" ? "inactive" : null}
     />
   );
 }
