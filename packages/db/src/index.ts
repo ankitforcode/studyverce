@@ -85,6 +85,7 @@ export interface Database {
           subject_tags: string[];
           plan_tier: "free" | "premium" | "institution";
           onboarding_completed: boolean;
+          is_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -98,6 +99,7 @@ export interface Database {
           subject_tags?: string[];
           plan_tier?: "free" | "premium" | "institution";
           onboarding_completed?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };

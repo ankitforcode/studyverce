@@ -14,6 +14,7 @@ export type Database = {
           subject_tags: string[];
           plan_tier: "free" | "premium" | "institution";
           onboarding_completed: boolean;
+          is_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -27,6 +28,7 @@ export type Database = {
           subject_tags?: string[];
           plan_tier?: "free" | "premium" | "institution";
           onboarding_completed?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -40,6 +42,7 @@ export type Database = {
           subject_tags?: string[];
           plan_tier?: "free" | "premium" | "institution";
           onboarding_completed?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -446,6 +449,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      leaderboard_weekly_focus: {
+        Args: { p_limit?: number };
+        Returns: { user_id: string; weekly_minutes: number }[];
+      };
       update_profile_stats: {
         Args: { p_user_id: string; p_focus_minutes: number };
         Returns: undefined;

@@ -81,9 +81,23 @@ Find your JWT secret in Supabase Dashboard → Settings → API → JWT Secret.
 Apply migrations via Supabase CLI or paste SQL from `supabase/migrations/` into the Supabase SQL editor:
 
 ```bash
-# With Supabase CLI
+# With Supabase CLI (local)
+supabase db reset   # applies migrations + runs supabase/seed.sql
+
+# Remote project
 supabase db push
 ```
+
+#### Local admin user (seed)
+
+After `supabase db reset`, sign in with the seeded admin account:
+
+| Field | Value |
+|-------|--------|
+| Email | `admin@studyverce.local` |
+| Password | `StudyVerceAdmin123!` |
+
+The user has `profiles.is_admin = true`, `plan_tier = institution`, and onboarding completed. **Do not use this password outside local development.**
 
 ### 4. Start Redis and ngrok (OAuth / HTTPS redirects)
 

@@ -7,6 +7,7 @@ import {
   Home,
   LogOut,
   Settings,
+  Shield,
   Trophy,
   Users,
 } from "lucide-react";
@@ -19,6 +20,7 @@ interface NavbarProfileMenuProps {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  isAdmin?: boolean;
 }
 
 const menuLinkClass =
@@ -28,6 +30,7 @@ export function NavbarProfileMenu({
   username,
   displayName,
   avatarUrl,
+  isAdmin = false,
 }: NavbarProfileMenuProps) {
   const pathname = usePathname();
   const profileHref = `/profile/${username}`;
@@ -112,6 +115,19 @@ export function NavbarProfileMenu({
           ))}
 
           <div className="space-y-0.5 border-t border-border p-2">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={cn(
+                  menuLinkClass,
+                  pathname.startsWith("/admin") && "bg-primary/10 text-primary"
+                )}
+                role="menuitem"
+              >
+                <Shield className="h-4 w-4 shrink-0" />
+                Manage users
+              </Link>
+            )}
             <Link
               href="/settings/profile"
               className={menuLinkClass}

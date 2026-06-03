@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { Pin, Trash2, CircleCheck } from "lucide-react";
 import type { PostItItem, UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
@@ -23,12 +24,26 @@ import {
 } from "@/lib/post-it-utils";
 import { usePostItFitFont } from "@/hooks/use-post-it-fit-font";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { PostItFormatActions } from "@/components/dashboard/post-it-format-toolbar";
+import { PostItRichTextField } from "@/components/dashboard/post-it-rich-text-field";
+import { PostItRichTextView } from "@/components/dashboard/post-it-rich-text-view";
+import {
+  applyPostItTextFormat,
+  flushPostItEditorsFromNote,
+  isPostItHtmlEmpty,
+  sanitizePostItHtml,
+  stripPostItHtml,
+  type PostItTextFormat,
+} from "@/lib/post-it-rich-text";
 import {
   closePostItTask,
   deletePostItTask,
   togglePostItPin,
   updatePostItTask,
 } from "@/app/dashboard/task-actions";
+
+const NO_DRAG_SELECTOR =
+  "button, input, textarea, [contenteditable], [data-no-drag], [data-resize-handle]";
 
 interface PostItNoteProps {
   task: UserPostItTask;
@@ -63,7 +78,7 @@ export function PostItNote({
 }: PostItNoteProps) {
   const noteRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const activeEditorRef = useRef<HTMLDivElement | null>(null);
   const livePosRef = useRef({ x: task.posX, y: task.posY });
   const liveSizeRef = useRef(task.width);
   const dragRef = useRef<{
@@ -123,15 +138,14 @@ export function PostItNote({
   }, [onFocus, task.id, task.zIndex]);
 
   useEffect(() => {
-    if (!editing) {
-      setDraftTitle(task.title);
-      setDraftItems(task.items);
-    }
+    if (editing) return;
+    setDraftTitle(task.title);
+    setDraftItems(task.items);
   }, [task.title, task.items, editing]);
 
   const displayTitle = editing ? draftTitle : task.title;
   const displayItems = editing ? draftItems : task.items;
-  const fitKey = `${displayTitle}|${displayItems.map((i) => i.text).join("|")}|${displaySize}`;
+  const fitKey = `${stripPostItHtml(displayTitle)}|${displayItems.map((i) => stripPostItHtml(i.text)).join("|")}|${displaySize}`;
   const fontSize = usePostItFitFont(contentRef, [fitKey], {
     enabled: !resizing,
   });
@@ -194,11 +208,7 @@ export function PostItNote({
   function startDrag(e: React.PointerEvent) {
     if (editing || task.pinned || resizing) return;
     const target = e.target as HTMLElement;
-    if (
-      target.closest(
-        "button, input, textarea, [data-no-drag], [data-resize-handle]"
-      )
-    ) {
+    if (target.closest(NO_DRAG_SELECTOR)) {
       return;
     }
     if (e.button !== 0) return;
@@ -308,17 +318,56 @@ export function PostItNote({
     syncNoteGeometry,
   ]);
 
+  const flushDraftFromEditors = useCallback(() => {
+    return flushPostItEditorsFromNote(noteRef.current, {
+      title: draftTitle,
+      items: draftItems,
+    });
+  }, [draftTitle, draftItems]);
+
+  const handleTextFormat = useCallback(
+    (format: PostItTextFormat) => {
+      const el = activeEditorRef.current;
+      if (!el) return;
+      const html = applyPostItTextFormat(el, format);
+      if (el.dataset.field === "title") {
+        setDraftTitle(html);
+      } else if (el.dataset.itemId) {
+        setDraftItems((prev) =>
+          prev.map((item) =>
+            item.id === el.dataset.itemId ? { ...item, text: html } : item
+          )
+        );
+      }
+    },
+    []
+  );
+
   const saveEdits = useCallback(() => {
-    const title = draftTitle.trim() || "New note";
-    const items = draftItems
-      .map((item) => ({ ...item, text: item.text.trim() }))
-      .filter((item) => item.text.length > 0);
+    if (!editing) return;
 
-    setDraftTitle(title);
+    const flushed = flushDraftFromEditors();
+    const title = sanitizePostItHtml(flushed.title);
+    const finalTitle = isPostItHtmlEmpty(title) ? "New note" : title;
+    const items = flushed.items
+      .map((item) => ({ ...item, text: sanitizePostItHtml(item.text) }))
+      .filter((item) => !isPostItHtmlEmpty(item.text));
+
+    const nextTask: UserPostItTask = {
+      ...task,
+      title: finalTitle,
+      items,
+    };
+
+    setDraftTitle(finalTitle);
     setDraftItems(items);
-    setEditing(false);
 
-    const titleChanged = title !== task.title;
+    flushSync(() => {
+      onUpdate(nextTask);
+      setEditing(false);
+    });
+
+    const titleChanged = finalTitle !== task.title;
     const itemsChanged =
       JSON.stringify(items) !== JSON.stringify(task.items);
 
@@ -326,12 +375,17 @@ export function PostItNote({
 
     void (async () => {
       const { task: updated } = await updatePostItTask(task.id, {
-        title,
+        title: finalTitle,
         items,
       });
       if (updated) onUpdate(updated);
     })();
-  }, [draftTitle, draftItems, task.id, task.title, task.items, onUpdate]);
+  }, [
+    editing,
+    flushDraftFromEditors,
+    task,
+    onUpdate,
+  ]);
 
   function cancelEdits() {
     setDraftTitle(task.title);
@@ -344,8 +398,19 @@ export function PostItNote({
     setDraftItems(task.items);
     setEditing(true);
     requestAnimationFrame(() => {
-      titleInputRef.current?.focus();
-      titleInputRef.current?.select();
+      const titleEl = noteRef.current?.querySelector<HTMLDivElement>(
+        '[data-field="title"]'
+      );
+      if (titleEl) {
+        activeEditorRef.current = titleEl;
+        titleEl.focus();
+        const range = document.createRange();
+        range.selectNodeContents(titleEl);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
     });
   }
 
@@ -354,11 +419,11 @@ export function PostItNote({
 
     function handlePointerDown(e: PointerEvent) {
       if (!noteRef.current?.contains(e.target as Node)) {
-        saveEdits();
+        requestAnimationFrame(() => saveEdits());
       }
     }
 
-    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("pointerdown", handlePointerDown, true);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [editing, saveEdits]);
 
@@ -399,10 +464,14 @@ export function PostItNote({
   function addDraftItem() {
     setDraftItems((prev) => [...prev, newItem()]);
     requestAnimationFrame(() => {
-      const inputs = noteRef.current?.querySelectorAll<HTMLInputElement>(
-        "[data-item-input]"
+      const fields = noteRef.current?.querySelectorAll<HTMLDivElement>(
+        '[data-field="item"]'
       );
-      inputs?.[inputs.length - 1]?.focus();
+      const last = fields?.[fields.length - 1];
+      if (last) {
+        activeEditorRef.current = last;
+        last.focus();
+      }
     });
   }
 
@@ -418,6 +487,44 @@ export function PostItNote({
   const showResize = !editing && !task.pinned;
   const showControls =
     (task.pinned || hovered || editing || resizing) && !dragging;
+
+  const noteActions = (
+    <>
+      <PostItIconTooltip label={task.pinned ? "Unpin" : "Pin in place"}>
+        <button
+          type="button"
+          onClick={handleTogglePin}
+          className={cn(
+            iconBtn,
+            task.pinned && "bg-black/10 text-[#323338] opacity-100"
+          )}
+          aria-label={task.pinned ? "Unpin note" : "Pin note"}
+        >
+          <Pin className={cn("h-3.5 w-3.5", task.pinned && "fill-current")} />
+        </button>
+      </PostItIconTooltip>
+      <PostItIconTooltip label="Mark done & close">
+        <button
+          type="button"
+          onClick={handleClose}
+          className={iconBtn}
+          aria-label="Mark done and close"
+        >
+          <CircleCheck className="h-3.5 w-3.5" />
+        </button>
+      </PostItIconTooltip>
+      <PostItIconTooltip label="Delete">
+        <button
+          type="button"
+          onClick={handleDelete}
+          className={iconBtn}
+          aria-label="Delete note"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </PostItIconTooltip>
+    </>
+  );
 
   return (
     <div
@@ -451,61 +558,31 @@ export function PostItNote({
         e.stopPropagation();
         bringToFront();
         const target = e.target as HTMLElement;
-        if (
-          target.closest(
-            "button, input, textarea, [data-no-drag], [data-resize-handle]"
-          )
-        ) {
+        if (target.closest(NO_DRAG_SELECTOR)) {
           return;
         }
         startDrag(e);
       }}
     >
-      <div className="relative h-full w-full overflow-visible">
+      <div className="relative flex h-full w-full flex-col overflow-visible">
         <div
           className={cn(
             "pointer-events-auto absolute right-1 top-1 z-20 flex items-center gap-0.5 transition-opacity",
-            showControls ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            editing || showControls ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
+          data-no-drag
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          <PostItIconTooltip label={task.pinned ? "Unpin" : "Pin in place"}>
-            <button
-              type="button"
-              onClick={handleTogglePin}
-              className={cn(
-                iconBtn,
-                task.pinned && "bg-black/10 text-[#323338] opacity-100"
-              )}
-              aria-label={task.pinned ? "Unpin note" : "Pin note"}
-            >
-              <Pin
-                className={cn("h-3.5 w-3.5", task.pinned && "fill-current")}
-              />
-            </button>
-          </PostItIconTooltip>
-          <PostItIconTooltip label="Mark done & close">
-            <button
-              type="button"
-              onClick={handleClose}
-              className={iconBtn}
-              aria-label="Mark done and close"
-            >
-              <CircleCheck className="h-3.5 w-3.5" />
-            </button>
-          </PostItIconTooltip>
-          <PostItIconTooltip label="Delete">
-            <button
-              type="button"
-              onClick={handleDelete}
-              className={iconBtn}
-              aria-label="Delete note"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </PostItIconTooltip>
+          {editing && (
+            <PostItFormatActions
+              onFormat={handleTextFormat}
+              iconBtnClass={iconBtn}
+            />
+          )}
+          {noteActions}
         </div>
 
-        {task.pinned && (
+        {task.pinned && !editing && (
           <Pin
             className="pointer-events-none absolute left-1.5 top-1.5 z-10 h-3 w-3 fill-[#323338]/35 text-[#323338]/35"
             aria-hidden
@@ -515,20 +592,22 @@ export function PostItNote({
         <div
           ref={contentRef}
           className={cn(
-            "flex h-full flex-col overflow-hidden px-3 pb-8 pt-7 text-[#323338] antialiased",
+            "flex min-h-0 flex-1 flex-col overflow-hidden px-3 text-[#323338] antialiased transition-[font-size,opacity] duration-150 ease-out",
             editing
-              ? "pointer-events-auto overflow-y-auto"
-              : "pointer-events-none"
+              ? "pointer-events-auto overflow-y-auto pb-8 pt-7"
+              : "pointer-events-none pb-8 pt-7"
           )}
           style={{ fontSize }}
         >
           {editing ? (
             <>
-              <input
-                ref={titleInputRef}
-                data-no-drag
+              <PostItRichTextField
+                field="title"
                 value={draftTitle}
-                onChange={(e) => setDraftTitle(e.target.value)}
+                onChange={setDraftTitle}
+                onFocus={(el) => {
+                  activeEditorRef.current = el;
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -539,9 +618,8 @@ export function PostItNote({
                     cancelEdits();
                   }
                 }}
-                maxLength={120}
                 placeholder="Title"
-                className="mb-1.5 w-full border-0 bg-transparent font-semibold leading-snug outline-none placeholder:text-[#323338]/40"
+                className="mb-1.5 w-full font-semibold leading-snug"
               />
               <ul className="min-h-0 flex-1 space-y-0.5">
                 {draftItems.map((item) => (
@@ -549,19 +627,26 @@ export function PostItNote({
                     <span className="mt-[0.35em] shrink-0 text-[0.85em] leading-none">
                       •
                     </span>
-                    <input
-                      data-item-input
-                      data-no-drag
+                    <PostItRichTextField
+                      field="item"
+                      itemId={item.id}
                       value={item.text}
-                      onChange={(e) => updateDraftItem(item.id, e.target.value)}
+                      onChange={(html) => updateDraftItem(item.id, html)}
+                      onFocus={(el) => {
+                        activeEditorRef.current = el;
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
+                          const html = sanitizePostItHtml(
+                            (e.currentTarget as HTMLDivElement).innerHTML
+                          );
+                          updateDraftItem(item.id, html);
                           addDraftItem();
                         }
                         if (
                           e.key === "Backspace" &&
-                          item.text === "" &&
+                          isPostItHtmlEmpty(item.text) &&
                           draftItems.length > 0
                         ) {
                           e.preventDefault();
@@ -572,9 +657,8 @@ export function PostItNote({
                           cancelEdits();
                         }
                       }}
-                      maxLength={200}
                       placeholder="List item"
-                      className="min-w-0 flex-1 border-0 bg-transparent leading-snug outline-none placeholder:text-[#323338]/40"
+                      className="min-w-0 flex-1 leading-snug"
                     />
                   </li>
                 ))}
@@ -582,17 +666,15 @@ export function PostItNote({
             </>
           ) : (
             <>
-              <p
-                className={cn(
-                  "mb-1.5 shrink-0 font-semibold leading-snug wrap-break-word",
-                  task.titleDone && "text-[#323338]/55 line-through"
-                )}
-              >
-                {task.title}
+              <p className="mb-1.5 shrink-0 font-semibold leading-snug wrap-break-word">
+                <PostItRichTextView
+                  html={displayTitle}
+                  lineThrough={task.titleDone}
+                />
               </p>
-              {task.items.length > 0 && (
+              {displayItems.length > 0 && (
                 <ul className="min-h-0 flex-1 space-y-0.5 leading-snug">
-                  {task.items.map((item) => (
+                  {displayItems.map((item) => (
                     <li key={item.id} className="flex items-start gap-1.5">
                       <span className="mt-[0.35em] shrink-0 text-[0.85em] leading-none">
                         •
@@ -600,10 +682,13 @@ export function PostItNote({
                       <span
                         className={cn(
                           "min-w-0 flex-1 wrap-break-word",
-                          item.done && "text-[#323338]/55 line-through"
+                          item.done && "text-[#323338]/55"
                         )}
                       >
-                        {item.text}
+                        <PostItRichTextView
+                          html={item.text}
+                          lineThrough={item.done}
+                        />
                       </span>
                     </li>
                   ))}

@@ -16,6 +16,12 @@ import {
   POST_IT_MAX_SIZE,
   POST_IT_MIN_SIZE,
 } from "@/lib/post-it-utils";
+import {
+  sanitizePostItHtml,
+  sanitizePostItItems,
+  sanitizePostItTitle,
+  stripPostItHtml,
+} from "@/lib/post-it-rich-text";
 
 function clampPostItSize(value: number | undefined) {
   const n = value ?? POST_IT_DEFAULT_SIZE;
@@ -100,8 +106,11 @@ export async function createPostItTask(input: {
 
   if (!user) return { error: "Not authenticated" };
 
-  const title = input.title.trim() || "New note";
-  if (title.length > 120) return { error: "Title is too long" };
+  const titleRaw = sanitizePostItTitle(input.title);
+  const title = stripPostItHtml(titleRaw).trim()
+    ? titleRaw
+    : "New note";
+  if (stripPostItHtml(title).length > 120) return { error: "Title is too long" };
 
   const existing = await getUserPostItTasks();
   const offset = existing.length;
@@ -112,7 +121,7 @@ export async function createPostItTask(input: {
       user_id: user.id,
       room_id: input.roomId ?? null,
       title,
-      items: input.items ?? [],
+      items: input.items ? sanitizePostItItems(input.items) : [],
       pos_x: input.posX ?? 24 + (offset % 4) * 28,
       pos_y: input.posY ?? 24 + Math.floor(offset / 4) * 32,
       width: clampPostItSize(input.width),
@@ -165,9 +174,14 @@ export async function updatePostItTask(
     pinned?: boolean;
     closed?: boolean;
   } = {};
-  if (patch.title !== undefined) update.title = patch.title.trim();
+  if (patch.title !== undefined) {
+    update.title = sanitizePostItTitle(patch.title);
+    if (stripPostItHtml(update.title).length > 120) {
+      return { error: "Title is too long" };
+    }
+  }
   if (patch.titleDone !== undefined) update.title_done = patch.titleDone;
-  if (patch.items !== undefined) update.items = patch.items;
+  if (patch.items !== undefined) update.items = sanitizePostItItems(patch.items);
   if (patch.posX !== undefined) update.pos_x = patch.posX;
   if (patch.posY !== undefined) update.pos_y = patch.posY;
   if (patch.width !== undefined) update.width = clampPostItSize(patch.width);

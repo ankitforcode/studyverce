@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, ListTodo, RotateCcw } from "lucide-react";
 import type { UserPostItTask } from "@studyverce/shared";
 import { cn } from "@/lib/utils";
 import { POST_IT_BG } from "@/lib/post-it-utils";
+import { PostItRichTextView } from "@/components/dashboard/post-it-rich-text-view";
 import {
   closePostItTask,
   reopenPostItTask,
@@ -158,10 +159,10 @@ function TodoNoteCard({
         <p
           className={cn(
             "text-sm font-medium leading-snug",
-            done && "text-muted-foreground line-through"
+            done && "text-muted-foreground"
           )}
         >
-          {task.title}
+          <PostItRichTextView html={task.title} lineThrough={done} />
         </p>
         {task.items.length > 0 && (
           <ul className="mt-1 space-y-0.5">
@@ -174,7 +175,12 @@ function TodoNoteCard({
                 )}
               >
                 <span className="shrink-0">•</span>
-                <span className="min-w-0 flex-1">{item.text}</span>
+                <span className="min-w-0 flex-1">
+                  <PostItRichTextView
+                    html={item.text}
+                    lineThrough={closed || item.done}
+                  />
+                </span>
               </li>
             ))}
           </ul>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, LayoutDashboard, Users, Trophy } from "lucide-react";
+import { BookOpen, LayoutDashboard, Shield, Users, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { NavbarProfileMenu } from "@/components/layout/navbar-profile-menu";
 import { NavLink } from "@/components/layout/nav-link";
@@ -20,7 +20,7 @@ export async function Navbar() {
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("username, display_name, avatar_url")
+      .select("username, display_name, avatar_url, is_admin")
       .eq("id", user.id)
       .single();
     profile = data;
@@ -55,6 +55,12 @@ export async function Navbar() {
             <Trophy className="h-4 w-4 shrink-0" />
             Leaderboard
           </NavLink>
+          {profile?.is_admin && (
+            <NavLink href="/admin" match="prefix" className={navLinkClass}>
+              <Shield className="h-4 w-4 shrink-0" />
+              Admin
+            </NavLink>
+          )}
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
@@ -75,6 +81,7 @@ export async function Navbar() {
                 username={profile?.username ?? "me"}
                 displayName={profile?.display_name ?? "Profile"}
                 avatarUrl={profile?.avatar_url ?? null}
+                isAdmin={profile?.is_admin ?? false}
               />
             </>
           ) : (
