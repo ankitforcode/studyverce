@@ -576,6 +576,17 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("room:wallpaper", { roomId, wallpaperId, imageUrl });
   });
 
+  socket.on("room:wallpaperOverlay:set", async ({ roomId, overlayOpacity }) => {
+    const owner = await isRoomOwner(roomId, user.id);
+    if (!owner) {
+      socket.emit("error", {
+        message: "Only the room creator can change wallpaper opacity",
+      });
+      return;
+    }
+    io.to(roomId).emit("room:wallpaperOverlay", { roomId, overlayOpacity });
+  });
+
   socket.on("room:music:sync", async ({ roomId, state }) => {
     const owner = await isRoomOwner(roomId, user.id);
     if (!owner) {

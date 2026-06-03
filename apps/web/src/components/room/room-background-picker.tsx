@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ImageIcon, Upload, Globe, Lock, X, Check, Trash2 } from "lucide-react";
 import type { RoomWallpaper } from "@studyverce/shared";
@@ -8,21 +8,33 @@ import { WALLPAPER_CATEGORIES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  getRoomPortalTarget,
+  lockRoomScroll,
+  ROOM_HEADER_CONTROL,
+} from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import {
   getWallpaperLibrary,
   getMyWallpapers,
   uploadRoomWallpaper,
   setRoomWallpaper,
+  setRoomWallpaperOverlayOpacity,
   toggleWallpaperPublic,
   deleteRoomWallpaper,
 } from "@/app/rooms/wallpaper-actions";
+import { WALLPAPER_OVERLAY_MAX, WALLPAPER_OVERLAY_MIN } from "@studyverce/shared";
 
 interface RoomBackgroundPickerProps {
   roomId: string;
   currentWallpaperId: string | null;
+  backgroundUrl?: string | null;
   canManage: boolean;
+  isOwner: boolean;
+  overlayOpacity: number;
+  onOverlayChange: (opacity: number) => void;
   onApply: (wallpaperId: string | null, imageUrl: string | null) => void;
+  portalContainerRef?: RefObject<HTMLElement | null>;
 }
 
 type Tab = "library" | "community" | "mine" | "upload";
@@ -30,10 +42,16 @@ type Tab = "library" | "community" | "mine" | "upload";
 export function RoomBackgroundPicker({
   roomId,
   currentWallpaperId,
+  backgroundUrl = null,
   canManage,
+  isOwner,
+  overlayOpacity,
+  onOverlayChange,
   onApply,
+  portalContainerRef,
 }: RoomBackgroundPickerProps) {
   const [open, setOpen] = useState(false);
+  const [draftOverlay, setDraftOverlay] = useState(overlayOpacity);
   const [tab, setTab] = useState<Tab>("library");
   const [category, setCategory] = useState("all");
   const [library, setLibrary] = useState<RoomWallpaper[]>([]);
@@ -48,13 +66,13 @@ export function RoomBackgroundPicker({
   }, []);
 
   useEffect(() => {
+    setDraftOverlay(overlayOpacity);
+  }, [overlayOpacity]);
+
+  useEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+    return lockRoomScroll(portalContainerRef);
+  }, [open, portalContainerRef]);
 
   const loadWallpapers = useCallback(async () => {
     setLoading(true);
@@ -110,9 +128,38 @@ export function RoomBackgroundPicker({
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => setOpen(true)}>
-        <ImageIcon className="h-4 w-4" />
-        Background
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label="Change room background"
+        onClick={() => setOpen(true)}
+        className={cn(
+          ROOM_HEADER_CONTROL,
+          "h-8 gap-2 px-2.5 hover:border-border/60 hover:bg-card/35"
+        )}
+      >
+        {backgroundUrl ? (
+          <span
+            className="relative h-5 w-5 shrink-0 overflow-hidden rounded-md border border-border/50 ring-1 ring-black/10"
+            aria-hidden
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={backgroundUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </span>
+        ) : (
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/30"
+            aria-hidden
+          >
+            <ImageIcon className="h-3 w-3 text-muted-foreground" />
+          </span>
+        )}
+        <span className="hidden font-medium sm:inline">Background</span>
       </Button>
 
       {open &&
@@ -269,6 +316,44 @@ export function RoomBackgroundPicker({
               )}
             </div>
 
+            {isOwner && (
+              <div className="border-t border-border px-6 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="wallpaper-overlay" className="text-sm font-medium">
+                    Wallpaper dimming
+                  </Label>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {draftOverlay}%
+                  </span>
+                </div>
+                <input
+                  id="wallpaper-overlay"
+                  type="range"
+                  min={WALLPAPER_OVERLAY_MIN}
+                  max={WALLPAPER_OVERLAY_MAX}
+                  value={draftOverlay}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setDraftOverlay(next);
+                    onOverlayChange(next);
+                  }}
+                  onPointerUp={(e) => {
+                    const next = Number(e.currentTarget.value);
+                    void setRoomWallpaperOverlayOpacity(roomId, next);
+                  }}
+                  onKeyUp={(e) => {
+                    const next = Number(e.currentTarget.value);
+                    void setRoomWallpaperOverlayOpacity(roomId, next);
+                  }}
+                  className="mt-2 h-2 w-full cursor-pointer accent-primary"
+                />
+                <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                  <span>Brighter</span>
+                  <span>Darker</span>
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-border px-6 py-3 flex justify-between">
               <Button
                 variant="ghost"
@@ -284,7 +369,7 @@ export function RoomBackgroundPicker({
             </div>
           </div>
           </div>,
-          document.body
+          getRoomPortalTarget(portalContainerRef)
         )}
     </>
   );

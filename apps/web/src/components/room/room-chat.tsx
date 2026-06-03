@@ -42,7 +42,12 @@ export function RoomChat({
   }
 
   return (
-    <Card className={cn("flex h-full flex-col overflow-hidden rounded-none border-0 shadow-none", className)}>
+    <Card
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none",
+        className
+      )}
+    >
       <CardHeader className="shrink-0 space-y-0.5 border-b border-border/50 px-4 py-3">
         <CardTitle className="text-base font-semibold">Room Chat</CardTitle>
         <p className="text-xs text-muted-foreground">Stay accountable with your study partners</p>

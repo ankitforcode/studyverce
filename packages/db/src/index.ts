@@ -29,6 +29,7 @@ export const createRoomSchema = z.object({
         })
         .optional(),
       anyoneCanControlTimer: z.boolean().optional(),
+      wallpaperOverlayOpacity: z.number().int().min(0).max(100).optional(),
     })
     .optional(),
 });
@@ -64,6 +65,9 @@ export function mergeRoomSettings(
       ...DEFAULT_ROOM_SETTINGS.pomodoroDefaults,
       ...settings?.pomodoroDefaults,
     },
+    wallpaperOverlayOpacity:
+      settings?.wallpaperOverlayOpacity ??
+      DEFAULT_ROOM_SETTINGS.wallpaperOverlayOpacity,
   };
 }
 

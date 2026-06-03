@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRoomAppearance } from "@/hooks/use-room-appearance";
+import { useRoomFullscreen } from "@/hooks/use-room-fullscreen";
 import { useRoomSocket } from "@/hooks/use-socket";
+import { RoomAppearanceToggle } from "@/components/room/room-appearance-toggle";
+import { RoomFullscreenToggle } from "@/components/room/room-fullscreen-toggle";
 import { PomodoroTimer } from "@/components/room/pomodoro-timer";
 import { RoomChat } from "@/components/room/room-chat";
 import { ParticipantList } from "@/components/room/participant-list";
@@ -15,6 +19,8 @@ import { RoomVideoHint } from "@/components/room/room-video";
 import { Badge } from "@/components/ui/badge";
 import { Wifi, WifiOff } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { ROOM_CHROME_PANEL, ROOM_GLASS_PANEL } from "@/lib/room-ui";
+import { wallpaperImageFilter } from "@/lib/wallpaper-overlay";
 import { cn } from "@/lib/utils";
 import type { ChatMessage, RoomTrack, UserPostItTask } from "@studyverce/shared";
 import { roomTrackToMusicState } from "@studyverce/shared";
@@ -28,14 +34,12 @@ interface RoomClientProps {
   isModerator: boolean;
   initialWallpaperId: string | null;
   initialBackgroundUrl: string | null;
+  initialWallpaperOverlay: number;
   initialTrack: RoomTrack | null;
   initialMessages: ChatMessage[];
   roomTask: UserPostItTask | null;
   hasRoomTasks: boolean;
 }
-
-const glassPanel =
-  "bg-card/90 backdrop-blur-md border-border/50 shadow-lg supports-[backdrop-filter]:bg-card/80";
 
 export function RoomClient({
   roomId,
@@ -46,6 +50,7 @@ export function RoomClient({
   isModerator,
   initialWallpaperId,
   initialBackgroundUrl,
+  initialWallpaperOverlay,
   initialTrack,
   initialMessages,
   roomTask,
@@ -57,9 +62,12 @@ export function RoomClient({
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
   const [roomTasks, setRoomTasks] = useState<UserPostItTask[]>([]);
   const [goalText, setGoalText] = useState(roomTask?.title ?? "");
+  const roomRootRef = useRef<HTMLDivElement>(null);
   const initialMusic = roomTrackToMusicState(initialTrack, !!initialTrack);
 
   const canManageBackground = isOwner || isModerator;
+  const { appearance, setRoomAppearance } = useRoomAppearance();
+  const { isFullscreen, toggleFullscreen } = useRoomFullscreen(roomRootRef);
 
   const {
     connected,
@@ -72,9 +80,11 @@ export function RoomClient({
     startPomodoro,
     pausePomodoro,
     resetPomodoro,
+    wallpaperOverlayOpacity,
     broadcastWallpaper,
+    broadcastWallpaperOverlay,
     broadcastMusic,
-  } = useRoomSocket(roomId, initialMessages, initialMusic);
+  } = useRoomSocket(roomId, initialMessages, initialMusic, initialWallpaperOverlay);
 
   function handleBackgroundApply(id: string | null, url: string | null) {
     setWallpaperId(id);
@@ -98,14 +108,21 @@ export function RoomClient({
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-4rem)] flex-col overflow-hidden">
+    <div
+      ref={roomRootRef}
+      className={cn(
+        "relative isolate flex flex-col overflow-hidden",
+        isFullscreen ? "h-dvh w-full" : "h-[calc(100dvh-4rem)]"
+      )}
+    >
       <RoomTaskPrompt
         roomId={roomId}
         roomName={roomName}
         hasRoomTasks={hasRoomTasks}
+        portalContainerRef={roomRootRef}
         onTaskChange={() => setTaskRefreshKey((k) => k + 1)}
       />
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         {backgroundUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -114,15 +131,21 @@ export function RoomClient({
               alt=""
               aria-hidden
               className="h-full w-full object-cover"
+              style={{ filter: wallpaperImageFilter(wallpaperOverlayOpacity) }}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-background/95 via-background/80 to-background/95" />
+            <div
+              className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background"
+              style={{ opacity: wallpaperOverlayOpacity / 100 }}
+            />
           </>
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/5 via-background to-background" />
         )}
       </div>
 
-      <header className={cn("shrink-0 border-b border-border/50", glassPanel)}>
+      <header
+        className={cn("relative z-10 shrink-0 border-b border-border/50", ROOM_CHROME_PANEL)}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold sm:text-xl">{roomName}</h1>
@@ -154,11 +177,24 @@ export function RoomClient({
               variant="compact"
               className="hidden sm:flex"
             />
+            <RoomAppearanceToggle
+              appearance={appearance}
+              onChange={setRoomAppearance}
+            />
             <RoomBackgroundPicker
               roomId={roomId}
               currentWallpaperId={wallpaperId}
+              backgroundUrl={backgroundUrl}
               canManage={canManageBackground}
+              isOwner={isOwner}
+              overlayOpacity={wallpaperOverlayOpacity}
+              onOverlayChange={broadcastWallpaperOverlay}
               onApply={handleBackgroundApply}
+              portalContainerRef={roomRootRef}
+            />
+            <RoomFullscreenToggle
+              isFullscreen={isFullscreen}
+              onToggle={toggleFullscreen}
             />
           </div>
         </div>
@@ -186,9 +222,10 @@ export function RoomClient({
         onApply={handleMusicApply}
         open={musicPickerOpen}
         onOpenChange={setMusicPickerOpen}
+        portalContainerRef={roomRootRef}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="relative flex min-h-0 flex-1 overflow-visible">
           <RoomPostItStack
             roomId={roomId}
@@ -211,7 +248,7 @@ export function RoomClient({
               onReset={resetPomodoro}
               goalText={goalText}
               onGoalChange={setGoalText}
-              className={cn("pointer-events-auto w-full max-w-md", glassPanel)}
+              className={cn("pointer-events-auto w-full max-w-md", ROOM_GLASS_PANEL)}
             />
           </div>
         </section>
@@ -219,7 +256,7 @@ export function RoomClient({
         <aside
           className={cn(
             "flex min-h-0 shrink-0 flex-col border-t border-border/50 lg:w-80 lg:border-l lg:border-t-0 xl:w-96",
-            glassPanel
+            ROOM_CHROME_PANEL
           )}
         >
           <RoomTodoPanel tasks={roomTasks} onTasksChange={setRoomTasks} />

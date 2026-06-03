@@ -21,7 +21,7 @@ export function RoomTodoPanel({
   onTasksChange,
   className,
 }: RoomTodoPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [pending, startTransition] = useTransition();
 
   const openTasks = tasks.filter((t) => !t.closed);
@@ -61,7 +61,7 @@ export function RoomTodoPanel({
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/25"
         aria-expanded={!collapsed}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -187,8 +187,8 @@ function TodoNoteCard({
     return (
       <li
         className={cn(
-          "rounded-lg border border-border/60 bg-background/60 p-2.5 transition-colors",
-          "cursor-pointer hover:border-primary/30 hover:bg-muted/30",
+          "rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm transition-colors",
+          "cursor-pointer hover:border-primary/30 hover:bg-card/35",
           pending && "opacity-70"
         )}
       >
@@ -211,7 +211,7 @@ function TodoNoteCard({
   return (
     <li
       className={cn(
-        "rounded-lg border border-border/60 bg-background/60 p-2.5",
+        "rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm",
         pending && "opacity-70"
       )}
     >

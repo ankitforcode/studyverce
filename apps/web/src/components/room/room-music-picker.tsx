@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useTransition,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Music2,
@@ -19,6 +25,7 @@ import { TRACK_CATEGORIES, PROVIDER_LINK_EXAMPLES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { getRoomPortalTarget, lockRoomScroll } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import { PROVIDER_LABELS } from "@/lib/music/providers";
 import {
@@ -43,6 +50,7 @@ interface RoomMusicPickerProps {
   onApply: (track: RoomTrack | null, isPlaying: boolean) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  portalContainerRef?: RefObject<HTMLElement | null>;
 }
 
 type Tab = "library" | "community" | "mine" | "add-link" | "requests";
@@ -54,6 +62,7 @@ export function RoomMusicPicker({
   onApply,
   open,
   onOpenChange,
+  portalContainerRef,
 }: RoomMusicPickerProps) {
   const [tab, setTab] = useState<Tab>("library");
   const [category, setCategory] = useState("all");
@@ -72,12 +81,8 @@ export function RoomMusicPicker({
 
   useEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+    return lockRoomScroll(portalContainerRef);
+  }, [open, portalContainerRef]);
 
   const loadTracks = useCallback(async () => {
     setLoading(true);
@@ -443,7 +448,7 @@ export function RoomMusicPicker({
         </div>
       </div>
     </div>,
-    document.body
+    getRoomPortalTarget(portalContainerRef)
   );
 }
 

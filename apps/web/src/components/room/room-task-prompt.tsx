@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { StickyNote, X } from "lucide-react";
 import { POST_IT_COLORS, type PostItColor } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { getRoomPortalTarget, lockRoomScroll } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import {
   POST_IT_BG,
@@ -21,6 +22,7 @@ interface RoomTaskPromptProps {
   roomName: string;
   hasRoomTasks: boolean;
   onTaskChange?: () => void;
+  portalContainerRef?: RefObject<HTMLElement | null>;
 }
 
 function skipKey(roomId: string) {
@@ -32,6 +34,7 @@ export function RoomTaskPrompt({
   roomName,
   hasRoomTasks,
   onTaskChange,
+  portalContainerRef,
 }: RoomTaskPromptProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -51,12 +54,8 @@ export function RoomTaskPrompt({
 
   useEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+    return lockRoomScroll(portalContainerRef);
+  }, [open, portalContainerRef]);
 
   function handleDismiss() {
     sessionStorage.setItem(skipKey(roomId), "1");
@@ -181,6 +180,6 @@ export function RoomTaskPrompt({
         </div>
       </div>
     </div>,
-    document.body
+    getRoomPortalTarget(portalContainerRef)
   );
 }

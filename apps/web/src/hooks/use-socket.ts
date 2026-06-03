@@ -2,13 +2,14 @@
 
 import { io, type Socket } from "socket.io-client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import type {
-  ClientToServerEvents,
-  ServerToClientEvents,
-  RoomPresenceState,
-  ChatMessage,
-  PomodoroState,
-  RoomMusicState,
+import {
+  DEFAULT_WALLPAPER_OVERLAY,
+  type ClientToServerEvents,
+  type ServerToClientEvents,
+  type RoomPresenceState,
+  type ChatMessage,
+  type PomodoroState,
+  type RoomMusicState,
 } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/client";
 import { sendRoomMessage, deleteRoomMessage } from "@/app/rooms/chat-actions";
@@ -61,7 +62,8 @@ export function useSocket() {
 export function useRoomSocket(
   roomId: string,
   initialMessages: ChatMessage[] = [],
-  initialMusic?: RoomMusicState
+  initialMusic?: RoomMusicState,
+  initialWallpaperOverlay = DEFAULT_WALLPAPER_OVERLAY
 ) {
   const { socket, connected } = useSocket();
   const [participants, setParticipants] = useState<RoomPresenceState["participants"]>([]);
@@ -69,6 +71,9 @@ export function useRoomSocket(
   const [pomodoro, setPomodoro] = useState<PomodoroState | null>(null);
   const [wallpaperId, setWallpaperId] = useState<string | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+  const [wallpaperOverlayOpacity, setWallpaperOverlayOpacity] = useState(
+    initialWallpaperOverlay
+  );
   const [music, setMusic] = useState<RoomMusicState>(
     initialMusic ?? {
       trackId: null,
@@ -134,6 +139,11 @@ export function useRoomSocket(
         setBackgroundUrl(payload.imageUrl);
       }
     });
+    socket.on("room:wallpaperOverlay", (payload) => {
+      if (payload.roomId === roomId) {
+        setWallpaperOverlayOpacity(payload.overlayOpacity);
+      }
+    });
     socket.on("room:music", (payload) => {
       if (payload.roomId === roomId) {
         setMusic(payload.state);
@@ -149,6 +159,7 @@ export function useRoomSocket(
       socket.off("chat:deleted");
       socket.off("pomodoro:sync");
       socket.off("room:wallpaper");
+      socket.off("room:wallpaperOverlay");
       socket.off("room:music");
     };
   }, [socket, connected, roomId, joinRoom]);
@@ -206,6 +217,14 @@ export function useRoomSocket(
     [socket, roomId]
   );
 
+  const broadcastWallpaperOverlay = useCallback(
+    (overlayOpacity: number) => {
+      setWallpaperOverlayOpacity(overlayOpacity);
+      socket?.emit("room:wallpaperOverlay:set", { roomId, overlayOpacity });
+    },
+    [socket, roomId]
+  );
+
   const broadcastMusic = useCallback(
     (state: RoomMusicState) => {
       setMusic(state);
@@ -221,6 +240,8 @@ export function useRoomSocket(
     pomodoro,
     wallpaperId,
     backgroundUrl,
+    wallpaperOverlayOpacity,
+    broadcastWallpaperOverlay,
     music,
     sendMessage,
     deleteMessage,

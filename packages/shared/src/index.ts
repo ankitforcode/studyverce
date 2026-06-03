@@ -40,7 +40,13 @@ export interface StudyRoomSettings {
     breakMinutes: number;
   };
   anyoneCanControlTimer: boolean;
+  /** 0 = wallpaper fully visible, 100 = strongest dim overlay */
+  wallpaperOverlayOpacity: number;
 }
+
+export const WALLPAPER_OVERLAY_MIN = 0;
+export const WALLPAPER_OVERLAY_MAX = 100;
+export const DEFAULT_WALLPAPER_OVERLAY = 75;
 
 export interface RoomWallpaper {
   id: string;
@@ -179,6 +185,7 @@ export const DEFAULT_ROOM_SETTINGS: StudyRoomSettings = {
     breakMinutes: 5,
   },
   anyoneCanControlTimer: true,
+  wallpaperOverlayOpacity: DEFAULT_WALLPAPER_OVERLAY,
 };
 
 export interface RoomPresenceState {
@@ -203,6 +210,7 @@ export interface ClientToServerEvents {
   "pomodoro:pause": (payload: { roomId: string }) => void;
   "pomodoro:reset": (payload: { roomId: string }) => void;
   "room:wallpaper:set": (payload: { roomId: string; wallpaperId: string | null; imageUrl: string | null }) => void;
+  "room:wallpaperOverlay:set": (payload: { roomId: string; overlayOpacity: number }) => void;
   "room:music:sync": (payload: { roomId: string; state: RoomMusicState }) => void;
   "session:start": (payload: {
     roomId?: string;
@@ -219,6 +227,7 @@ export interface ServerToClientEvents {
   "chat:deleted": (payload: { messageId: string }) => void;
   "pomodoro:sync": (payload: { roomId: string; state: PomodoroState }) => void;
   "room:wallpaper": (payload: { roomId: string; wallpaperId: string | null; imageUrl: string | null }) => void;
+  "room:wallpaperOverlay": (payload: { roomId: string; overlayOpacity: number }) => void;
   "room:music": (payload: { roomId: string; state: RoomMusicState }) => void;
   "session:started": (payload: { sessionId: string }) => void;
   "session:ended": (payload: { sessionId: string }) => void;

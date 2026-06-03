@@ -2,11 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
+import { mergeRoomSettings } from "@studyverce/db";
 import {
   ALLOWED_WALLPAPER_TYPES,
   MAX_WALLPAPER_SIZE_BYTES,
   type RoomWallpaper,
+  type StudyRoomSettings,
 } from "@studyverce/shared";
+import { clampWallpaperOverlay } from "@/lib/wallpaper-overlay";
 import crypto from "crypto";
 
 function mapWallpaper(row: {
@@ -250,6 +254,49 @@ export async function setRoomWallpaper(
 
   revalidatePath("/rooms");
   return { error: null, imageUrl };
+}
+
+export async function setRoomWallpaperOverlayOpacity(
+  roomId: string,
+  overlayOpacity: number
+): Promise<{ error: string | null; overlayOpacity?: number }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: room } = await supabase
+    .from("study_rooms")
+    .select("owner_id, settings")
+    .eq("id", roomId)
+    .single();
+
+  if (!room) return { error: "Room not found" };
+
+  if (room.owner_id !== user.id) {
+    return { error: "Only the room creator can change wallpaper opacity." };
+  }
+
+  const opacity = clampWallpaperOverlay(overlayOpacity);
+  const settings = mergeRoomSettings(
+    room.settings as Partial<StudyRoomSettings> | undefined
+  );
+  settings.wallpaperOverlayOpacity = opacity;
+
+  const { error } = await supabase
+    .from("study_rooms")
+    .update({
+      settings:
+        settings as unknown as Database["public"]["Tables"]["study_rooms"]["Update"]["settings"],
+    })
+    .eq("id", roomId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/rooms");
+  return { error: null, overlayOpacity: opacity };
 }
 
 export async function deleteRoomWallpaper(

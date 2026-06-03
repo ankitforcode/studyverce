@@ -6,6 +6,9 @@ import { getRoomTrack } from "@/app/rooms/music-actions";
 import { getPostItForRoom, hasPostItForRoom } from "@/app/dashboard/task-actions";
 import { getRoomChatHistory } from "@/app/rooms/chat-actions";
 import { RoomClient } from "@/components/room/room-client";
+import { mergeRoomSettings } from "@studyverce/db";
+import type { StudyRoomSettings } from "@studyverce/shared";
+import { resolveWallpaperOverlay } from "@/lib/wallpaper-overlay";
 
 export default async function RoomPage({
   params,
@@ -63,6 +66,10 @@ export default async function RoomPage({
   const chatHistory = await getRoomChatHistory(room.id);
   const roomTask = await getPostItForRoom(room.id);
   const hasRoomTasks = await hasPostItForRoom(room.id);
+  const roomSettings = mergeRoomSettings(
+    room.settings as Partial<StudyRoomSettings> | undefined
+  );
+  const initialWallpaperOverlay = resolveWallpaperOverlay(roomSettings);
 
   return (
     <RoomClient
@@ -74,6 +81,7 @@ export default async function RoomPage({
         isModerator={isModerator}
       initialWallpaperId={room.wallpaper_id}
       initialBackgroundUrl={wallpaper?.imageUrl ?? null}
+      initialWallpaperOverlay={initialWallpaperOverlay}
       initialTrack={track}
       initialMessages={chatHistory}
       roomTask={roomTask}
