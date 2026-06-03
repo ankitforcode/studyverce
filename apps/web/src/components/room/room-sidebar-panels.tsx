@@ -12,7 +12,11 @@ import { GripVertical } from "lucide-react";
 import type { RoomSidebarPanelId } from "@studyverce/shared";
 import { saveRoomSidebarPanelOrder } from "@/app/rooms/sidebar-actions";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
-import { getSidebarSlotShift } from "@/lib/room-sidebar-drag";
+import {
+  getDropIndexFromLayout,
+  getSidebarSlotShift,
+  type SidebarSlotLayout,
+} from "@/lib/room-sidebar-drag";
 import { reorderSidebarPanels } from "@/lib/room-sidebar";
 import { cn } from "@/lib/utils";
 
@@ -39,26 +43,6 @@ type DragState = {
   height: number;
 };
 
-function getDropIndex(
-  clientY: number,
-  order: RoomSidebarPanelId[],
-  panelRefs: Map<RoomSidebarPanelId, HTMLDivElement | null>
-): number {
-  const entries = order.map((id, index) => {
-    const rect = panelRefs.get(id)?.getBoundingClientRect();
-    return {
-      index,
-      mid: rect ? rect.top + rect.height / 2 : Number.POSITIVE_INFINITY,
-    };
-  });
-
-  for (const { index, mid } of entries) {
-    if (clientY < mid) return index;
-  }
-
-  return order.length - 1;
-}
-
 export function RoomSidebarPanels({
   roomId,
   initialOrder,
@@ -69,9 +53,12 @@ export function RoomSidebarPanels({
   const [order, setOrder] = useState(initialOrder);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const orderRef = useRef(order);
+  const containerRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef(
     new Map<RoomSidebarPanelId, HTMLDivElement | null>()
   );
+  const layoutSnapshotRef = useRef<SidebarSlotLayout[]>([]);
+  const containerTopRef = useRef(0);
   const rafRef = useRef(0);
   const dragStartYRef = useRef(0);
   const dragOverIndexRef = useRef<number | null>(null);
@@ -124,10 +111,23 @@ export function RoomSidebarPanels({
     const fromIndex = orderRef.current.indexOf(panelId);
     if (fromIndex < 0) return;
 
+    const container = containerRef.current;
     const slotEl = panelRefs.current.get(panelId);
-    const height = slotEl?.getBoundingClientRect().height ?? 0;
+    const height = slotEl?.offsetHeight ?? 0;
     dragStartYRef.current = e.clientY;
     dragOverIndexRef.current = null;
+
+    if (container) {
+      containerTopRef.current = container.getBoundingClientRect().top;
+      let edge = 0;
+      layoutSnapshotRef.current = orderRef.current.map((id) => {
+        const el = panelRefs.current.get(id);
+        const slotHeight = el?.offsetHeight ?? 0;
+        const layout: SidebarSlotLayout = { top: edge, height: slotHeight };
+        edge += slotHeight;
+        return layout;
+      });
+    }
 
     setDragState({
       panelId,
@@ -148,7 +148,11 @@ export function RoomSidebarPanels({
         const from = current.indexOf(panelId);
         if (from < 0) return;
 
-        const to = getDropIndex(ev.clientY, current, panelRefs.current);
+        const to = getDropIndexFromLayout(
+          ev.clientY,
+          containerTopRef.current,
+          layoutSnapshotRef.current
+        );
         const nextOver = to !== from ? to : null;
         dragOverIndexRef.current = nextOver;
 
@@ -199,7 +203,10 @@ export function RoomSidebarPanels({
   const isDragging = dragState !== null;
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+    <div
+      ref={containerRef}
+      className={cn("flex min-h-0 flex-1 flex-col", className)}
+    >
       {order.map((panelId, index) => {
         const expanded = panelExpanded[panelId];
         const slotDragging = dragState?.panelId === panelId;
@@ -228,7 +235,7 @@ export function RoomSidebarPanels({
                 : shiftY !== 0
                   ? `translateY(${shiftY}px)`
                   : undefined,
-              transition: slotDragging
+              transition: isDragging
                 ? "none"
                 : "transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease, opacity 200ms ease",
               zIndex: slotDragging ? 30 : undefined,
