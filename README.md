@@ -24,7 +24,8 @@ studyverce/
 │   ├── db/               # Database types and Zod schemas
 │   └── ai/               # AI feature stubs (Phase 2)
 └── supabase/
-    └── migrations/       # PostgreSQL schema + RLS
+    ├── migrations/       # PostgreSQL schema + RLS (single baseline file)
+    └── seed.sql          # Reference data + local admin user
 ```
 
 ## Getting Started
@@ -89,15 +90,17 @@ Find your JWT secret in Supabase Dashboard → Settings → API → JWT Secret.
 
 ### 3. Run database migrations
 
-Apply migrations via Supabase CLI or paste SQL from `supabase/migrations/` into the Supabase SQL editor:
+Apply schema via Supabase CLI (`supabase/migrations/20250602000000_studyverce_schema.sql`) and reference data via `supabase/seed.sql`:
 
 ```bash
-# With Supabase CLI (local)
-supabase db reset   # applies migrations + runs supabase/seed.sql
+# Local: full reset (schema + seed)
+supabase db reset
 
-# Remote project
+# Remote: schema only (seed is local dev; run seed SQL manually if needed)
 supabase db push
 ```
+
+If you had the old multi-file migrations applied locally, run `supabase db reset` once so migration history matches the squashed baseline.
 
 #### Local admin user (seed)
 

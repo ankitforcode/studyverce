@@ -8,9 +8,9 @@ alwaysApply: false
 
 ## Migrations
 
-- Add numbered files under `supabase/migrations/` (timestamp prefix).
-- Apply locally: `supabase db push` (or run SQL against local Docker Postgres).
-- Post-it migrations: `20250602000006` (table), `07` (pinned), `08` (width/height), `09` (closed).
+- Baseline schema: `supabase/migrations/20250602000000_studyverce_schema.sql` (DDL + RLS only).
+- Reference data: `supabase/seed.sql` (buckets, achievements, built-ins, local admin).
+- New schema changes: add a new timestamped migration file; apply with `supabase db push` or `supabase db reset` locally.
 
 ## Post-it table RLS
 

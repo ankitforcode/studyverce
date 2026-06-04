@@ -1,2 +1,0 @@
-ALTER TABLE public.user_post_it_tasks
-  ADD COLUMN IF NOT EXISTS closed BOOLEAN NOT NULL DEFAULT FALSE;
