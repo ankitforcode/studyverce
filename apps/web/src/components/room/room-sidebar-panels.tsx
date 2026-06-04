@@ -205,7 +205,7 @@ export function RoomSidebarPanels({
   return (
     <div
       ref={containerRef}
-      className={cn("flex min-h-0 flex-1 flex-col", className)}
+      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", className)}
     >
       {order.map((panelId, index) => {
         const expanded = panelExpanded[panelId];

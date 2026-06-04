@@ -9,6 +9,7 @@ import { RoomAppearanceToggle } from "@/components/room/room-appearance-toggle";
 import { RoomFullscreenToggle } from "@/components/room/room-fullscreen-toggle";
 import { PomodoroTimer } from "@/components/room/pomodoro-timer";
 import { RoomChat } from "@/components/room/room-chat";
+import { RoomResizableSidebar } from "@/components/room/room-resizable-sidebar";
 import { RoomSidebarPanels } from "@/components/room/room-sidebar-panels";
 import { ParticipantList } from "@/components/room/participant-list";
 import { RoomBackgroundPicker } from "@/components/room/room-background-picker";
@@ -275,7 +276,7 @@ export function RoomClient({
       />
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="relative flex min-h-0 flex-1 overflow-visible">
+        <section className="relative flex min-h-0 min-w-0 flex-1 overflow-visible">
           <RoomPostItStack
             roomId={roomId}
             refreshKey={taskRefreshKey}
@@ -305,12 +306,7 @@ export function RoomClient({
           </div>
         </section>
 
-        <aside
-          className={cn(
-            "flex min-h-0 shrink-0 flex-col border-t border-border/50 lg:w-80 lg:border-l lg:border-t-0 xl:w-[26rem]",
-            ROOM_CHROME_PANEL
-          )}
-        >
+        <RoomResizableSidebar>
           <RoomSidebarPanels
             roomId={roomId}
             initialOrder={initialSidebarPanelOrder}
@@ -353,7 +349,7 @@ export function RoomClient({
               ),
             }}
           />
-        </aside>
+        </RoomResizableSidebar>
       </div>
     </div>
   );
