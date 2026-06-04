@@ -90,6 +90,7 @@ export default async function RoomPage({
       hasRoomTasks={hasRoomTasks}
       pomodoroFocusMinutes={roomSettings.pomodoroDefaults.focusMinutes}
       pomodoroBreakMinutes={roomSettings.pomodoroDefaults.breakMinutes}
+      pomodoroBreaksEnabled={roomSettings.breaksEnabled}
       initialSidebarPanelOrder={sidebarPanelOrder}
     />
   );

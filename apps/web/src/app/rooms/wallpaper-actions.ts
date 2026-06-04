@@ -77,6 +77,19 @@ export async function getMyWallpapers(): Promise<RoomWallpaper[]> {
   return (data ?? []).map(mapWallpaper);
 }
 
+/** Random built-in wallpaper for new rooms (system library only). */
+export async function pickRandomBuiltinWallpaperId(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("room_wallpapers")
+    .select("id")
+    .eq("is_builtin", true);
+
+  if (error || !data?.length) return null;
+
+  return data[crypto.randomInt(0, data.length)].id;
+}
+
 export async function getRoomWallpaper(wallpaperId: string | null): Promise<RoomWallpaper | null> {
   if (!wallpaperId) return null;
 

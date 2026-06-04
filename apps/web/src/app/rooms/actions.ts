@@ -12,6 +12,7 @@ import {
 } from "@studyverce/db";
 import { PLAN_LIMITS } from "@studyverce/shared";
 import crypto from "crypto";
+import { pickRandomBuiltinWallpaperId } from "@/app/rooms/wallpaper-actions";
 
 export async function createRoom(input: CreateRoomInput) {
   const parsed = createRoomSchema.safeParse(input);
@@ -82,6 +83,7 @@ export async function createRoom(input: CreateRoomInput) {
 
   const settings = mergeRoomSettings(parsed.data.settings);
   const inviteToken = parsed.data.is_public ? null : crypto.randomBytes(16).toString("hex");
+  const wallpaperId = await pickRandomBuiltinWallpaperId();
 
   const { data: room, error } = await supabase
     .from("study_rooms")
@@ -92,6 +94,7 @@ export async function createRoom(input: CreateRoomInput) {
       is_public: parsed.data.is_public,
       owner_id: user.id,
       max_participants: parsed.data.max_participants,
+      wallpaper_id: wallpaperId,
       settings: settings as unknown as Database["public"]["Tables"]["study_rooms"]["Insert"]["settings"],
       invite_token: inviteToken,
     })

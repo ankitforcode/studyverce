@@ -28,6 +28,7 @@ export const createRoomSchema = z.object({
           breakMinutes: z.number().int().min(1).max(60),
         })
         .optional(),
+      breaksEnabled: z.boolean().optional(),
       anyoneCanControlTimer: z.boolean().optional(),
       wallpaperOverlayOpacity: z.number().int().min(0).max(100).optional(),
     })
@@ -65,6 +66,8 @@ export function mergeRoomSettings(
       ...DEFAULT_ROOM_SETTINGS.pomodoroDefaults,
       ...settings?.pomodoroDefaults,
     },
+    breaksEnabled:
+      settings?.breaksEnabled ?? DEFAULT_ROOM_SETTINGS.breaksEnabled,
     wallpaperOverlayOpacity:
       settings?.wallpaperOverlayOpacity ??
       DEFAULT_ROOM_SETTINGS.wallpaperOverlayOpacity,

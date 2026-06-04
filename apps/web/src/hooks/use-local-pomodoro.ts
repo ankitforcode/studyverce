@@ -31,10 +31,20 @@ function applyElapsed(state: PomodoroState): PomodoroState {
   };
 }
 
-function advanceAfterZero(state: PomodoroState): PomodoroState {
+function advanceAfterZero(
+  state: PomodoroState,
+  breaksEnabled: boolean
+): PomodoroState {
   if (state.remainingSeconds > 0) return state;
 
   if (state.phase === "focus") {
+    if (!breaksEnabled) {
+      return {
+        ...createDefaultState(state.focusMinutes, state.breakMinutes),
+        focusMinutes: state.focusMinutes,
+        breakMinutes: state.breakMinutes,
+      };
+    }
     return {
       ...state,
       phase: "break",
@@ -55,7 +65,7 @@ function advanceAfterZero(state: PomodoroState): PomodoroState {
   return state;
 }
 
-function tickState(state: PomodoroState): PomodoroState {
+function tickState(state: PomodoroState, breaksEnabled: boolean): PomodoroState {
   if (state.phase === "idle" || state.isPaused) return state;
 
   const next = {
@@ -64,13 +74,14 @@ function tickState(state: PomodoroState): PomodoroState {
     updatedAt: new Date().toISOString(),
   };
 
-  return advanceAfterZero(next);
+  return advanceAfterZero(next, breaksEnabled);
 }
 
 function loadStoredState(
   storageKey: string,
   focusMinutes: number,
-  breakMinutes: number
+  breakMinutes: number,
+  breaksEnabled: boolean
 ): PomodoroState | null {
   try {
     const raw = sessionStorage.getItem(storageKey);
@@ -82,7 +93,7 @@ function loadStoredState(
       focusMinutes,
       breakMinutes,
     };
-    return applyElapsed(advanceAfterZero(merged));
+    return applyElapsed(advanceAfterZero(merged, breaksEnabled));
   } catch {
     return null;
   }
@@ -91,12 +102,18 @@ function loadStoredState(
 export function useLocalPomodoro(
   roomId: string,
   userId: string,
-  options?: { focusMinutes?: number; breakMinutes?: number }
+  options?: {
+    focusMinutes?: number;
+    breakMinutes?: number;
+    breaksEnabled?: boolean;
+  }
 ) {
   const focusMinutes =
     options?.focusMinutes ?? DEFAULT_ROOM_SETTINGS.pomodoroDefaults.focusMinutes;
   const breakMinutes =
     options?.breakMinutes ?? DEFAULT_ROOM_SETTINGS.pomodoroDefaults.breakMinutes;
+  const breaksEnabled =
+    options?.breaksEnabled ?? DEFAULT_ROOM_SETTINGS.breaksEnabled;
   const storageKey = `studyverce-local-pomodoro:${userId}:${roomId}`;
 
   const [state, setState] = useState<PomodoroState>(() => {
@@ -104,7 +121,7 @@ export function useLocalPomodoro(
       return createDefaultState(focusMinutes, breakMinutes);
     }
     return (
-      loadStoredState(storageKey, focusMinutes, breakMinutes) ??
+      loadStoredState(storageKey, focusMinutes, breakMinutes, breaksEnabled) ??
       createDefaultState(focusMinutes, breakMinutes)
     );
   });
@@ -121,14 +138,15 @@ export function useLocalPomodoro(
     if (state.phase === "idle" || state.isPaused) return;
 
     const intervalId = window.setInterval(() => {
-      setState((prev) => tickState(prev));
+      setState((prev) => tickState(prev, breaksEnabled));
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [state.phase, state.isPaused]);
+  }, [state.phase, state.isPaused, breaksEnabled]);
 
   const start = useCallback(
     (phase: "focus" | "break") => {
+      if (phase === "break" && !breaksEnabled) return;
       setState((prev) => {
         const focus = prev.focusMinutes;
         const breakM = prev.breakMinutes;
@@ -143,7 +161,7 @@ export function useLocalPomodoro(
         };
       });
     },
-    [userId]
+    [userId, breaksEnabled]
   );
 
   const pause = useCallback(() => {

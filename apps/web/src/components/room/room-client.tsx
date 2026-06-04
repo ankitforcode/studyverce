@@ -50,6 +50,7 @@ interface RoomClientProps {
   hasRoomTasks: boolean;
   pomodoroFocusMinutes?: number;
   pomodoroBreakMinutes?: number;
+  pomodoroBreaksEnabled?: boolean;
   initialSidebarPanelOrder: RoomSidebarPanelId[];
 }
 
@@ -69,6 +70,7 @@ export function RoomClient({
   hasRoomTasks,
   pomodoroFocusMinutes,
   pomodoroBreakMinutes,
+  pomodoroBreaksEnabled = true,
   initialSidebarPanelOrder,
 }: RoomClientProps) {
   const [wallpaperId, setWallpaperId] = useState(initialWallpaperId);
@@ -95,6 +97,7 @@ export function RoomClient({
   } = useLocalPomodoro(roomId, currentUserId, {
     focusMinutes: pomodoroFocusMinutes,
     breakMinutes: pomodoroBreakMinutes,
+    breaksEnabled: pomodoroBreaksEnabled,
   });
 
   const {
@@ -293,14 +296,13 @@ export function RoomClient({
           <div className="pointer-events-none relative z-10 flex flex-1 items-center justify-center overflow-y-auto p-4 sm:p-6">
             <PomodoroTimer
               state={pomodoro}
+              breaksEnabled={pomodoroBreaksEnabled}
               onStart={(phase) => {
                 startPomodoro(phase);
                 trackEvent("pomodoro_started", { room_id: roomId, phase });
               }}
               onPause={pausePomodoro}
               onReset={resetPomodoro}
-              goalText={goalText}
-              onGoalChange={setGoalText}
               className={cn("pointer-events-auto w-full max-w-md", ROOM_GLASS_PANEL)}
             />
           </div>

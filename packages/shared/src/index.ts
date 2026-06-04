@@ -60,6 +60,8 @@ export interface StudyRoomSettings {
     focusMinutes: number;
     breakMinutes: number;
   };
+  /** When false, focus sessions end without starting a break phase. */
+  breaksEnabled: boolean;
   anyoneCanControlTimer: boolean;
   /** 0 = wallpaper fully visible, 100 = strongest dim overlay */
   wallpaperOverlayOpacity: number;
@@ -260,6 +262,7 @@ export const DEFAULT_ROOM_SETTINGS: StudyRoomSettings = {
     focusMinutes: 25,
     breakMinutes: 5,
   },
+  breaksEnabled: true,
   anyoneCanControlTimer: true,
   wallpaperOverlayOpacity: DEFAULT_WALLPAPER_OVERLAY,
 };
