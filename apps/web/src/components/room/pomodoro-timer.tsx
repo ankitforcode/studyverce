@@ -63,9 +63,7 @@ export function PomodoroTimer({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-2xl border border-border/45",
-        "bg-card/50 shadow-lg backdrop-blur-xl",
-        "supports-[backdrop-filter]:bg-card/40",
+        "w-full overflow-hidden rounded-2xl border border-border/45 backdrop-blur-xl",
         className
       )}
     >
@@ -113,7 +111,7 @@ export function PomodoroTimer({
               <Button
                 variant="secondary"
                 onClick={onPause}
-                className="h-11 gap-2 rounded-xl border border-border/50 bg-card/60"
+                className="h-11 gap-2 rounded-xl border border-border/50 bg-card/60 light:bg-white/90"
               >
                 <Pause className="h-4 w-4" />
                 {isPaused ? "Resume" : "Pause"}
@@ -130,16 +128,16 @@ export function PomodoroTimer({
           )}
         </div>
 
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground/90">
-          <span className="text-muted-foreground">{focusMinutes} min focus</span>
+        <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+          <span>{focusMinutes} min focus</span>
           {breaksEnabled && (
             <>
               <span className="mx-1.5 text-border">·</span>
-              <span className="text-muted-foreground">{breakMinutes} min break</span>
+              <span>{breakMinutes} min break</span>
             </>
           )}
           <span className="mx-1.5 text-border">·</span>
-          <span className="text-muted-foreground/70">your timer only</span>
+          <span>your timer only</span>
         </p>
       </div>
     </div>

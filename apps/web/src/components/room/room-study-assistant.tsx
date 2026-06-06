@@ -228,7 +228,7 @@ export function RoomStudyAssistant({
                       type="button"
                       disabled={loading}
                       onClick={() => void sendMessage(suggestion)}
-                      className="rounded-xl border border-border/50 bg-card/30 px-3 py-2 text-left text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-card/50"
+                      className="rounded-xl border border-border/50 bg-card/30 px-3 py-2 text-left text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-card/50 light:bg-white/90 light:hover:bg-white"
                     >
                       {suggestion}
                     </button>
@@ -286,9 +286,9 @@ export function RoomStudyAssistant({
 
           <form
             onSubmit={handleSubmit}
-            className="shrink-0 border-t border-border/50 bg-card/10 px-3 py-3"
+            className="shrink-0 border-t border-border/50 bg-card/10 px-3 py-3 light:bg-white/70"
           >
-            <div className="flex items-end gap-2 rounded-2xl border border-border/50 bg-background/80 p-2 shadow-sm">
+            <div className="flex items-end gap-2 rounded-2xl border border-border/50 bg-background/80 p-2 shadow-sm light:bg-white light:border-border/90">
               <textarea
                 ref={textareaRef}
                 value={input}

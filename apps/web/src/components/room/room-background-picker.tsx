@@ -138,7 +138,7 @@ export function RoomBackgroundPicker({
           onClick={() => setOpen(true)}
           className={cn(
             ROOM_HEADER_CONTROL,
-            "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35"
+            "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35 light:hover:bg-white/90"
           )}
         >
           {backgroundUrl ? (

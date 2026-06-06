@@ -11,6 +11,7 @@ import {
 } from "@/lib/post-it-utils";
 import { createPostItTask } from "@/app/dashboard/task-actions";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { ROOM_TOOLBAR_PANEL } from "@/lib/room-ui";
 
 interface RoomPostItToolbarProps {
   roomId: string;
@@ -46,7 +47,7 @@ export function RoomPostItToolbar({
       <div
         className={cn(
           "flex flex-wrap items-center gap-3 rounded-xl border border-border/50 px-4 py-2.5",
-          "bg-card/90 shadow-lg backdrop-blur-md supports-[backdrop-filter]:bg-card/80"
+          ROOM_TOOLBAR_PANEL
         )}
       >
         <span className="text-xs font-medium text-muted-foreground">Add post-it</span>

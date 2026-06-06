@@ -205,6 +205,7 @@ export function RoomClient({
   return (
     <div
       ref={roomRootRef}
+      data-room-shell
       className={cn(
         "relative isolate flex min-h-0 flex-col",
         isFullscreen ? "h-dvh w-full" : "h-[calc(100dvh-4rem)]"
@@ -229,7 +230,7 @@ export function RoomClient({
               style={{ filter: wallpaperImageFilter(wallpaperOverlayOpacity) }}
             />
             <div
-              className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background"
+              className="room-wallpaper-scrim absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background light:via-background/90"
               style={{ opacity: wallpaperOverlayOpacity / 100 }}
             />
           </>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
+import { ROOM_FIELD } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface RoomChatProps {
@@ -94,7 +95,7 @@ export function RoomChat({
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <p className="text-sm text-muted-foreground">No messages yet</p>
-                <p className="mt-1 text-xs text-muted-foreground/70">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Say hello to the room!
                 </p>
               </div>
@@ -175,7 +176,7 @@ export function RoomChat({
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
               maxLength={2000}
-              className="bg-background/80"
+              className={ROOM_FIELD}
             />
             <Button
               type="submit"

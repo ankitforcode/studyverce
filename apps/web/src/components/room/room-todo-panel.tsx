@@ -12,6 +12,7 @@ import {
   reopenPostItTask,
 } from "@/app/dashboard/task-actions";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { ROOM_INNER_SURFACE } from "@/lib/room-ui";
 
 interface RoomTodoPanelProps {
   tasks: UserPostItTask[];
@@ -240,8 +241,9 @@ function TodoNoteCard({
     return (
       <li
         className={cn(
-          "group relative rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm transition-colors",
-          "cursor-pointer hover:border-primary/30 hover:bg-card/35",
+          "group relative rounded-lg border border-border/40 p-2.5 transition-colors",
+          ROOM_INNER_SURFACE,
+          "cursor-pointer hover:border-primary/30 light:hover:bg-white",
           pending && "opacity-70"
         )}
       >
@@ -267,7 +269,8 @@ function TodoNoteCard({
   return (
     <li
       className={cn(
-        "group relative rounded-lg border border-border/40 bg-card/25 p-2.5 backdrop-blur-sm",
+        "group relative rounded-lg border border-border/40 p-2.5",
+        ROOM_INNER_SURFACE,
         pending && "opacity-70"
       )}
     >
