@@ -5,7 +5,7 @@ import { Heart } from "lucide-react";
 import { toggleRoomFavorite } from "@/app/rooms/favorite-actions";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import { Button } from "@/components/ui/button";
-import { ROOM_HEADER_CONTROL } from "@/lib/room-ui";
+import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface RoomFavoriteButtonProps {
@@ -61,7 +61,7 @@ export function RoomFavoriteButton({
       }}
       className={cn(
         variant === "header"
-          ? cn(ROOM_HEADER_CONTROL, "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35 light:hover:bg-white/90")
+          ? ROOM_HEADER_ICON_BUTTON
           : "h-8 w-8 rounded-full border border-white/20 bg-black/50 p-0 text-white backdrop-blur-sm hover:bg-black/70",
         className
       )}

@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { cn } from "@/lib/utils";
 
 /** Portal modals to body (avoids room shell clipping). Use room root only in fullscreen. */
 export function getRoomPortalTarget(
@@ -36,6 +37,12 @@ export const ROOM_CHROME_PANEL =
 /** Shared glass style for header controls (theme, background, etc.) */
 export const ROOM_HEADER_CONTROL =
   "rounded-lg border border-border/40 bg-card/20 shadow-sm backdrop-blur-sm light:bg-white/95 light:border-border/80";
+
+/** Square header icon buttons — same hover as the music bar outline control */
+export const ROOM_HEADER_ICON_BUTTON = cn(
+  ROOM_HEADER_CONTROL,
+  "h-8 w-8 p-0 transition-colors hover:border-border/60 hover:bg-secondary light:hover:bg-secondary/80"
+);
 
 /** Floating widgets (pomodoro) — slightly more legible */
 export const ROOM_GLASS_PANEL =

@@ -438,6 +438,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      friendships: {
+        Row: {
+          user_id: string;
+          friend_id: string;
+          status: "pending" | "accepted" | "blocked";
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          friend_id: string;
+          status?: "pending" | "accepted" | "blocked";
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          friend_id?: string;
+          status?: "pending" | "accepted" | "blocked";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       user_favorite_rooms: {
         Row: {
           user_id: string;

@@ -47,6 +47,7 @@ interface RoomClientProps {
   isPublic: boolean;
   inviteToken: string | null;
   currentUserId: string;
+  roomOwnerId: string;
   isOwner: boolean;
   isModerator: boolean;
   initialWallpaperId: string | null;
@@ -70,6 +71,7 @@ export function RoomClient({
   isPublic,
   inviteToken,
   currentUserId,
+  roomOwnerId,
   isOwner,
   isModerator,
   initialWallpaperId,
@@ -285,7 +287,12 @@ export function RoomClient({
             <ParticipantList
               participants={participants}
               currentUserId={currentUserId}
+              roomId={roomId}
+              roomOwnerId={roomOwnerId}
+              isRoomOwner={isOwner}
+              socket={socket}
               variant="compact"
+              menuAlign="end"
               className="hidden sm:flex"
             />
             <RoomAppearanceToggle
@@ -346,7 +353,12 @@ export function RoomClient({
         <ParticipantList
           participants={participants}
           currentUserId={currentUserId}
+          roomId={roomId}
+          roomOwnerId={roomOwnerId}
+          isRoomOwner={isOwner}
+          socket={socket}
           variant="compact"
+          menuAlign="start"
           className="px-4 pb-3 sm:hidden"
         />
 

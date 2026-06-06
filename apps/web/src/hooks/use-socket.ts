@@ -242,7 +242,8 @@ export function useRoomSocket(
     socket.on("room:membership-revoked", (payload) => {
       if (payload.roomId !== roomId) return;
       joinedRef.current = false;
-      routerRef.current.push("/rooms?removed=inactive");
+      const reason = payload.reason === "kicked" ? "kicked" : "inactive";
+      routerRef.current.push(`/rooms?removed=${reason}`);
     });
 
     return () => {

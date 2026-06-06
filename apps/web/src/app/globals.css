@@ -75,6 +75,39 @@ html.light [data-room-shell] {
   --font-mono: var(--font-geist-mono);
 }
 
+@keyframes participant-panel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes participant-row-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.participant-panel-enter {
+  animation: participant-panel-in 0.22s ease-out both;
+}
+
+.participant-row-enter {
+  animation: participant-row-in 0.28s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .participant-panel-enter,
+  .participant-row-enter {
+    animation: none;
+  }
+}
+
 @keyframes track-marquee {
   from {
     transform: translateX(0);

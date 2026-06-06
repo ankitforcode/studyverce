@@ -29,7 +29,7 @@ interface RoomsDirectoryProps {
   initialTab?: Tab;
   isLoggedIn?: boolean;
   favoriteRoomIds?: string[];
-  removedNotice?: "inactive" | null;
+  removedNotice?: "inactive" | "kicked" | null;
 }
 
 function RoomsDirectoryContent({
@@ -101,6 +101,11 @@ function RoomsDirectoryContent({
           <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
             You were removed from a study room after 30 minutes away. Rejoin any room
             to continue studying.
+          </p>
+        )}
+        {removedNotice === "kicked" && (
+          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
+            The room owner removed you from that study room.
           </p>
         )}
 

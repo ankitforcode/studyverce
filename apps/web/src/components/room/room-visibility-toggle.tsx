@@ -6,7 +6,7 @@ import { setRoomVisibility } from "@/app/rooms/access-actions";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import { Button } from "@/components/ui/button";
 import type { AppSocket } from "@/hooks/use-socket";
-import { ROOM_HEADER_CONTROL } from "@/lib/room-ui";
+import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface RoomVisibilityToggleProps {
@@ -58,10 +58,7 @@ export function RoomVisibilityToggle({
           disabled={pending}
           aria-label={label}
           onClick={handleToggle}
-          className={cn(
-            ROOM_HEADER_CONTROL,
-            "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35 light:hover:bg-white/90"
-          )}
+          className={ROOM_HEADER_ICON_BUTTON}
         >
           {isPublic ? (
             <Lock className="h-3.5 w-3.5" />

@@ -57,7 +57,9 @@ export default async function RoomsPage({
       initialTab={tab}
       isLoggedIn={isLoggedIn}
       favoriteRoomIds={favoriteRoomIds}
-      removedNotice={removed === "inactive" ? "inactive" : null}
+      removedNotice={
+        removed === "inactive" ? "inactive" : removed === "kicked" ? "kicked" : null
+      }
     />
   );
 }

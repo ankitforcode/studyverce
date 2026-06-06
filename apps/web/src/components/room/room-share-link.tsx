@@ -6,7 +6,7 @@ import { getRoomShareLink } from "@/app/rooms/access-actions";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import { buildRoomShareUrl } from "@/lib/room-share";
 import { Button } from "@/components/ui/button";
-import { ROOM_HEADER_CONTROL } from "@/lib/room-ui";
+import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface RoomShareLinkProps {
@@ -62,10 +62,7 @@ export function RoomShareLink({
           aria-label={label}
           onClick={handleCopy}
           disabled={pending}
-          className={cn(
-            ROOM_HEADER_CONTROL,
-            "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35 light:hover:bg-white/90"
-          )}
+          className={ROOM_HEADER_ICON_BUTTON}
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-primary" />

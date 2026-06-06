@@ -3,7 +3,7 @@
 import { Maximize2, Minimize2 } from "lucide-react";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import { Button } from "@/components/ui/button";
-import { ROOM_HEADER_CONTROL } from "@/lib/room-ui";
+import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface RoomFullscreenToggleProps {
@@ -27,11 +27,7 @@ export function RoomFullscreenToggle({
         size="sm"
         aria-label={label}
         onClick={onToggle}
-        className={cn(
-          ROOM_HEADER_CONTROL,
-          "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35 light:hover:bg-white/90",
-          className
-        )}
+        className={cn(ROOM_HEADER_ICON_BUTTON, className)}
       >
         {isFullscreen ? (
           <Minimize2 className="h-3.5 w-3.5" />

@@ -357,6 +357,7 @@ export interface ClientToServerEvents {
   }) => void;
   "rooms:presence:subscribe": (payload: { roomIds: string[] }) => void;
   "rooms:presence:unsubscribe": (payload: { roomIds: string[] }) => void;
+  "room:member:kick": (payload: { roomId: string; userId: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -377,7 +378,7 @@ export interface ServerToClientEvents {
   }) => void;
   "room:membership-revoked": (payload: {
     roomId: string;
-    reason: "inactive";
+    reason: "inactive" | "kicked";
   }) => void;
   "room:access-request:new": (payload: { request: RoomAccessRequest }) => void;
   "room:access-request:removed": (payload: { requestId: string }) => void;

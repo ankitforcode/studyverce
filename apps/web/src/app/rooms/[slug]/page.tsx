@@ -94,6 +94,7 @@ export default async function RoomPage({
       isPublic={room.is_public}
       inviteToken={room.invite_token}
       currentUserId={user.id}
+      roomOwnerId={room.owner_id}
       isOwner={isOwner}
       isModerator={isModerator}
       initialWallpaperId={room.wallpaper_id}

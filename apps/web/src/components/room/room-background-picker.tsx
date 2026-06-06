@@ -12,7 +12,7 @@ import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import {
   getRoomPortalTarget,
   lockRoomScroll,
-  ROOM_HEADER_CONTROL,
+  ROOM_HEADER_ICON_BUTTON,
 } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import {
@@ -136,10 +136,7 @@ export function RoomBackgroundPicker({
           size="sm"
           aria-label="Change room background"
           onClick={() => setOpen(true)}
-          className={cn(
-            ROOM_HEADER_CONTROL,
-            "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35 light:hover:bg-white/90"
-          )}
+          className={ROOM_HEADER_ICON_BUTTON}
         >
           {backgroundUrl ? (
             <span

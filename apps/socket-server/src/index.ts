@@ -467,6 +467,15 @@ async function isRoomOwner(roomId: string, userId: string): Promise<boolean> {
   return result.rows.length > 0;
 }
 
+async function getRoomOwnerId(roomId: string): Promise<string | null> {
+  if (!pgPool) return null;
+  const result = await pgPool.query(
+    `SELECT owner_id FROM study_rooms WHERE id = $1 LIMIT 1`,
+    [roomId]
+  );
+  return (result.rows[0]?.owner_id as string | undefined) ?? null;
+}
+
 async function startStudySession(
   userId: string,
   roomId?: string,
@@ -621,6 +630,47 @@ io.on("connection", (socket) => {
   socket.on("rooms:presence:unsubscribe", async ({ roomIds }) => {
     for (const roomId of roomIds) {
       await socket.leave(presenceWatchRoom(roomId));
+    }
+  });
+
+  socket.on("room:member:kick", async ({ roomId, userId }) => {
+    try {
+      const owner = await isRoomOwner(roomId, user.id);
+      if (!owner) {
+        socket.emit("error", { message: "Only the room owner can remove members" });
+        return;
+      }
+      if (userId === user.id) {
+        socket.emit("error", { message: "You cannot remove yourself" });
+        return;
+      }
+
+      const roomOwnerId = await getRoomOwnerId(roomId);
+      if (roomOwnerId && userId === roomOwnerId) {
+        socket.emit("error", { message: "Cannot remove the room owner" });
+        return;
+      }
+
+      await removeParticipantFromRoom(roomId, userId);
+
+      const sockets = await io.in(roomId).fetchSockets();
+      for (const s of sockets) {
+        if (s.data.user.id === userId) {
+          s.emit("room:membership-revoked", { roomId, reason: "kicked" });
+          await s.leave(roomId);
+        }
+      }
+
+      io.to(userChannel(userId)).emit("room:membership-revoked", {
+        roomId,
+        reason: "kicked",
+      });
+
+      await broadcastPresence(roomId);
+      await syncRoomMusic(roomId);
+    } catch (err) {
+      console.error("room:member:kick error", err);
+      socket.emit("error", { message: "Failed to remove member" });
     }
   });
 
