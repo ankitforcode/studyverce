@@ -79,6 +79,23 @@ app.use(
 app.use(expressRateLimitMiddleware());
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+app.get("/presence", async (req, res) => {
+  const raw = req.query.roomIds;
+  const roomIds =
+    typeof raw === "string"
+      ? raw.split(",").map((id) => id.trim()).filter(Boolean)
+      : [];
+
+  const counts: Record<string, number> = {};
+  await Promise.all(
+    roomIds.map(async (roomId) => {
+      counts[roomId] = await getActiveParticipantCount(roomId);
+    })
+  );
+
+  res.json({ counts });
+});
+
 const httpServer = createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(
   httpServer,
@@ -102,6 +119,10 @@ if (!pgPool) {
 
 function participantsKey(roomId: string) {
   return `room:${roomId}:participants`;
+}
+
+function presenceWatchRoom(roomId: string) {
+  return `presence-watch:${roomId}`;
 }
 
 function musicKey(roomId: string) {
@@ -272,6 +293,8 @@ async function markParticipantLeft(roomId: string, userId: string): Promise<void
     ...existing,
     socketId: "",
     lastSeenAt: now,
+    isActive: false,
+    awaySinceAt: now,
   });
 }
 
@@ -336,9 +359,20 @@ async function sweepStaleParticipants(): Promise<void> {
   }
 }
 
+async function getActiveParticipantCount(roomId: string): Promise<number> {
+  const participants = await getParticipants(roomId);
+  return countActiveParticipants(participants);
+}
+
+async function broadcastPresenceCount(roomId: string) {
+  const activeCount = await getActiveParticipantCount(roomId);
+  io.to(presenceWatchRoom(roomId)).emit("rooms:presence-count", { roomId, activeCount });
+}
+
 async function broadcastPresence(roomId: string) {
   const participants = await getParticipants(roomId);
   io.to(roomId).emit("room:presence", { roomId, participants });
+  await broadcastPresenceCount(roomId);
 }
 
 async function loadChatHistory(roomId: string): Promise<ChatMessage[]> {
@@ -481,8 +515,114 @@ io.use(async (socket, next) => {
   next();
 });
 
+function userChannel(userId: string) {
+  return `user:${userId}`;
+}
+
 io.on("connection", (socket) => {
   const { user, profile } = socket.data;
+  void socket.join(userChannel(user.id));
+
+  socket.on("access:request-created", async ({ roomId, request }) => {
+    if (!pgPool) return;
+    try {
+      const result = await pgPool.query(
+        `SELECT 1 FROM room_access_requests
+         WHERE id = $1 AND room_id = $2 AND user_id = $3 AND status = 'pending'
+         LIMIT 1`,
+        [request.id, roomId, user.id]
+      );
+      if (result.rows.length === 0) {
+        socket.emit("error", { message: "Invalid access request" });
+        return;
+      }
+      io.to(roomId).emit("room:access-request:new", { request });
+    } catch (err) {
+      console.error("access:request-created error", err);
+      socket.emit("error", { message: "Failed to notify room owner" });
+    }
+  });
+
+  socket.on("access:reviewed", async ({ roomId, requestId, userId, status }) => {
+    try {
+      const owner = await isRoomOwner(roomId, user.id);
+      if (!owner) {
+        socket.emit("error", { message: "Only the room owner can review access requests" });
+        return;
+      }
+      io.to(userChannel(userId)).emit("room:access-request:reviewed", {
+        roomId,
+        requestId,
+        status,
+      });
+      io.to(roomId).emit("room:access-request:removed", { requestId });
+    } catch (err) {
+      console.error("access:reviewed error", err);
+      socket.emit("error", { message: "Failed to broadcast access review" });
+    }
+  });
+
+  socket.on("music:request-created", async ({ roomId, request }) => {
+    if (!pgPool) return;
+    try {
+      const result = await pgPool.query(
+        `SELECT 1 FROM room_track_requests
+         WHERE id = $1 AND room_id = $2 AND requested_by = $3 AND status = 'pending'
+         LIMIT 1`,
+        [request.id, roomId, user.id]
+      );
+      if (result.rows.length === 0) {
+        socket.emit("error", { message: "Invalid music request" });
+        return;
+      }
+      io.to(roomId).emit("room:music-request:new", { request });
+    } catch (err) {
+      console.error("music:request-created error", err);
+      socket.emit("error", { message: "Failed to notify room owner" });
+    }
+  });
+
+  socket.on("music:reviewed", async ({ roomId, requestId, userId, status }) => {
+    try {
+      const owner = await isRoomOwner(roomId, user.id);
+      if (!owner) {
+        socket.emit("error", { message: "Only the room owner can review music requests" });
+        return;
+      }
+      io.to(userChannel(userId)).emit("room:music-request:reviewed", {
+        roomId,
+        requestId,
+        status,
+      });
+      io.to(roomId).emit("room:music-request:removed", { requestId });
+    } catch (err) {
+      console.error("music:reviewed error", err);
+      socket.emit("error", { message: "Failed to broadcast music review" });
+    }
+  });
+
+  socket.on("rooms:presence:subscribe", async ({ roomIds }) => {
+    const uniqueIds = [...new Set(roomIds.filter(Boolean))];
+    if (uniqueIds.length === 0) return;
+
+    for (const roomId of uniqueIds) {
+      await socket.join(presenceWatchRoom(roomId));
+    }
+
+    const counts: Record<string, number> = {};
+    await Promise.all(
+      uniqueIds.map(async (roomId) => {
+        counts[roomId] = await getActiveParticipantCount(roomId);
+      })
+    );
+    socket.emit("rooms:presence-snapshot", { counts });
+  });
+
+  socket.on("rooms:presence:unsubscribe", async ({ roomIds }) => {
+    for (const roomId of roomIds) {
+      await socket.leave(presenceWatchRoom(roomId));
+    }
+  });
 
   socket.on("room:join", async ({ roomId, token: _token }) => {
     try {
@@ -613,6 +753,15 @@ io.on("connection", (socket) => {
       return;
     }
     io.to(roomId).emit("room:wallpaperOverlay", { roomId, overlayOpacity });
+  });
+
+  socket.on("room:visibility:set", async ({ roomId, isPublic, inviteToken }) => {
+    const owner = await isRoomOwner(roomId, user.id);
+    if (!owner) {
+      socket.emit("error", { message: "Only the room owner can change visibility" });
+      return;
+    }
+    io.to(roomId).emit("room:visibility", { roomId, isPublic, inviteToken });
   });
 
   socket.on("room:music:sync", async ({ roomId, state }) => {

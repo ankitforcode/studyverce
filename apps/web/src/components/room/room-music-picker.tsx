@@ -14,13 +14,12 @@ import {
   Globe,
   Lock,
   X,
-  Check,
   Trash2,
   Clock,
   User,
   Pencil,
 } from "lucide-react";
-import type { RoomTrack, RoomTrackRequest } from "@studyverce/shared";
+import type { RoomTrack } from "@studyverce/shared";
 import { TRACK_CATEGORIES, PROVIDER_LINK_EXAMPLES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -29,6 +28,7 @@ import { getRoomPortalTarget, lockRoomScroll } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import { PROVIDER_LABELS } from "@/lib/music/providers";
 import { usePathname } from "next/navigation";
+import type { AppSocket } from "@/hooks/use-socket";
 import { RoomMusicStreaming } from "@/components/room/room-music-streaming";
 import {
   getTrackLibrary,
@@ -36,9 +36,6 @@ import {
   addProviderTrackLink,
   setRoomTrack,
   requestRoomTrack,
-  getPendingTrackRequests,
-  approveTrackRequest,
-  rejectTrackRequest,
   toggleTrackPublic,
   deleteRoomTrack,
   updateRoomTrack,
@@ -52,10 +49,11 @@ interface RoomMusicPickerProps {
   onApply: (track: RoomTrack | null, isPlaying: boolean) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  socket: AppSocket | null;
   portalContainerRef?: RefObject<HTMLElement | null>;
 }
 
-type Tab = "library" | "community" | "mine" | "streaming" | "add-link" | "requests";
+type Tab = "library" | "community" | "mine" | "streaming" | "add-link";
 
 export function RoomMusicPicker({
   roomId,
@@ -64,13 +62,13 @@ export function RoomMusicPicker({
   onApply,
   open,
   onOpenChange,
+  socket,
   portalContainerRef,
 }: RoomMusicPickerProps) {
   const [tab, setTab] = useState<Tab>("library");
   const [category, setCategory] = useState("all");
   const [library, setLibrary] = useState<RoomTrack[]>([]);
   const [mine, setMine] = useState<RoomTrack[]>([]);
-  const [requests, setRequests] = useState<RoomTrackRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -90,18 +88,13 @@ export function RoomMusicPicker({
   const loadTracks = useCallback(async () => {
     setLoading(true);
     try {
-      const [lib, my, pendingRequests] = await Promise.all([
-        getTrackLibrary(category),
-        getMyTracks(),
-        isOwner ? getPendingTrackRequests(roomId) : Promise.resolve([]),
-      ]);
+      const [lib, my] = await Promise.all([getTrackLibrary(category), getMyTracks()]);
       setLibrary(lib);
       setMine(my);
-      setRequests(pendingRequests);
     } finally {
       setLoading(false);
     }
-  }, [category, isOwner, roomId]);
+  }, [category]);
 
   useEffect(() => {
     if (open) loadTracks();
@@ -134,28 +127,12 @@ export function RoomMusicPicker({
         return;
       }
       setActionError("Request sent! Waiting for the room owner to approve.");
-      await loadTracks();
-    });
-  }
-
-  async function handleApprove(requestId: string) {
-    setActionError(null);
-    startTransition(async () => {
-      const result = await approveTrackRequest(requestId);
-      if (result.error) {
-        setActionError(result.error);
-        return;
+      if (result.request) {
+        socket?.emit("music:request-created", {
+          roomId,
+          request: result.request,
+        });
       }
-      onApply(result.track ?? null, true);
-      await loadTracks();
-      onOpenChange(false);
-    });
-  }
-
-  async function handleReject(requestId: string) {
-    startTransition(async () => {
-      await rejectTrackRequest(requestId);
-      await loadTracks();
     });
   }
 
@@ -188,8 +165,13 @@ export function RoomMusicPicker({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={() => onOpenChange(false)} />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Close dialog"
+        onClick={() => onOpenChange(false)}
+      />
       <div
         role="dialog"
         aria-modal="true"
@@ -224,7 +206,6 @@ export function RoomMusicPicker({
               ["mine", "My Links"],
               ["streaming", "Streaming"],
               ["add-link", "Paste link"],
-              ...(isOwner ? ([["requests", `Requests (${requests.length})`]] as const) : []),
             ] as const
           ).map(([id, label]) => (
             <button
@@ -400,51 +381,6 @@ export function RoomMusicPicker({
             </form>
           )}
 
-          {tab === "requests" && isOwner && (
-            <div className="space-y-3">
-              {loading ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>
-              ) : requests.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No pending music requests
-                </p>
-              ) : (
-                requests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium">{req.track?.name ?? "Unknown track"}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {req.track?.artist && `${req.track.artist} · `}
-                        Requested by {req.requesterName ?? "member"}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="gap-1"
-                        disabled={pending}
-                        onClick={() => handleApprove(req.id)}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={pending}
-                        onClick={() => handleReject(req.id)}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex justify-between border-t border-border px-6 py-3">

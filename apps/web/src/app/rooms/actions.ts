@@ -147,26 +147,7 @@ export async function joinRoom(roomId: string) {
   return { success: true };
 }
 
+/** @deprecated Use /rooms/[slug]/invite?token=… and requestRoomAccess instead. */
 export async function joinRoomByInvite(slug: string, token: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(`/auth/login?redirect=/rooms/${slug}`);
-  }
-
-  const { data: room } = await supabase
-    .from("study_rooms")
-    .select("id, invite_token")
-    .eq("slug", slug)
-    .single();
-
-  if (!room || room.invite_token !== token) {
-    return { error: "Invalid invite link" };
-  }
-
-  await joinRoom(room.id);
-  redirect(`/rooms/${slug}`);
+  redirect(`/rooms/${slug}/invite?token=${encodeURIComponent(token)}`);
 }

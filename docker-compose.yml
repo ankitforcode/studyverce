@@ -36,8 +36,6 @@ services:
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
       NGROK_DOMAIN: ${NGROK_DOMAIN:-}
-    ports:
-      - "4040:4040"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

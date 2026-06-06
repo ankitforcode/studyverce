@@ -85,7 +85,7 @@ export function RoomTaskPrompt({
   if (!mounted || !open || hasRoomTasks) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div
         className="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl"
         role="dialog"

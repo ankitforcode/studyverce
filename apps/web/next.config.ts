@@ -1,4 +1,8 @@
+import path from "node:path";
 import type { NextConfig } from "next";
+
+/** Turbopack resolves packages from the pnpm workspace root (lockfile location). */
+const monorepoRoot = path.resolve(import.meta.dirname, "../..");
 
 /** Hostnames allowed to load Next.js dev assets (HMR) when tunneled via ngrok. */
 function getAllowedDevOrigins(): string[] {
@@ -29,6 +33,9 @@ const socketUpstream =
   "http://127.0.0.1:3002";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: monorepoRoot,
+  },
   serverExternalPackages: ["ioredis", "@studyverce/rate-limit"],
   allowedDevOrigins: getAllowedDevOrigins(),
   async rewrites() {
@@ -36,6 +43,10 @@ const nextConfig: NextConfig = {
       {
         source: "/socket.io/:path*",
         destination: `${socketUpstream}/socket.io/:path*`,
+      },
+      {
+        source: "/presence",
+        destination: `${socketUpstream}/presence`,
       },
     ];
   },

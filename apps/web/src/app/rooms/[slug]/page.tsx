@@ -1,6 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { joinRoom } from "@/app/rooms/actions";
+import { getRoomAccessStateForUser } from "@/app/rooms/access-actions";
+import { isRoomFavorited } from "@/app/rooms/favorite-actions";
+import { RoomAccessPending } from "@/components/room/room-access-pending";
 import { getRoomWallpaper } from "@/app/rooms/wallpaper-actions";
 import { getRoomTrack } from "@/app/rooms/music-actions";
 import { getPostItForRoom, hasPostItForRoom } from "@/app/dashboard/task-actions";
@@ -27,40 +30,49 @@ export default async function RoomPage({
     redirect(`/auth/login?redirect=/rooms/${slug}`);
   }
 
+  const accessState = await getRoomAccessStateForUser(slug);
+  if (!accessState) {
+    notFound();
+  }
+
+  if (!accessState.isPublic && !accessState.hasMembership) {
+    if (accessState.accessStatus === "pending") {
+      return <RoomAccessPending roomName={accessState.roomName} />;
+    }
+    notFound();
+  }
+
   const { data: room } = await supabase
     .from("study_rooms")
     .select("*")
-    .eq("slug", slug)
+    .eq("id", accessState.roomId)
     .single();
 
   if (!room) {
     notFound();
   }
 
-  if (!room.is_public) {
-    const { data: member } = await supabase
-      .from("room_members")
-      .select("role")
-      .eq("room_id", room.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!member && room.owner_id !== user.id) {
-      notFound();
-    }
-  }
-
-  await joinRoom(room.id);
+  const isOwner = room.owner_id === user.id;
 
   const { data: membership } = await supabase
     .from("room_members")
     .select("role")
     .eq("room_id", room.id)
     .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membership && !isOwner) {
+    await joinRoom(room.id);
+  }
+
+  const { data: membershipAfterJoin } = await supabase
+    .from("room_members")
+    .select("role")
+    .eq("room_id", room.id)
+    .eq("user_id", user.id)
     .single();
 
-  const isOwner = room.owner_id === user.id;
-  const isModerator = membership?.role === "moderator" || isOwner;
+  const isModerator = membershipAfterJoin?.role === "moderator" || isOwner;
 
   const wallpaper = await getRoomWallpaper(room.wallpaper_id);
   const track = await getRoomTrack(room.track_id);
@@ -72,15 +84,18 @@ export default async function RoomPage({
     room.settings as Partial<StudyRoomSettings> | undefined
   );
   const initialWallpaperOverlay = resolveWallpaperOverlay(roomSettings);
+  const initialFavorited = await isRoomFavorited(room.id);
 
   return (
     <RoomClient
-        roomId={room.id}
-        roomName={room.name}
-        isPublic={room.is_public}
-        currentUserId={user.id}
-        isOwner={isOwner}
-        isModerator={isModerator}
+      roomId={room.id}
+      roomSlug={room.slug}
+      roomName={room.name}
+      isPublic={room.is_public}
+      inviteToken={room.invite_token}
+      currentUserId={user.id}
+      isOwner={isOwner}
+      isModerator={isModerator}
       initialWallpaperId={room.wallpaper_id}
       initialBackgroundUrl={wallpaper?.imageUrl ?? null}
       initialWallpaperOverlay={initialWallpaperOverlay}
@@ -92,6 +107,7 @@ export default async function RoomPage({
       pomodoroBreakMinutes={roomSettings.pomodoroDefaults.breakMinutes}
       pomodoroBreaksEnabled={roomSettings.breaksEnabled}
       initialSidebarPanelOrder={sidebarPanelOrder}
+      initialFavorited={initialFavorited}
     />
   );
 }

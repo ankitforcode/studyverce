@@ -8,6 +8,7 @@ import { WALLPAPER_CATEGORIES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import {
   getRoomPortalTarget,
   lockRoomScroll,
@@ -128,45 +129,46 @@ export function RoomBackgroundPicker({
 
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label="Change room background"
-        onClick={() => setOpen(true)}
-        className={cn(
-          ROOM_HEADER_CONTROL,
-          "h-8 gap-2 px-2.5 hover:border-border/60 hover:bg-card/35"
-        )}
-      >
-        {backgroundUrl ? (
-          <span
-            className="relative h-5 w-5 shrink-0 overflow-hidden rounded-md border border-border/50 ring-1 ring-black/10"
-            aria-hidden
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={backgroundUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </span>
-        ) : (
-          <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/30"
-            aria-hidden
-          >
-            <ImageIcon className="h-3 w-3 text-muted-foreground" />
-          </span>
-        )}
-        <span className="hidden font-medium sm:inline">Background</span>
-      </Button>
+      <PostItIconTooltip label="Background" side="bottom">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label="Change room background"
+          onClick={() => setOpen(true)}
+          className={cn(
+            ROOM_HEADER_CONTROL,
+            "h-8 w-8 p-0 hover:border-border/60 hover:bg-card/35"
+          )}
+        >
+          {backgroundUrl ? (
+            <span
+              className="relative h-5 w-5 shrink-0 overflow-hidden rounded-md border border-border/50 ring-1 ring-black/10"
+              aria-hidden
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={backgroundUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </span>
+          ) : (
+            <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+        </Button>
+      </PostItIconTooltip>
 
       {open &&
         mounted &&
         createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default"
+              aria-label="Close dialog"
+              onClick={() => setOpen(false)}
+            />
             <div
               role="dialog"
               aria-modal="true"

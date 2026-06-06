@@ -1,13 +1,21 @@
 import type { RefObject } from "react";
 
-/** Portal modals into the room root so they work in fullscreen */
+/** Portal modals to body (avoids room shell clipping). Use room root only in fullscreen. */
 export function getRoomPortalTarget(
   containerRef?: RefObject<HTMLElement | null>
 ): HTMLElement {
   if (typeof document === "undefined") {
     return null as unknown as HTMLElement;
   }
-  return containerRef?.current ?? document.body;
+
+  const container = containerRef?.current;
+  const fullscreen = document.fullscreenElement;
+
+  if (container && fullscreen === container) {
+    return container;
+  }
+
+  return document.body;
 }
 
 export function lockRoomScroll(

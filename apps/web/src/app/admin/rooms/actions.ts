@@ -1,8 +1,9 @@
 "use server";
 
+import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { requireAdminSession } from "@/lib/admin/auth";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -28,11 +29,11 @@ export async function updateAdminRoom(
     return { error: "Max participants must be between 2 and 500." };
   }
 
-  const service = createServiceClient();
+  const supabase = await createClient();
 
-  const { data: existing } = await service
+  const { data: existing } = await supabase
     .from("study_rooms")
-    .select("slug")
+    .select("slug, invite_token")
     .eq("slug", slug)
     .neq("id", roomId)
     .maybeSingle();
@@ -41,7 +42,17 @@ export async function updateAdminRoom(
     return { error: "That slug is already in use." };
   }
 
-  const { error } = await service
+  const { data: currentRoom } = await supabase
+    .from("study_rooms")
+    .select("invite_token")
+    .eq("id", roomId)
+    .single();
+
+  const inviteToken = isPublic
+    ? null
+    : (currentRoom?.invite_token ?? crypto.randomBytes(16).toString("hex"));
+
+  const { error } = await supabase
     .from("study_rooms")
     .update({
       name,
@@ -49,6 +60,7 @@ export async function updateAdminRoom(
       description: description || null,
       is_public: isPublic,
       max_participants: maxParticipants,
+      invite_token: inviteToken,
     })
     .eq("id", roomId);
 
@@ -71,8 +83,8 @@ export async function deleteAdminRoom(
   const roomId = String(formData.get("roomId") ?? "");
   if (!roomId) return { error: "Missing room id." };
 
-  const service = createServiceClient();
-  const { error } = await service.from("study_rooms").delete().eq("id", roomId);
+  const supabase = await createClient();
+  const { error } = await supabase.from("study_rooms").delete().eq("id", roomId);
 
   if (error) {
     return { error: error.message };

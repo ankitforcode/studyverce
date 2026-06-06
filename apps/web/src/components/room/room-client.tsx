@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getRoomVisibility } from "@/app/rooms/access-actions";
 import { useRoomAppearance } from "@/hooks/use-room-appearance";
 import { useRoomFullscreen } from "@/hooks/use-room-fullscreen";
 import { useLocalPomodoro } from "@/hooks/use-local-pomodoro";
@@ -20,6 +21,11 @@ import { RoomTaskPrompt } from "@/components/room/room-task-prompt";
 import { RoomStudyAssistant } from "@/components/room/room-study-assistant";
 import { RoomTodoPanel } from "@/components/room/room-todo-panel";
 import { RoomVideoHint } from "@/components/room/room-video";
+import { RoomFavoriteButton } from "@/components/room/room-favorite-button";
+import { RoomShareLink } from "@/components/room/room-share-link";
+import { RoomVisibilityToggle } from "@/components/room/room-visibility-toggle";
+import { RoomAccessBanner } from "@/components/room/room-access-banner";
+import { RoomMusicRequestsBanner } from "@/components/room/room-music-requests-banner";
 import { Badge } from "@/components/ui/badge";
 import { Wifi, WifiOff } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
@@ -36,8 +42,10 @@ import { roomTrackToMusicState } from "@studyverce/shared";
 
 interface RoomClientProps {
   roomId: string;
+  roomSlug: string;
   roomName: string;
   isPublic: boolean;
+  inviteToken: string | null;
   currentUserId: string;
   isOwner: boolean;
   isModerator: boolean;
@@ -52,12 +60,15 @@ interface RoomClientProps {
   pomodoroBreakMinutes?: number;
   pomodoroBreaksEnabled?: boolean;
   initialSidebarPanelOrder: RoomSidebarPanelId[];
+  initialFavorited?: boolean;
 }
 
 export function RoomClient({
   roomId,
+  roomSlug,
   roomName,
   isPublic,
+  inviteToken,
   currentUserId,
   isOwner,
   isModerator,
@@ -72,9 +83,23 @@ export function RoomClient({
   pomodoroBreakMinutes,
   pomodoroBreaksEnabled = true,
   initialSidebarPanelOrder,
+  initialFavorited = false,
 }: RoomClientProps) {
-  const [wallpaperId, setWallpaperId] = useState(initialWallpaperId);
-  const [backgroundUrl, setBackgroundUrl] = useState(initialBackgroundUrl);
+  const [roomIsPublic, setRoomIsPublic] = useState(isPublic);
+  const [roomInviteToken, setRoomInviteToken] = useState(inviteToken);
+
+  useEffect(() => {
+    setRoomIsPublic(isPublic);
+    setRoomInviteToken(inviteToken);
+  }, [isPublic, inviteToken]);
+
+  useEffect(() => {
+    void getRoomVisibility(roomId).then((result) => {
+      if (result.error || result.isPublic === undefined) return;
+      setRoomIsPublic(result.isPublic);
+      setRoomInviteToken(result.inviteToken ?? null);
+    });
+  }, [roomId]);
   const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
   const [roomTasks, setRoomTasks] = useState<UserPostItTask[]>([]);
@@ -101,6 +126,7 @@ export function RoomClient({
   });
 
   const {
+    socket,
     connected,
     connectionError,
     participants,
@@ -108,15 +134,22 @@ export function RoomClient({
     music,
     sendMessage,
     deleteMessage,
+    wallpaperId,
+    backgroundUrl,
     wallpaperOverlayOpacity,
     broadcastWallpaper,
     broadcastWallpaperOverlay,
     broadcastMusic,
-  } = useRoomSocket(roomId, initialMessages, initialMusic, initialWallpaperOverlay);
+  } = useRoomSocket(
+    roomId,
+    initialMessages,
+    initialMusic,
+    initialWallpaperOverlay,
+    initialWallpaperId,
+    initialBackgroundUrl
+  );
 
   function handleBackgroundApply(id: string | null, url: string | null) {
-    setWallpaperId(id);
-    setBackgroundUrl(url);
     broadcastWallpaper(id, url);
     trackEvent("room_background_changed", { room_id: roomId, wallpaper_id: id });
   }
@@ -144,11 +177,36 @@ export function RoomClient({
     });
   }
 
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    const onVisibility = ({
+      roomId: payloadRoomId,
+      isPublic: nextPublic,
+      inviteToken: nextToken,
+    }: {
+      roomId: string;
+      isPublic: boolean;
+      inviteToken: string | null;
+    }) => {
+      if (payloadRoomId !== roomId) return;
+      setRoomIsPublic(nextPublic);
+      setRoomInviteToken(nextToken);
+    };
+
+    socket.on("room:visibility", onVisibility);
+    return () => {
+      socket.off("room:visibility", onVisibility);
+    };
+  }, [socket, connected, roomId]);
+
+  const canShareRoom = isOwner || roomIsPublic;
+
   return (
     <div
       ref={roomRootRef}
       className={cn(
-        "relative isolate flex flex-col overflow-hidden",
+        "relative isolate flex min-h-0 flex-col",
         isFullscreen ? "h-dvh w-full" : "h-[calc(100dvh-4rem)]"
       )}
     >
@@ -187,8 +245,8 @@ export function RoomClient({
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold sm:text-xl">{roomName}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <Badge variant={isPublic ? "default" : "secondary"} className="text-xs">
-                {isPublic ? "Public" : "Private"}
+              <Badge variant={roomIsPublic ? "default" : "secondary"} className="text-xs">
+                {roomIsPublic ? "Public" : "Private"}
               </Badge>
               <span
                 className={cn(
@@ -248,6 +306,39 @@ export function RoomClient({
               isFullscreen={isFullscreen}
               onToggle={toggleFullscreen}
             />
+            {isOwner && (
+              <RoomVisibilityToggle
+                roomId={roomId}
+                isPublic={roomIsPublic}
+                socket={socket}
+                onVisibilityChange={(nextPublic, nextToken) => {
+                  setRoomIsPublic(nextPublic);
+                  setRoomInviteToken(nextToken);
+                }}
+              />
+            )}
+            <RoomFavoriteButton roomId={roomId} initialFavorited={initialFavorited} />
+            {canShareRoom && (
+              <RoomShareLink
+                roomId={roomId}
+                slug={roomSlug}
+                isPublic={roomIsPublic}
+                inviteToken={roomInviteToken}
+              />
+            )}
+            <RoomAccessBanner
+              roomId={roomId}
+              isOwner={isOwner}
+              socket={socket}
+              connected={connected}
+            />
+            <RoomMusicRequestsBanner
+              roomId={roomId}
+              isOwner={isOwner}
+              socket={socket}
+              connected={connected}
+              onApproved={(track) => handleMusicApply(track, true)}
+            />
           </div>
         </div>
 
@@ -275,10 +366,11 @@ export function RoomClient({
         onApply={handleMusicApply}
         open={musicPickerOpen}
         onOpenChange={setMusicPickerOpen}
+        socket={socket}
         portalContainerRef={roomRootRef}
       />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <section className="relative flex min-h-0 min-w-0 flex-1 overflow-visible">
           <RoomPostItStack
             roomId={roomId}

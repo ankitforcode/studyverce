@@ -1,4 +1,5 @@
 import type { PlanTier } from "@studyverce/shared";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export type AdminUserRecord = {
@@ -14,10 +15,42 @@ export type AdminUserRecord = {
   createdAt: string;
 };
 
-export async function listAdminUsers(): Promise<AdminUserRecord[]> {
-  const service = createServiceClient();
+async function loadAuthEmails(): Promise<Map<string, string>> {
+  const emailById = new Map<string, string>();
 
-  const { data: profiles, error: profilesError } = await service
+  try {
+    const service = createServiceClient();
+    let page = 1;
+    const perPage = 200;
+
+    while (true) {
+      const { data, error } = await service.auth.admin.listUsers({ page, perPage });
+      if (error) {
+        console.error("listAdminUsers auth:", error.message);
+        break;
+      }
+
+      for (const authUser of data.users) {
+        if (authUser.email) {
+          emailById.set(authUser.id, authUser.email);
+        }
+      }
+
+      if (data.users.length < perPage) break;
+      page += 1;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error("listAdminUsers auth emails skipped:", message);
+  }
+
+  return emailById;
+}
+
+export async function listAdminUsers(): Promise<AdminUserRecord[]> {
+  const supabase = await createClient();
+
+  const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select(
       "id, username, display_name, plan_tier, is_admin, onboarding_completed, study_streak, total_focus_minutes, created_at"
@@ -29,26 +62,7 @@ export async function listAdminUsers(): Promise<AdminUserRecord[]> {
     return [];
   }
 
-  const emailById = new Map<string, string>();
-  let page = 1;
-  const perPage = 200;
-
-  while (true) {
-    const { data, error } = await service.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      console.error("listAdminUsers auth:", error.message);
-      break;
-    }
-
-    for (const authUser of data.users) {
-      if (authUser.email) {
-        emailById.set(authUser.id, authUser.email);
-      }
-    }
-
-    if (data.users.length < perPage) break;
-    page += 1;
-  }
+  const emailById = await loadAuthEmails();
 
   return (profiles ?? []).map((row) => ({
     id: row.id,

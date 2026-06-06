@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 
 export type AdminRoomRecord = {
   id: string;
@@ -17,9 +17,9 @@ export type AdminRoomRecord = {
 };
 
 export async function listAdminRooms(): Promise<AdminRoomRecord[]> {
-  const service = createServiceClient();
+  const supabase = await createClient();
 
-  const { data: rooms, error } = await service
+  const { data: rooms, error } = await supabase
     .from("study_rooms")
     .select(
       "id, slug, name, description, is_public, max_participants, created_at, owner_id"
@@ -37,11 +37,11 @@ export async function listAdminRooms(): Promise<AdminRoomRecord[]> {
   const roomIds = rooms.map((r) => r.id);
 
   const [{ data: profiles }, { data: members }] = await Promise.all([
-    service
+    supabase
       .from("profiles")
       .select("id, username, display_name")
       .in("id", ownerIds),
-    service.from("room_members").select("room_id").in("room_id", roomIds),
+    supabase.from("room_members").select("room_id").in("room_id", roomIds),
   ]);
 
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);

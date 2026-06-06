@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState, useActionState } from "react";
+import { useEffect, useMemo, useState, useActionState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Search, Shield } from "lucide-react";
+import { Pencil, Search, Shield, Trash2 } from "lucide-react";
 import type { AdminUserRecord } from "@/lib/admin/users";
-import { updateAdminUser } from "@/app/admin/users/actions";
+import { deleteAdminUser, updateAdminUser } from "@/app/admin/users/actions";
+import { AdminUserEditModal } from "@/components/admin/admin-user-edit-modal";
 import { Avatar, Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatFocusTime } from "@/lib/utils";
 
@@ -17,135 +18,28 @@ interface AdminUsersTableProps {
   currentUserId: string;
 }
 
-function AdminUserRow({
-  user,
-  currentUserId,
-}: {
-  user: AdminUserRecord;
-  currentUserId: string;
-}) {
-  const [state, formAction, pending] = useActionState(updateAdminUser, {
-    error: null as string | null,
-  });
-  const isSelf = user.id === currentUserId;
-
-  return (
-    <tr className="border-b border-border/60 align-top last:border-0">
-      <td className="px-3 py-4">
-        <div className="flex items-center gap-3 min-w-[200px]">
-          <Avatar src={null} fallback={user.displayName} size="sm" />
-          <div className="min-w-0">
-            <Link
-              href={`/profile/${user.username}`}
-              className="font-medium text-foreground hover:text-primary"
-            >
-              {user.displayName}
-            </Link>
-            <p className="truncate text-xs text-muted-foreground">
-              @{user.username}
-            </p>
-            {user.email && (
-              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-            )}
-          </div>
-        </div>
-      </td>
-      <td className="px-3 py-4 text-sm text-muted-foreground whitespace-nowrap">
-        {format(new Date(user.createdAt), "MMM d, yyyy")}
-      </td>
-      <td className="px-3 py-4 text-sm whitespace-nowrap">
-        {formatFocusTime(user.totalFocusMinutes)}
-        <span className="text-muted-foreground"> · {user.studyStreak}d streak</span>
-      </td>
-      <td className="px-3 py-4">
-        <form action={formAction} className="space-y-3 min-w-[220px]">
-          <input type="hidden" name="userId" value={user.id} />
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor={`username-${user.id}`} className="text-xs">
-                Username
-              </Label>
-              <Input
-                id={`username-${user.id}`}
-                name="username"
-                defaultValue={user.username}
-                className="h-8 text-sm"
-                required
-                minLength={3}
-                maxLength={30}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`display-${user.id}`} className="text-xs">
-                Display name
-              </Label>
-              <Input
-                id={`display-${user.id}`}
-                name="display_name"
-                defaultValue={user.displayName}
-                className="h-8 text-sm"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor={`plan-${user.id}`} className="text-xs">
-              Plan
-            </Label>
-            <select
-              id={`plan-${user.id}`}
-              name="plan_tier"
-              defaultValue={user.planTier}
-              className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm"
-            >
-              <option value="free">Free</option>
-              <option value="premium">Premium</option>
-              <option value="institution">Institution</option>
-            </select>
-          </div>
-
-          <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="is_admin"
-                defaultChecked={user.isAdmin}
-                disabled={isSelf}
-                className="rounded"
-              />
-              <span>Admin</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="onboarding_completed"
-                defaultChecked={user.onboardingCompleted}
-                className="rounded"
-              />
-              <span>Onboarded</span>
-            </label>
-          </div>
-
-          {state.error && (
-            <p className="text-xs text-destructive">{state.error}</p>
-          )}
-          {state.success && !state.error && (
-            <p className="text-xs text-primary">Saved</p>
-          )}
-
-          <Button type="submit" size="sm" disabled={pending} className="w-full sm:w-auto">
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </form>
-      </td>
-    </tr>
-  );
+function planLabel(tier: AdminUserRecord["planTier"]) {
+  if (tier === "premium") return "Premium";
+  if (tier === "institution") return "Institution";
+  return "Free";
 }
 
 export function AdminUsersTable({ users, currentUserId }: AdminUsersTableProps) {
   const [query, setQuery] = useState("");
+  const [editingUser, setEditingUser] = useState<AdminUserRecord | null>(null);
+
+  const [updateState, updateAction, updatePending] = useActionState(updateAdminUser, {
+    error: null as string | null,
+  });
+  const [deleteState, deleteAction, deletePending] = useActionState(deleteAdminUser, {
+    error: null as string | null,
+  });
+
+  useEffect(() => {
+    if (updateState.success) {
+      setEditingUser(null);
+    }
+  }, [updateState.success]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -158,62 +52,160 @@ export function AdminUsersTable({ users, currentUserId }: AdminUsersTableProps) 
     );
   }, [users, query]);
 
+  function handleDelete(user: AdminUserRecord) {
+    if (
+      !confirm(
+        `Delete ${user.displayName} (@${user.username})? This permanently removes their account and all associated data.`
+      )
+    ) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("userId", user.id);
+    deleteAction(formData);
+  }
+
   return (
-    <Card>
-      <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            All users
-          </CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {users.length} registered · changes apply immediately
-          </p>
-        </div>
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users…"
-            className="pl-9"
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="px-0 pb-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 font-medium">User</th>
-                <th className="px-3 py-2 font-medium">Joined</th>
-                <th className="px-3 py-2 font-medium">Activity</th>
-                <th className="px-3 py-2 font-medium">Manage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length > 0 ? (
-                filtered.map((user) => (
-                  <AdminUserRow
-                    key={user.id}
-                    user={user}
-                    currentUserId={currentUserId}
-                  />
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-3 py-10 text-center text-muted-foreground"
-                  >
-                    No users match your search.
-                  </td>
+    <>
+      <Card>
+        <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              All users
+            </CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {users.length} registered · changes apply immediately
+            </p>
+          </div>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search users…"
+              className="pl-9"
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          {deleteState.error && (
+            <p className="px-4 pb-3 text-sm text-destructive">{deleteState.error}</p>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">User</th>
+                  <th className="px-3 py-2 font-medium">Plan</th>
+                  <th className="px-3 py-2 font-medium">Joined</th>
+                  <th className="px-3 py-2 font-medium">Activity</th>
+                  <th className="px-3 py-2 font-medium text-right">Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+              </thead>
+              <tbody>
+                {filtered.length > 0 ? (
+                  filtered.map((user) => {
+                    const isSelf = user.id === currentUserId;
+
+                    return (
+                      <tr
+                        key={user.id}
+                        className="border-b border-border/60 align-middle last:border-0"
+                      >
+                        <td className="px-3 py-3">
+                          <div className="flex min-w-[200px] items-center gap-3">
+                            <Avatar src={null} fallback={user.displayName} size="sm" />
+                            <div className="min-w-0">
+                              <Link
+                                href={`/profile/${user.username}`}
+                                className="font-medium text-foreground hover:text-primary"
+                              >
+                                {user.displayName}
+                              </Link>
+                              <p className="truncate text-xs text-muted-foreground">
+                                @{user.username}
+                              </p>
+                              {user.email && (
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {user.email}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="secondary">{planLabel(user.planTier)}</Badge>
+                            {user.isAdmin && <Badge>Admin</Badge>}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-sm text-muted-foreground">
+                          {format(new Date(user.createdAt), "MMM d, yyyy")}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-sm">
+                          {formatFocusTime(user.totalFocusMinutes)}
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {user.studyStreak}d streak
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingUser(user)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              disabled={deletePending || isSelf}
+                              onClick={() => handleDelete(user)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-3 py-10 text-center text-muted-foreground"
+                    >
+                      {users.length === 0
+                        ? "No registered users yet."
+                        : "No users match your search."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <AdminUserEditModal
+        key={editingUser?.id ?? "closed"}
+        user={editingUser}
+        open={editingUser !== null}
+        onClose={() => setEditingUser(null)}
+        formAction={updateAction}
+        pending={updatePending}
+        error={updateState.error}
+        currentUserId={currentUserId}
+      />
+    </>
   );
 }

@@ -175,6 +175,33 @@ export interface RoomTrackRequest {
   createdAt: string;
   track?: RoomTrack;
   requesterName?: string;
+  requesterUsername?: string;
+}
+
+export type RoomAccessRequestStatus = "pending" | "approved" | "rejected";
+
+export interface RoomSharePreview {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  maxParticipants: number;
+  memberCount: number;
+  ownerDisplayName: string;
+  ownerId: string;
+}
+
+export interface RoomAccessRequest {
+  id: string;
+  roomId: string;
+  userId: string;
+  status: RoomAccessRequestStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  requesterName?: string;
+  requesterUsername?: string;
 }
 
 export interface RoomMusicState {
@@ -272,6 +299,11 @@ export interface RoomPresenceState {
   participants: RoomParticipant[];
 }
 
+export interface RoomPresenceCount {
+  roomId: string;
+  activeCount: number;
+}
+
 // Socket.IO event payloads
 export interface ClientToServerEvents {
   "room:join": (payload: { roomId: string; token: string }) => void;
@@ -298,10 +330,39 @@ export interface ClientToServerEvents {
     subjects?: string[];
   }) => void;
   "session:end": (payload: { sessionId: string }) => void;
+  "access:request-created": (payload: {
+    roomId: string;
+    request: RoomAccessRequest;
+  }) => void;
+  "access:reviewed": (payload: {
+    roomId: string;
+    requestId: string;
+    userId: string;
+    status: RoomAccessRequestStatus;
+  }) => void;
+  "music:request-created": (payload: {
+    roomId: string;
+    request: RoomTrackRequest;
+  }) => void;
+  "music:reviewed": (payload: {
+    roomId: string;
+    requestId: string;
+    userId: string;
+    status: TrackRequestStatus;
+  }) => void;
+  "room:visibility:set": (payload: {
+    roomId: string;
+    isPublic: boolean;
+    inviteToken: string | null;
+  }) => void;
+  "rooms:presence:subscribe": (payload: { roomIds: string[] }) => void;
+  "rooms:presence:unsubscribe": (payload: { roomIds: string[] }) => void;
 }
 
 export interface ServerToClientEvents {
   "room:presence": (payload: RoomPresenceState) => void;
+  "rooms:presence-count": (payload: RoomPresenceCount) => void;
+  "rooms:presence-snapshot": (payload: { counts: Record<string, number> }) => void;
   "chat:message": (payload: ChatMessage) => void;
   "chat:history": (payload: { messages: ChatMessage[] }) => void;
   "chat:deleted": (payload: { messageId: string }) => void;
@@ -309,9 +370,28 @@ export interface ServerToClientEvents {
   "room:wallpaper": (payload: { roomId: string; wallpaperId: string | null; imageUrl: string | null }) => void;
   "room:wallpaperOverlay": (payload: { roomId: string; overlayOpacity: number }) => void;
   "room:music": (payload: { roomId: string; state: RoomMusicState }) => void;
+  "room:visibility": (payload: {
+    roomId: string;
+    isPublic: boolean;
+    inviteToken: string | null;
+  }) => void;
   "room:membership-revoked": (payload: {
     roomId: string;
     reason: "inactive";
+  }) => void;
+  "room:access-request:new": (payload: { request: RoomAccessRequest }) => void;
+  "room:access-request:removed": (payload: { requestId: string }) => void;
+  "room:access-request:reviewed": (payload: {
+    roomId: string;
+    requestId: string;
+    status: RoomAccessRequestStatus;
+  }) => void;
+  "room:music-request:new": (payload: { request: RoomTrackRequest }) => void;
+  "room:music-request:removed": (payload: { requestId: string }) => void;
+  "room:music-request:reviewed": (payload: {
+    roomId: string;
+    requestId: string;
+    status: TrackRequestStatus;
   }) => void;
   "session:started": (payload: { sessionId: string }) => void;
   "session:ended": (payload: { sessionId: string }) => void;

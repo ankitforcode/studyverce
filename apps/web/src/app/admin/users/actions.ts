@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { PlanTier } from "@studyverce/shared";
 import { requireAdminSession } from "@/lib/admin/auth";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 const PLAN_TIERS: PlanTier[] = ["free", "premium", "institution"];
@@ -30,10 +31,10 @@ export async function updateAdminUser(
     return { error: "You cannot remove your own admin access." };
   }
 
-  const service = createServiceClient();
+  const supabase = await createClient();
 
   if (!isAdmin) {
-    const { count, error: countError } = await service
+    const { count, error: countError } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
       .eq("is_admin", true);
@@ -42,7 +43,7 @@ export async function updateAdminUser(
       return { error: countError.message };
     }
 
-    const { data: target } = await service
+    const { data: target } = await supabase
       .from("profiles")
       .select("is_admin")
       .eq("id", userId)
@@ -53,7 +54,7 @@ export async function updateAdminUser(
     }
   }
 
-  const { error } = await service
+  const { error } = await supabase
     .from("profiles")
     .update({
       username,
@@ -69,6 +70,58 @@ export async function updateAdminUser(
       return { error: "That username is already taken." };
     }
     return { error: error.message };
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/leaderboard");
+  return { error: null, success: true };
+}
+
+export async function deleteAdminUser(
+  _prev: { error: string | null; success?: boolean },
+  formData: FormData
+): Promise<{ error: string | null; success?: boolean }> {
+  const admin = await requireAdminSession();
+  const userId = String(formData.get("userId") ?? "");
+
+  if (!userId) return { error: "Missing user id." };
+  if (userId === admin.userId) {
+    return { error: "You cannot delete your own account." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userId)
+    .single();
+
+  if (target?.is_admin) {
+    const { count, error: countError } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("is_admin", true);
+
+    if (countError) {
+      return { error: countError.message };
+    }
+
+    if ((count ?? 0) <= 1) {
+      return { error: "At least one admin account must remain." };
+    }
+  }
+
+  try {
+    const service = createServiceClient();
+    const { error } = await service.auth.admin.deleteUser(userId);
+
+    if (error) {
+      return { error: error.message };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete user.";
+    return { error: message };
   }
 
   revalidatePath("/admin/users");

@@ -228,6 +228,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_access_requests: {
+        Row: {
+          id: string;
+          room_id: string;
+          user_id: string;
+          status: "pending" | "approved" | "rejected";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          user_id: string;
+          status?: "pending" | "approved" | "rejected";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          user_id?: string;
+          status?: "pending" | "approved" | "rejected";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       room_track_requests: {
         Row: {
           id: string;
@@ -408,6 +438,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_favorite_rooms: {
+        Row: {
+          user_id: string;
+          room_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          room_id: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          room_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       user_post_it_tasks: {
         Row: {
           id: string;
@@ -470,6 +518,30 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_room_share_preview: {
+        Args: { p_slug: string; p_token?: string | null };
+        Returns: Json;
+      };
+      get_room_access_state_for_user: {
+        Args: { p_slug: string };
+        Returns: Json;
+      };
+      get_user_pending_access_rooms: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_user_private_rooms: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_user_friend_rooms: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      approve_room_access_request: {
+        Args: { p_request_id: string };
+        Returns: Json;
+      };
       leaderboard_weekly_focus: {
         Args: { p_limit?: number };
         Returns: { user_id: string; weekly_minutes: number }[];

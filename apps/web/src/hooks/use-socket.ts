@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getSocketIoClientUrl } from "@/lib/socket-client";
 import { sendRoomMessage, deleteRoomMessage } from "@/app/rooms/chat-actions";
 
-type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 function mergeMessages(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
   const byId = new Map(existing.map((m) => [m.id, m]));
@@ -138,7 +138,9 @@ export function useRoomSocket(
   roomId: string,
   initialMessages: ChatMessage[] = [],
   initialMusic?: RoomMusicState,
-  initialWallpaperOverlay = DEFAULT_WALLPAPER_OVERLAY
+  initialWallpaperOverlay = DEFAULT_WALLPAPER_OVERLAY,
+  initialWallpaperId: string | null = null,
+  initialBackgroundUrl: string | null = null
 ) {
   const router = useRouter();
   const routerRef = useRef(router);
@@ -149,8 +151,8 @@ export function useRoomSocket(
   }, [router]);
   const [participants, setParticipants] = useState<RoomPresenceState["participants"]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [wallpaperId, setWallpaperId] = useState<string | null>(null);
-  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+  const [wallpaperId, setWallpaperId] = useState<string | null>(initialWallpaperId);
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(initialBackgroundUrl);
   const [wallpaperOverlayOpacity, setWallpaperOverlayOpacity] = useState(
     initialWallpaperOverlay
   );
@@ -305,6 +307,8 @@ export function useRoomSocket(
 
   const broadcastWallpaper = useCallback(
     (id: string | null, imageUrl: string | null) => {
+      setWallpaperId(id);
+      setBackgroundUrl(imageUrl);
       socket?.emit("room:wallpaper:set", { roomId, wallpaperId: id, imageUrl });
     },
     [socket, roomId]
@@ -328,6 +332,7 @@ export function useRoomSocket(
   );
 
   return {
+    socket,
     connected,
     connectionError,
     participants,

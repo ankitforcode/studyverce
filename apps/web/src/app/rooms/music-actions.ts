@@ -324,7 +324,11 @@ export async function deleteRoomTrack(trackId: string): Promise<{ error: string 
 export async function requestRoomTrack(
   roomId: string,
   trackId: string
-): Promise<{ error: string | null; requestId?: string }> {
+): Promise<{
+  error: string | null;
+  success?: boolean;
+  request?: RoomTrackRequest;
+}> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -360,7 +364,7 @@ export async function requestRoomTrack(
     return { error: "This track is already pending approval." };
   }
 
-  const { data: request, error } = await supabase
+  const { data: inserted, error } = await supabase
     .from("room_track_requests")
     .insert({
       room_id: roomId,
@@ -368,11 +372,41 @@ export async function requestRoomTrack(
       requested_by: user.id,
       status: "pending",
     })
-    .select("id")
+    .select("*")
     .single();
 
-  if (error) return { error: error.message };
-  return { error: null, requestId: request.id };
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "This track is already pending approval." };
+    }
+    return { error: error.message };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, display_name")
+    .eq("id", user.id)
+    .single();
+
+  const track = await getRoomTrack(trackId);
+
+  return {
+    error: null,
+    success: true,
+    request: {
+      id: inserted.id,
+      roomId: inserted.room_id,
+      trackId: inserted.track_id,
+      requestedBy: inserted.requested_by,
+      status: inserted.status as RoomTrackRequest["status"],
+      reviewedBy: inserted.reviewed_by,
+      reviewedAt: inserted.reviewed_at,
+      createdAt: inserted.created_at,
+      track: track ?? undefined,
+      requesterName: profile?.display_name,
+      requesterUsername: profile?.username,
+    } satisfies RoomTrackRequest,
+  };
 }
 
 export async function getPendingTrackRequests(roomId: string): Promise<RoomTrackRequest[]> {
@@ -408,25 +442,29 @@ export async function getPendingTrackRequests(roomId: string): Promise<RoomTrack
     supabase.from("room_tracks").select("*").in("id", trackIds),
     supabase
       .from("profiles")
-      .select("id, display_name")
+      .select("id, display_name, username")
       .in("id", requesterIds),
   ]);
 
   const trackById = new Map((tracks ?? []).map((t) => [t.id, mapTrack(t)]));
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-  return data.map((row) => ({
-    id: row.id,
-    roomId: row.room_id,
-    trackId: row.track_id,
-    requestedBy: row.requested_by,
-    status: row.status as RoomTrackRequest["status"],
-    reviewedBy: row.reviewed_by,
-    reviewedAt: row.reviewed_at,
-    createdAt: row.created_at,
-    track: trackById.get(row.track_id),
-    requesterName: nameById.get(row.requested_by),
-  }));
+  return data.map((row) => {
+    const profile = profileById.get(row.requested_by);
+    return {
+      id: row.id,
+      roomId: row.room_id,
+      trackId: row.track_id,
+      requestedBy: row.requested_by,
+      status: row.status as RoomTrackRequest["status"],
+      reviewedBy: row.reviewed_by,
+      reviewedAt: row.reviewed_at,
+      createdAt: row.created_at,
+      track: trackById.get(row.track_id),
+      requesterName: profile?.display_name,
+      requesterUsername: profile?.username,
+    };
+  });
 }
 
 async function applyRoomTrack(
@@ -449,7 +487,14 @@ async function applyRoomTrack(
 
 export async function approveTrackRequest(
   requestId: string
-): Promise<{ error: string | null; track?: RoomTrack | null }> {
+): Promise<{
+  error: string | null;
+  track?: RoomTrack | null;
+  requestId?: string;
+  roomId?: string;
+  requestedBy?: string;
+  status?: "approved";
+}> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -459,7 +504,7 @@ export async function approveTrackRequest(
 
   const { data: request } = await supabase
     .from("room_track_requests")
-    .select("id, room_id, track_id, status")
+    .select("id, room_id, track_id, requested_by, status")
     .eq("id", requestId)
     .single();
 
@@ -495,10 +540,22 @@ export async function approveTrackRequest(
 
   const result = await applyRoomTrack(supabase, request.room_id, request.track_id);
   revalidatePath("/rooms");
-  return result;
+  return {
+    ...result,
+    requestId,
+    roomId: request.room_id,
+    requestedBy: request.requested_by,
+    status: "approved" as const,
+  };
 }
 
-export async function rejectTrackRequest(requestId: string): Promise<{ error: string | null }> {
+export async function rejectTrackRequest(requestId: string): Promise<{
+  error: string | null;
+  requestId?: string;
+  roomId?: string;
+  requestedBy?: string;
+  status?: "rejected";
+}> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -508,7 +565,7 @@ export async function rejectTrackRequest(requestId: string): Promise<{ error: st
 
   const { data: request } = await supabase
     .from("room_track_requests")
-    .select("room_id, status")
+    .select("room_id, requested_by, status")
     .eq("id", requestId)
     .single();
 
@@ -536,7 +593,13 @@ export async function rejectTrackRequest(requestId: string): Promise<{ error: st
     .eq("id", requestId);
 
   if (error) return { error: error.message };
-  return { error: null };
+  return {
+    error: null,
+    requestId,
+    roomId: request.room_id,
+    requestedBy: request.requested_by,
+    status: "rejected" as const,
+  };
 }
 
 export async function setRoomTrack(

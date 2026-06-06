@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Navbar } from "@/components/layout/navbar";
 import { PostHogProvider } from "@/lib/analytics";
+import { createSiteMetadata } from "@/lib/site-metadata";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,10 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "StudyVerce — Discord for Studying",
-  description: "Virtual study rooms, shared Pomodoro timers, and real-time accountability.",
-};
+export const metadata = createSiteMetadata();
 
 export default function RootLayout({
   children,

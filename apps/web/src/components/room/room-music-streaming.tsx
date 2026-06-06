@@ -31,23 +31,32 @@ import {
 
 const PROVIDER_META: Record<
   StreamingMusicProvider,
-  { label: string; color: string; connectLabel: string; setupHint?: string }
+  {
+    label: string;
+    iconSrc: string;
+    buttonClass: string;
+    connectLabel: string;
+  }
 > = {
   spotify: {
     label: "Spotify",
-    color: "bg-[#1DB954]/15 text-[#1DB954] border-[#1DB954]/30 hover:bg-[#1DB954]/25",
+    iconSrc: "/streaming/spotify-icon.png",
+    buttonClass:
+      "bg-[#1DB954] text-white hover:bg-[#1ed760] shadow-md shadow-[#1DB954]/25 border-transparent",
     connectLabel: "Connect Spotify",
   },
   youtube_music: {
     label: "YouTube Music",
-    color: "bg-[#FF0000]/15 text-[#FF0000] border-[#FF0000]/30 hover:bg-[#FF0000]/25",
+    iconSrc: "/streaming/youtube-music-icon.png",
+    buttonClass:
+      "bg-[#FF0000] text-white hover:bg-[#ff1a1a] shadow-md shadow-[#FF0000]/25 border-transparent",
     connectLabel: "Connect YouTube Music",
-    setupHint:
-      "Google Cloud → OAuth consent screen → add your Gmail under Test users (required while app is in Testing).",
   },
   apple_music: {
     label: "Apple Music",
-    color: "bg-[#FA243C]/15 text-[#FA243C] border-[#FA243C]/30 hover:bg-[#FA243C]/25",
+    iconSrc: "/streaming/apple-music-icon.png",
+    buttonClass:
+      "bg-gradient-to-r from-[#FA243C] to-[#FB5C74] text-white hover:from-[#e01f35] hover:to-[#f04a62] shadow-md shadow-[#FA243C]/25 border-transparent",
     connectLabel: "Connect Apple Music",
   },
 };
@@ -451,97 +460,96 @@ export function RoomMusicStreaming({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Connect your streaming account to browse playlists and add music to the room —
-        no copy-paste links required.
-      </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {(
           ["spotify", "youtube_music", "apple_music"] as StreamingMusicProvider[]
         ).map((provider) => {
           const meta = PROVIDER_META[provider];
           const conn = connectionByProvider[provider];
           const isConfigured = configured[provider];
+          const isConnected = isConfigured && conn?.connected;
+
+          function handleConnect() {
+            if (!isConfigured) return;
+            if (provider === "apple_music") {
+              void handleAppleConnect();
+              return;
+            }
+            handleOAuthConnect(provider);
+          }
 
           return (
             <div
               key={provider}
-              className="flex flex-col gap-3 rounded-xl border border-border p-4"
+              className="flex h-full flex-col gap-5 rounded-2xl border border-border/80 bg-muted/20 p-5"
             >
-              <div className="flex items-center gap-2">
-                <div
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={meta.iconSrc}
+                  alt=""
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-bold",
-                    meta.color
+                    "h-16 w-16 rounded-2xl object-cover shadow-lg ring-1 ring-white/10",
+                    !isConfigured && "opacity-50 grayscale-[0.15]"
                   )}
-                >
-                  {meta.label.slice(0, 1)}
-                </div>
-                <div>
-                  <p className="font-medium text-sm">{meta.label}</p>
-                  {conn?.connected && conn.displayName && (
-                    <p className="text-xs text-muted-foreground truncate max-w-[140px]">
+                />
+                <div className="min-w-0 w-full">
+                  <p className="font-semibold">{meta.label}</p>
+                  {isConnected && conn.displayName && (
+                    <p className="mt-0.5 truncate px-1 text-xs text-muted-foreground">
                       {conn.displayName}
                     </p>
                   )}
                 </div>
               </div>
 
-              {!isConfigured ? (
-                <p className="text-xs text-muted-foreground">
-                  Not configured on server. Add API keys to enable.
-                </p>
-              ) : meta.setupHint && !conn?.connected ? (
-                <p className="text-xs text-muted-foreground">{meta.setupHint}</p>
-              ) : null}
-              {isConfigured && conn?.connected ? (
-                <div className="flex flex-col gap-2">
+              <div className="mt-auto flex flex-col gap-2">
+                {isConnected ? (
+                  <>
+                    <Button
+                      className={cn("h-10 w-full font-semibold", meta.buttonClass)}
+                      disabled={busy}
+                      onClick={() => openProvider(provider)}
+                    >
+                      <ListMusic className="h-4 w-4" />
+                      Browse playlists
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full gap-1.5 text-muted-foreground hover:text-foreground"
+                      disabled={busy}
+                      onClick={() => handleDisconnect(provider)}
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Disconnect
+                    </Button>
+                  </>
+                ) : (
                   <Button
-                    size="sm"
-                    className={cn("w-full border", meta.color)}
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => openProvider(provider)}
+                    className={cn(
+                      "h-10 w-full font-semibold",
+                      isConfigured ? meta.buttonClass : "opacity-45"
+                    )}
+                    disabled={
+                      !isConfigured ||
+                      busy ||
+                      (provider === "apple_music" && appleConnecting)
+                    }
+                    onClick={handleConnect}
                   >
-                    Browse playlists
+                    {provider === "apple_music" && appleConnecting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Connecting…
+                      </>
+                    ) : (
+                      meta.connectLabel
+                    )}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="w-full gap-1 text-muted-foreground"
-                    disabled={busy}
-                    onClick={() => handleDisconnect(provider)}
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    Disconnect
-                  </Button>
-                </div>
-              ) : isConfigured && !conn?.connected && provider === "apple_music" ? (
-                <Button
-                  size="sm"
-                  className={cn("w-full border", meta.color)}
-                  variant="outline"
-                  disabled={appleConnecting || busy}
-                  onClick={() => void handleAppleConnect()}
-                >
-                  {appleConnecting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    meta.connectLabel
-                  )}
-                </Button>
-              ) : isConfigured && !conn?.connected ? (
-                <Button
-                  size="sm"
-                  className={cn("w-full border", meta.color)}
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => handleOAuthConnect(provider)}
-                >
-                  {meta.connectLabel}
-                </Button>
-              ) : null}
+                )}
+              </div>
             </div>
           );
         })}
