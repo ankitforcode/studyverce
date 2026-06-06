@@ -35,7 +35,7 @@ const features = [
   {
     icon: Sparkles,
     title: "AI Study Coach",
-    description: "AI planners, flashcards, and personalized study schedules.",
+    description: "  AI planners, flashcards, and personalized study schedules.",
   },
   {
     icon: BookOpen,
