@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Mail, Lock, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { AuthDivider } from "@/components/auth/auth-divider";
+import { AuthPageShell } from "@/components/auth/auth-page-shell";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trackEvent } from "@/lib/analytics";
 import { loginPath } from "@/lib/auth/paths";
 
@@ -19,13 +22,15 @@ function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const isRoomRedirect = redirect.startsWith("/rooms/") && redirect !== "/rooms/new";
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -33,8 +38,8 @@ function SignupForm() {
       },
     });
 
-    if (error) {
-      setError(error.message);
+    if (signUpError) {
+      setError(signUpError.message);
       setLoading(false);
       return;
     }
@@ -55,74 +60,85 @@ function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>
-          {redirect.startsWith("/rooms/") && redirect !== "/rooms/new"
-            ? "Create an account to join this study room"
-            : "Join StudyVerce and start studying together"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+    <AuthPageShell
+      title="Create your account"
+      description={
+        isRoomRedirect
+          ? "Create an account to join this study room"
+          : "Join StudyVerce and start studying together"
+      }
+    >
+      <div className="mb-5 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-muted-foreground">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <span>Free to join — virtual rooms, Pomodoro timers, and study chat included.</span>
+      </div>
+
+      <form onSubmit={handleSignup} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="email"
               type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="pl-9"
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="password"
               type="password"
+              autoComplete="new-password"
+              placeholder="At least 6 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="pl-9"
               minLength={6}
               required
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Sign up"}
-          </Button>
-        </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">Or</span>
-          </div>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignup}>
-          Continue with Google
-        </Button>
+        {error && (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
 
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href={loginPath(redirect)} className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+        <Button type="submit" className="w-full shadow-md shadow-primary/20" disabled={loading}>
+          {loading ? "Creating account..." : "Create account"}
+        </Button>
+      </form>
+
+      <div className="mt-5 space-y-4">
+        <AuthDivider />
+        <GoogleAuthButton onClick={handleGoogleSignup} />
+      </div>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <Link href={loginPath(redirect)} className="font-medium text-primary hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthPageShell>
   );
 }
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-      <Suspense>
-        <SignupForm />
-      </Suspense>
-    </div>
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }

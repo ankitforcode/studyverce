@@ -3,21 +3,29 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Mail, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { AuthDivider } from "@/components/auth/auth-divider";
+import { AuthPageShell } from "@/components/auth/auth-page-shell";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trackEvent } from "@/lib/analytics";
-import { signupPath } from "@/lib/auth/paths";
+import { forgotPasswordPath, signupPath } from "@/lib/auth/paths";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/dashboard";
+  const authError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    authError === "auth" ? "Sign in failed. Please try again." : null
+  );
   const [loading, setLoading] = useState(false);
+
+  const isRoomRedirect = redirect.startsWith("/rooms/") && redirect !== "/rooms/new";
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -25,10 +33,10 @@ function LoginForm() {
     setError(null);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setError(error.message);
+    if (signInError) {
+      setError(signInError.message);
       setLoading(false);
       return;
     }
@@ -43,72 +51,86 @@ function LoginForm() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${redirect}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
       },
     });
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>
-            {redirect.startsWith("/rooms/") && redirect !== "/rooms/new"
-              ? "Sign in to join this study room"
-              : "Sign in to continue studying together"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-
+    <AuthPageShell
+      title="Welcome back"
+      description={
+        isRoomRedirect
+          ? "Sign in to join this study room"
+          : "Sign in to continue studying together"
+      }
+    >
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
-            </div>
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-9"
+              required
+            />
           </div>
+        </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
-            Continue with Google
-          </Button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href={signupPath(redirect)} className="text-primary hover:underline">
-              Sign up
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="password">Password</Label>
+            <Link
+              href={forgotPasswordPath(redirect)}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Forgot password?
             </Link>
+          </div>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-9"
+              required
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
           </p>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+
+        <Button type="submit" className="w-full shadow-md shadow-primary/20" disabled={loading}>
+          {loading ? "Signing in..." : "Sign in"}
+        </Button>
+      </form>
+
+      <div className="mt-5 space-y-4">
+        <AuthDivider />
+        <GoogleAuthButton onClick={handleGoogleLogin} />
+      </div>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link href={signupPath(redirect)} className="font-medium text-primary hover:underline">
+          Sign up
+        </Link>
+      </p>
+    </AuthPageShell>
   );
 }
 
