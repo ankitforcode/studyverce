@@ -142,6 +142,7 @@ export function RoomClient({
     broadcastWallpaper,
     broadcastWallpaperOverlay,
     broadcastMusic,
+    setPresenceMode,
   } = useRoomSocket(
     roomId,
     initialMessages,
@@ -291,6 +292,7 @@ export function RoomClient({
               roomOwnerId={roomOwnerId}
               isRoomOwner={isOwner}
               socket={socket}
+              onSetPresenceMode={setPresenceMode}
               variant="compact"
               menuAlign="end"
               className="hidden sm:flex"
@@ -357,6 +359,7 @@ export function RoomClient({
           roomOwnerId={roomOwnerId}
           isRoomOwner={isOwner}
           socket={socket}
+          onSetPresenceMode={setPresenceMode}
           variant="compact"
           menuAlign="start"
           className="px-4 pb-3 sm:hidden"

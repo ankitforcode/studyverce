@@ -48,12 +48,12 @@
 
 | File | Role |
 |------|------|
-| `hooks/use-socket.ts` | Room socket + `membership-revoked` redirect |
+| `hooks/use-socket.ts` | Room socket, `setPresenceMode`, `membership-revoked` redirect |
 | `hooks/use-room-listing-presence.ts` | Live counts on `/rooms` cards |
 | `lib/room-ui.ts` | Glass tokens, `ROOM_HEADER_ICON_BUTTON`, portal helpers |
 | `lib/site-metadata.ts` | SEO metadata helpers |
 | `apps/socket-server/src/index.ts` | `room:member:kick`, presence, inactive kick |
-| `packages/shared/src/index.ts` | Socket event types incl. `room:member:kick` |
+| `packages/shared/src/index.ts` | `RoomPresenceMode`, `viewPresenceMode`, socket events incl. `room:presence:set`, `room:member:kick` |
 
 ## Migrations (recent social/listing)
 

@@ -16,6 +16,7 @@ alwaysApply: true
 - UI: Tailwind 4, `cn()` from `@/lib/utils`, lucide icons, glass panels in rooms (`bg-card/90 backdrop-blur-md`).
 - Do not commit `.env.local` or secrets.
 - Run `pnpm --filter web exec tsc --noEmit` after TypeScript changes.
+- **Skills**: read `.cursor/skills/` before feature work; update skills + `AGENTS.md` when behavior changes (rule `skills-maintenance.mdc`).
 
 ## Feature boundaries
 

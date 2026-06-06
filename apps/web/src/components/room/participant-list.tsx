@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import type { RoomParticipant } from "@studyverce/shared";
+import {
+  filterParticipantsForViewer,
+  isParticipantActiveForViewer,
+  normalizePresenceMode,
+  viewPresenceMode,
+  type RoomParticipant,
+  type RoomPresenceMode,
+} from "@studyverce/shared";
 import {
   getFriendshipStatuses,
   sendFriendRequest,
@@ -15,7 +22,16 @@ import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppSocket } from "@/hooks/use-socket";
-import { ChevronDown, Search, UserPlus, UserX, Users } from "lucide-react";
+import {
+  ChevronDown,
+  EyeOff,
+  Moon,
+  Radio,
+  Search,
+  UserPlus,
+  UserX,
+  Users,
+} from "lucide-react";
 import { ROOM_FIELD, ROOM_HEADER_CONTROL } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +42,7 @@ interface ParticipantListProps {
   roomOwnerId?: string;
   isRoomOwner?: boolean;
   socket?: AppSocket | null;
+  onSetPresenceMode?: (mode: RoomPresenceMode) => void;
   variant?: "card" | "compact";
   menuAlign?: "start" | "end";
   className?: string;
@@ -34,24 +51,63 @@ interface ParticipantListProps {
 const PARTICIPANT_PANEL_WIDTH = 336;
 const PARTICIPANT_PANEL_GAP = 8;
 
-function PresenceDot({ isActive }: { isActive: boolean }) {
+const PRESENCE_OPTIONS: {
+  mode: RoomPresenceMode;
+  label: string;
+  Icon: typeof Radio;
+}[] = [
+  { mode: "active", label: "Active", Icon: Radio },
+  { mode: "away", label: "Away", Icon: Moon },
+  { mode: "invisible", label: "Invisible", Icon: EyeOff },
+];
+
+function PresenceDot({
+  mode,
+  viewerUserId,
+  participant,
+}: {
+  mode?: RoomPresenceMode;
+  viewerUserId?: string;
+  participant?: RoomParticipant;
+}) {
+  const resolved =
+    mode ??
+    (participant && viewerUserId
+      ? viewPresenceMode(participant, viewerUserId)
+      : "active");
+
   return (
     <span
       className={cn(
         "rounded-full ring-2 ring-card/80",
-        isActive ? "bg-primary" : "bg-yellow-400",
+        resolved === "active"
+          ? "bg-primary"
+          : resolved === "away"
+            ? "bg-yellow-400"
+            : "bg-muted-foreground/60",
         "absolute bottom-0 right-0 h-2 w-2"
       )}
-      title={isActive ? "In room" : "Away"}
+      title={
+        resolved === "active"
+          ? "Active"
+          : resolved === "away"
+            ? "Away"
+            : "Invisible"
+      }
     />
   );
 }
 
-function sortParticipants(participants: RoomParticipant[]): RoomParticipant[] {
-  return [...participants].sort((a, b) => {
-    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
-    return a.displayName.localeCompare(b.displayName);
-  });
+function sortOtherParticipants(
+  participants: RoomParticipant[],
+  currentUserId: string
+): RoomParticipant[] {
+  return [...participants]
+    .filter((p) => p.userId !== currentUserId)
+    .sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      return a.displayName.localeCompare(b.displayName);
+    });
 }
 
 function filterParticipantsBySearch(
@@ -66,6 +122,57 @@ function filterParticipantsBySearch(
     (p) =>
       p.displayName.toLowerCase().includes(normalized) ||
       p.username.toLowerCase().includes(normalized)
+  );
+}
+
+function CurrentUserSection({
+  participant,
+  onSetPresenceMode,
+}: {
+  participant: RoomParticipant;
+  onSetPresenceMode?: (mode: RoomPresenceMode) => void;
+}) {
+  const mode = normalizePresenceMode(participant.presenceMode);
+
+  return (
+    <div className="mx-2 mb-2 rounded-lg border border-primary/35 bg-primary/5 px-2 py-2 light:border-primary/25 light:bg-primary/8">
+      <div className="flex items-center gap-2">
+        <div className="relative shrink-0">
+          <Avatar src={participant.avatarUrl} fallback={participant.displayName} size="sm" />
+          <PresenceDot mode={mode} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {participant.displayName}
+            <span className="ml-1 font-normal text-muted-foreground">(you)</span>
+          </p>
+          <p className="truncate text-xs text-muted-foreground">@{participant.username}</p>
+        </div>
+      </div>
+      <div
+        role="group"
+        aria-label="Your presence"
+        className="mt-2 grid grid-cols-3 gap-1"
+      >
+        {PRESENCE_OPTIONS.map(({ mode: optionMode, label, Icon }) => (
+          <button
+            key={optionMode}
+            type="button"
+            aria-pressed={mode === optionMode}
+            onClick={() => onSetPresenceMode?.(optionMode)}
+            className={cn(
+              "flex items-center justify-center gap-1 rounded-md border px-1 py-1 text-[10px] font-medium transition-colors",
+              mode === optionMode
+                ? "border-primary/50 bg-primary/15 text-primary"
+                : "border-border/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            )}
+          >
+            <Icon className="h-3 w-3 shrink-0" />
+            <span className="truncate">{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -139,7 +246,7 @@ function ParticipantRow({
     >
       <div className="relative shrink-0">
         <Avatar src={participant.avatarUrl} fallback={participant.displayName} size="sm" />
-        <PresenceDot isActive={participant.isActive} />
+        <PresenceDot participant={participant} viewerUserId={currentUserId} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">
@@ -151,7 +258,7 @@ function ParticipantRow({
 
       <div className="flex shrink-0 items-center gap-0.5">
         {canFriend && (
-          <PostItIconTooltip label={friendLabel} side={actionTooltipSide}>
+          <PostItIconTooltip label={friendLabel} side={actionTooltipSide} align="end">
             <Button
               type="button"
               variant="ghost"
@@ -171,7 +278,11 @@ function ParticipantRow({
           </PostItIconTooltip>
         )}
         {canKick && (
-          <PostItIconTooltip label="Remove from room" side={actionTooltipSide}>
+          <PostItIconTooltip
+            label="Remove from room"
+            side={actionTooltipSide}
+            align="end"
+          >
             <Button
               type="button"
               variant="ghost"
@@ -197,6 +308,7 @@ function CompactParticipantList({
   roomOwnerId,
   isRoomOwner,
   socket,
+  onSetPresenceMode,
   menuAlign = "end",
   className,
 }: {
@@ -206,6 +318,7 @@ function CompactParticipantList({
   roomOwnerId?: string;
   isRoomOwner?: boolean;
   socket?: AppSocket | null;
+  onSetPresenceMode?: (mode: RoomPresenceMode) => void;
   menuAlign?: "start" | "end";
   className?: string;
 }) {
@@ -220,16 +333,29 @@ function CompactParticipantList({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
-  const sorted = useMemo(() => sortParticipants(participants), [participants]);
-  const filtered = useMemo(
-    () => filterParticipantsBySearch(sorted, searchQuery),
-    [sorted, searchQuery]
+  const visibleParticipants = useMemo(
+    () => filterParticipantsForViewer(participants, currentUserId),
+    [participants, currentUserId]
   );
-  const activeCount = participants.filter((p) => p.isActive).length;
-  const awayCount = participants.length - activeCount;
-  const youAreActive = participants.some(
-    (p) => p.userId === currentUserId && p.isActive
+  const currentUser = useMemo(
+    () => visibleParticipants.find((p) => p.userId === currentUserId),
+    [visibleParticipants, currentUserId]
   );
+  const sortedOthers = useMemo(
+    () => sortOtherParticipants(visibleParticipants, currentUserId),
+    [visibleParticipants, currentUserId]
+  );
+  const filteredOthers = useMemo(
+    () => filterParticipantsBySearch(sortedOthers, searchQuery),
+    [sortedOthers, searchQuery]
+  );
+  const displayOrder = useMemo(
+    () => (currentUser ? [currentUser, ...sortedOthers] : sortedOthers),
+    [currentUser, sortedOthers]
+  );
+  const activeCount = visibleParticipants.filter((p) => p.isActive).length;
+  const awayCount = visibleParticipants.length - activeCount;
+  const youAreActive = normalizePresenceMode(currentUser?.presenceMode) === "active";
 
   const updatePanelPosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -297,7 +423,7 @@ function CompactParticipantList({
 
   useEffect(() => {
     if (!open) return;
-    const ids = sorted.map((p) => p.userId).filter((id) => id !== currentUserId);
+    const ids = sortedOthers.map((p) => p.userId);
     if (ids.length === 0) {
       setFriendshipStatuses({});
       return;
@@ -311,7 +437,7 @@ function CompactParticipantList({
     return () => {
       cancelled = true;
     };
-  }, [open, sorted, currentUserId]);
+  }, [open, sortedOthers, currentUserId]);
 
   const panel =
     open && panelPosition ? (
@@ -335,13 +461,13 @@ function CompactParticipantList({
         <div className="border-b border-border/50 px-2 pb-2 pt-1">
           <p className="text-xs font-semibold text-foreground">In this room</p>
           <p className="text-[11px] text-muted-foreground">
-            {participants.length === 0
+            {visibleParticipants.length === 0
               ? "No one else here yet"
               : `${activeCount} active${awayCount > 0 ? ` · ${awayCount} away` : ""}`}
           </p>
         </div>
 
-        {sorted.length === 0 ? (
+        {visibleParticipants.length === 0 ? (
           <p className="px-2 py-4 text-center text-xs text-muted-foreground">
             You&apos;re the only one here right now.
           </p>
@@ -364,31 +490,53 @@ function CompactParticipantList({
               </div>
             </div>
 
-            {filtered.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No users match &ldquo;{searchQuery.trim()}&rdquo;
-              </p>
-            ) : (
-              <ul className="max-h-64 space-y-0.5 overflow-y-auto py-1">
-                {filtered.map((p, index) => (
-                  <ParticipantRow
-                    key={p.userId}
-                    participant={p}
-                    currentUserId={currentUserId}
-                    roomId={roomId}
-                    roomOwnerId={roomOwnerId}
-                    isRoomOwner={isRoomOwner}
-                    socket={socket}
-                    friendshipStatus={friendshipStatuses[p.userId] ?? "none"}
-                    animationDelayMs={40 + index * 45}
-                    actionTooltipSide={index === filtered.length - 1 ? "top" : "bottom"}
-                    onFriendshipChange={(userId, status) => {
-                      setFriendshipStatuses((prev) => ({ ...prev, [userId]: status }));
-                    }}
-                  />
-                ))}
-              </ul>
-            )}
+            <div className="max-h-64 overflow-y-auto py-1">
+              {currentUser && (
+                <CurrentUserSection
+                  participant={currentUser}
+                  onSetPresenceMode={onSetPresenceMode}
+                />
+              )}
+
+              {filteredOthers.length === 0 ? (
+                searchQuery.trim() ? (
+                  <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                    No other users match &ldquo;{searchQuery.trim()}&rdquo;
+                  </p>
+                ) : sortedOthers.length === 0 ? (
+                  <p className="px-2 pb-2 text-center text-xs text-muted-foreground">
+                    No one else here yet.
+                  </p>
+                ) : null
+              ) : (
+                <>
+                  {currentUser && filteredOthers.length > 0 && (
+                    <div className="mx-2 mb-1 border-t border-border/40" />
+                  )}
+                  <ul className="space-y-0.5">
+                    {filteredOthers.map((p, index) => (
+                      <ParticipantRow
+                        key={p.userId}
+                        participant={p}
+                        currentUserId={currentUserId}
+                        roomId={roomId}
+                        roomOwnerId={roomOwnerId}
+                        isRoomOwner={isRoomOwner}
+                        socket={socket}
+                        friendshipStatus={friendshipStatuses[p.userId] ?? "none"}
+                        animationDelayMs={40 + index * 45}
+                        actionTooltipSide={
+                          index === filteredOthers.length - 1 ? "top" : "bottom"
+                        }
+                        onFriendshipChange={(userId, status) => {
+                          setFriendshipStatuses((prev) => ({ ...prev, [userId]: status }));
+                        }}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -410,12 +558,12 @@ function CompactParticipantList({
         )}
       >
         <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-        {participants.length === 0 ? (
+        {visibleParticipants.length === 0 ? (
           <span className="text-xs text-muted-foreground">Just you</span>
         ) : (
           <>
             <div className="flex -space-x-2">
-              {sorted.slice(0, 6).map((p) => (
+              {displayOrder.slice(0, 6).map((p) => (
                 <div key={p.userId} className="relative" title={p.displayName}>
                   <Avatar
                     src={p.avatarUrl}
@@ -423,7 +571,7 @@ function CompactParticipantList({
                     size="sm"
                     className="ring-2 ring-card/80"
                   />
-                  <PresenceDot isActive={p.isActive} />
+                  <PresenceDot participant={p} viewerUserId={currentUserId} />
                 </div>
               ))}
             </div>
@@ -457,12 +605,24 @@ export function ParticipantList({
   roomOwnerId,
   isRoomOwner = false,
   socket = null,
+  onSetPresenceMode,
   variant = "card",
   menuAlign = "end",
   className,
 }: ParticipantListProps) {
-  const activeCount = participants.filter((p) => p.isActive).length;
-  const sorted = useMemo(() => sortParticipants(participants), [participants]);
+  const visibleParticipants = useMemo(
+    () => filterParticipantsForViewer(participants, currentUserId),
+    [participants, currentUserId]
+  );
+  const activeCount = visibleParticipants.filter((p) => p.isActive).length;
+  const currentUser = useMemo(
+    () => visibleParticipants.find((p) => p.userId === currentUserId),
+    [visibleParticipants, currentUserId]
+  );
+  const sortedOthers = useMemo(
+    () => sortOtherParticipants(visibleParticipants, currentUserId),
+    [visibleParticipants, currentUserId]
+  );
 
   if (variant === "compact") {
     return (
@@ -473,6 +633,7 @@ export function ParticipantList({
         roomOwnerId={roomOwnerId}
         isRoomOwner={isRoomOwner}
         socket={socket}
+        onSetPresenceMode={onSetPresenceMode}
         menuAlign={menuAlign}
         className={className}
       />
@@ -486,33 +647,40 @@ export function ParticipantList({
           <Users className="h-5 w-5" />
           Participants
           <span className="text-sm font-normal text-muted-foreground">
-            ({activeCount} active{participants.length > activeCount ? ` · ${participants.length} in room` : ""})
+            ({activeCount} active{visibleParticipants.length > activeCount ? ` · ${visibleParticipants.length} in room` : ""})
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {participants.length === 0 ? (
+        {visibleParticipants.length === 0 ? (
           <p className="text-sm text-muted-foreground">No one here yet</p>
         ) : (
-          <ul className="space-y-2">
-            {sorted.map((p) => (
-              <li key={p.userId} className="flex items-center gap-2">
-                <div className="relative">
-                  <Avatar src={p.avatarUrl} fallback={p.displayName} size="sm" />
-                  <PresenceDot isActive={p.isActive} />
-                </div>
-                <span className={cn("text-sm", !p.isActive && "text-muted-foreground")}>
-                  {p.displayName}
-                  {p.userId === currentUserId && (
-                    <span className="text-muted-foreground ml-1">(you)</span>
-                  )}
-                  {!p.isActive && (
-                    <span className="text-muted-foreground ml-1">· away</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2">
+            {currentUser && (
+              <CurrentUserSection
+                participant={currentUser}
+                onSetPresenceMode={onSetPresenceMode}
+              />
+            )}
+            <ul className="space-y-2">
+              {sortedOthers.map((p) => (
+                <li key={p.userId} className="flex items-center gap-2">
+                  <div className="relative">
+                    <Avatar src={p.avatarUrl} fallback={p.displayName} size="sm" />
+                    <PresenceDot participant={p} viewerUserId={currentUserId} />
+                  </div>
+                  <span
+                    className={cn(
+                      "text-sm",
+                      !isParticipantActiveForViewer(p, currentUserId) && "text-muted-foreground"
+                    )}
+                  >
+                    {p.displayName}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -14,6 +14,8 @@ export interface PomodoroState {
   updatedAt: string;
 }
 
+export type RoomPresenceMode = "active" | "away" | "invisible";
+
 export interface RoomParticipant {
   userId: string;
   username: string;
@@ -21,14 +23,57 @@ export interface RoomParticipant {
   avatarUrl: string | null;
   socketId: string;
   /**
-   * True while the user is in the study room (socket joined + heartbeat).
-   * False after leaving the room page; tab visibility does not affect this.
+   * User-chosen presence. `invisible` users are hidden from other participants.
+   * Heartbeat (`room:ping`) only sets active when mode is `active`.
+   */
+  presenceMode?: RoomPresenceMode;
+  /**
+   * True while the user appears active in the room.
+   * False when away, invisible, or after leaving the room page.
    */
   isActive: boolean;
   /** ISO timestamp of the last in-room heartbeat. */
   lastSeenAt: string;
   /** ISO timestamp when isActive became false; used for auto-removal. */
   awaySinceAt?: string | null;
+}
+
+export function normalizePresenceMode(
+  mode?: RoomPresenceMode | null
+): RoomPresenceMode {
+  return mode ?? "active";
+}
+
+/** Whether a participant row should render for this viewer. */
+export function isParticipantVisibleToViewer(
+  participant: RoomParticipant,
+  viewerUserId: string
+): boolean {
+  if (participant.userId === viewerUserId) return true;
+  return normalizePresenceMode(participant.presenceMode) !== "invisible";
+}
+
+/** Participants list as seen by a viewer (excludes others who are invisible). */
+export function filterParticipantsForViewer(
+  participants: RoomParticipant[],
+  viewerUserId: string
+): RoomParticipant[] {
+  return participants.filter((p) => isParticipantVisibleToViewer(p, viewerUserId));
+}
+
+/** Presence mode as shown to a specific viewer. */
+export function viewPresenceMode(
+  participant: RoomParticipant,
+  viewerUserId: string
+): RoomPresenceMode {
+  return normalizePresenceMode(participant.presenceMode);
+}
+
+export function isParticipantActiveForViewer(
+  participant: RoomParticipant,
+  viewerUserId: string
+): boolean {
+  return viewPresenceMode(participant, viewerUserId) === "active";
 }
 
 /** Client sends room:ping on this interval while the room page is open. */
@@ -309,6 +354,7 @@ export interface ClientToServerEvents {
   "room:join": (payload: { roomId: string; token: string }) => void;
   "room:leave": (payload: { roomId: string }) => void;
   "room:ping": (payload: { roomId: string }) => void;
+  "room:presence:set": (payload: { roomId: string; mode: RoomPresenceMode }) => void;
   "chat:send": (payload: { roomId: string; content: string }) => void;
   "chat:broadcast": (payload: { roomId: string; message: ChatMessage }) => void;
   "chat:broadcast-delete": (payload: { roomId: string; messageId: string }) => void;

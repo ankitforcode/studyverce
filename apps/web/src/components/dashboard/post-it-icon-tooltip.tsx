@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 interface PostItIconTooltipProps {
   label: string;
   side?: "top" | "bottom";
+  align?: "center" | "start" | "end";
   className?: string;
   children: ReactElement;
 }
@@ -13,6 +14,7 @@ interface PostItIconTooltipProps {
 export function PostItIconTooltip({
   label,
   side = "top",
+  align = "center",
   className,
   children,
 }: PostItIconTooltipProps) {
@@ -28,9 +30,14 @@ export function PostItIconTooltip({
       <span
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute left-1/2 z-[100] -translate-x-1/2 whitespace-nowrap rounded-md bg-[#323338] px-2 py-1 text-[10px] font-medium leading-none text-white shadow-md",
+          "pointer-events-none absolute z-[100] whitespace-nowrap rounded-md bg-[#323338] px-2 py-1 text-[10px] font-medium leading-none text-white shadow-md",
           "opacity-0 transition-opacity duration-75 group-hover/postit-tip:opacity-100 group-focus-within/postit-tip:opacity-100",
-          side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5",
+          align === "end"
+            ? "right-0"
+            : align === "start"
+              ? "left-0"
+              : "left-1/2 -translate-x-1/2"
         )}
       >
         {label}

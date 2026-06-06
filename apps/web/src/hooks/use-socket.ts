@@ -7,6 +7,7 @@ import {
   DEFAULT_WALLPAPER_OVERLAY,
   ROOM_PRESENCE_PING_INTERVAL_MS,
   type ClientToServerEvents,
+  type RoomPresenceMode,
   type ServerToClientEvents,
   type RoomPresenceState,
   type ChatMessage,
@@ -332,6 +333,13 @@ export function useRoomSocket(
     [socket, roomId]
   );
 
+  const setPresenceMode = useCallback(
+    (mode: RoomPresenceMode) => {
+      socket?.emit("room:presence:set", { roomId, mode });
+    },
+    [socket, roomId]
+  );
+
   return {
     socket,
     connected,
@@ -347,5 +355,6 @@ export function useRoomSocket(
     deleteMessage,
     broadcastWallpaper,
     broadcastMusic,
+    setPresenceMode,
   };
 }

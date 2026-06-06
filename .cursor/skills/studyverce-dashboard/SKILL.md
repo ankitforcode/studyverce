@@ -25,3 +25,7 @@ StudyVerce green theme; match existing dashboard components for new UI.
 ## Post-its
 
 Task CRUD lives in `task-actions.ts` but notes render **only in rooms**. Dashboard may show stats derived from sessions, not post-it canvas.
+
+## Skills maintenance
+
+After dashboard layout or widget changes, update this skill, `studyverce-dashboard/reference.md` if present, and root `AGENTS.md`. See `.cursor/rules/skills-maintenance.mdc`.

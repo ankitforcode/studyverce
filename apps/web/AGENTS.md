@@ -13,7 +13,7 @@ Monorepo root guide: [`../../AGENTS.md`](../../AGENTS.md)
 - **Rules**: `../../.cursor/rules/` — post-its, rooms, Supabase, overview
 - **Skills**: `../../.cursor/skills/` — `studyverce-post-it-notes`, `studyverce-rooms`, `studyverce-dashboard`
 
-Load the skill that matches your task before editing related files.
+Load the skill that matches your task before editing related files. When you add or change a feature, update that skill and `reference.md` in the same task (see `../../.cursor/rules/skills-maintenance.mdc`).
 
 ## App specifics
 

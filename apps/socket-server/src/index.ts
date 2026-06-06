@@ -10,6 +10,7 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   RoomParticipant,
+  RoomPresenceMode,
   ChatMessage,
   RoomMusicState,
   RoomTrack,
@@ -17,6 +18,7 @@ import type {
 import { expressRateLimitMiddleware } from "@studyverce/rate-limit/express";
 import {
   roomTrackToMusicState,
+  normalizePresenceMode,
   ROOM_PRESENCE_AWAY_THRESHOLD_MS,
   ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS,
   ROOM_PRESENCE_SWEEP_INTERVAL_MS,
@@ -245,8 +247,35 @@ function parseStoredParticipant(userId: string, json: string): RoomParticipant {
     socketId: raw.socketId ?? "",
     lastSeenAt,
     isActive: raw.isActive ?? true,
+    presenceMode: normalizePresenceMode(raw.presenceMode),
     awaySinceAt: raw.awaySinceAt ?? null,
   };
+}
+
+function presenceModeToActive(mode: RoomPresenceMode): boolean {
+  return mode === "active";
+}
+
+async function setParticipantPresence(
+  roomId: string,
+  userId: string,
+  mode: RoomPresenceMode
+): Promise<RoomParticipant | null> {
+  const raw = await redis.hget(participantsKey(roomId), userId);
+  if (!raw) return null;
+
+  const existing = parseStoredParticipant(userId, raw);
+  const now = new Date().toISOString();
+  const isActive = presenceModeToActive(mode);
+  const updated: RoomParticipant = {
+    ...existing,
+    presenceMode: mode,
+    isActive,
+    lastSeenAt: now,
+    awaySinceAt: isActive ? null : now,
+  };
+  await saveParticipant(roomId, updated);
+  return updated;
 }
 
 async function getParticipants(roomId: string): Promise<RoomParticipant[]> {
@@ -272,12 +301,14 @@ async function touchParticipant(
 
   const existing = parseStoredParticipant(userId, raw);
   const now = new Date().toISOString();
+  const mode = normalizePresenceMode(existing.presenceMode);
+  const isActive = presenceModeToActive(mode);
   const updated: RoomParticipant = {
     ...existing,
     socketId,
     lastSeenAt: now,
-    isActive: true,
-    awaySinceAt: null,
+    isActive,
+    awaySinceAt: isActive ? null : existing.awaySinceAt ?? now,
   };
   await saveParticipant(roomId, updated);
   return updated;
@@ -341,7 +372,10 @@ async function sweepStaleParticipants(): Promise<void> {
         continue;
       }
 
-      if (idleMs > ROOM_PRESENCE_AWAY_THRESHOLD_MS) {
+      if (
+        idleMs > ROOM_PRESENCE_AWAY_THRESHOLD_MS &&
+        normalizePresenceMode(participant.presenceMode) === "active"
+      ) {
         const awaySinceAt = new Date().toISOString();
         await saveParticipant(roomId, {
           ...participant,
@@ -693,6 +727,7 @@ io.on("connection", (socket) => {
         socketId: socket.id,
         lastSeenAt: now,
         isActive: true,
+        presenceMode: "active",
         awaySinceAt: null,
       };
 
@@ -728,11 +763,25 @@ io.on("connection", (socket) => {
     if (!raw) return;
 
     const wasInactive = !parseStoredParticipant(user.id, raw).isActive;
-    await touchParticipant(roomId, user.id, socket.id);
+    const updated = await touchParticipant(roomId, user.id, socket.id);
 
-    if (wasInactive) {
+    if (wasInactive && updated?.isActive) {
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
+    }
+  });
+
+  socket.on("room:presence:set", async ({ roomId, mode }) => {
+    try {
+      if (!socket.rooms.has(roomId)) return;
+      if (mode !== "active" && mode !== "away" && mode !== "invisible") return;
+
+      await setParticipantPresence(roomId, user.id, mode);
+      await broadcastPresence(roomId);
+      await syncRoomMusic(roomId);
+    } catch (err) {
+      console.error("room:presence:set error", err);
+      socket.emit("error", { message: "Failed to update presence" });
     }
   });
 

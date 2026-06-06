@@ -1,0 +1,49 @@
+---
+description: Keep Cursor skills and rules in sync when features are added or changed
+alwaysApply: true
+---
+
+# Skills maintenance
+
+When you **add or materially change** a product feature, update agent memory in the **same task** (or PR) — do not leave skills stale.
+
+## When this applies
+
+- New UI surface, server action, socket event, migration, or route
+- Changed data model, RLS, or shared types for a feature area
+- New conventions (tokens, hooks, file locations) others will copy
+- Removed or renamed behavior that skills still document
+
+Skip for typo fixes, pure refactors with no behavior change, or one-off scripts.
+
+## What to update
+
+| Change area | Update |
+|-------------|--------|
+| Any feature | Matching skill `SKILL.md` + `reference.md` if present |
+| Room / listing / social | `studyverce-rooms` |
+| Post-its / tasks | `studyverce-post-it-notes` |
+| Dashboard | `studyverce-dashboard` |
+| Cross-cutting layout or commands | `studyverce-overview.mdc`, root `AGENTS.md` |
+| File-specific patterns | Relevant `.cursor/rules/*.mdc` (e.g. `room-features.mdc`) |
+| New feature domain | New skill under `.cursor/skills/<name>/` + row in `.cursor/skills/README.md` |
+
+## Minimum doc updates per feature change
+
+1. **SKILL.md** — workflow steps, pitfalls, and “where to look” for the new/changed behavior.
+2. **reference.md** — tables (routes, components, actions, migrations, socket events).
+3. **AGENTS.md** — “Where to look” row if a new primary file or feature name.
+4. **Rule `.mdc`** — short bullet if the change affects globs that rule covers.
+
+## Skill frontmatter
+
+Refresh the skill `description` in YAML when scope grows (so auto-routing still picks the right skill).
+
+## Checklist before finishing
+
+- [ ] Read the relevant skill **before** coding; update it **after** if behavior or files changed.
+- [ ] `reference.md` lists new files, actions, migrations, or events.
+- [ ] `AGENTS.md` / `studyverce-overview.mdc` updated if the feature is user-visible or cross-cutting.
+- [ ] No documented steps contradict the current code.
+
+See `.cursor/skills/README.md` for the skill index.

@@ -22,8 +22,8 @@ alwaysApply: false
 ## Participant menu (`participant-list.tsx`)
 
 - Compact variant: click-to-open panel **portaled to `document.body`** (fixed position, `z-[120]`).
-- Search box filters by display name or handle; list scrolls with `max-h-64 overflow-y-auto`.
-- Presence: green dot = active, yellow dot = away — no per-row Active/Away badge.
+- Search filters other users; current user pinned on top in bordered card with Active/Away/Invisible toggles (`room:presence:set`).
+- Others sorted below; invisible users omitted entirely from other viewers' lists/counts; grey dot for self only.
 - Actions per other user: friend request (`friends/actions.ts`), kick for owner (`member-actions.ts` + `room:member:kick`).
 - Last row tooltips: `side="top"` to avoid overflow clipping.
 

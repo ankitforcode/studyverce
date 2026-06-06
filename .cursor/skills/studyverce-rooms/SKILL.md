@@ -69,14 +69,32 @@ Compact dropdown in header (and mobile strip). **Portal panel to `document.body`
 
 - Click trigger to open; outside click / Escape closes.
 - Header: "In this room" + active/away counts (summary only — no per-row Active/Away pills).
-- **Search** above list: filters by display name or `@handle` (`ROOM_FIELD` + search icon).
+- **Search** above list: filters **other** users by display name or `@handle` (`ROOM_FIELD` + search icon).
+- **Current user** pinned at top in a bordered card (`border-primary/35`); always visible regardless of search.
+- **Others** listed below a divider, sorted active first then name.
 - Escape clears search first, then closes panel; search resets on close.
 - Row enter animations: `participant-panel-enter` / `participant-row-enter` in `globals.css`.
+
+### Self presence controls
+
+Current-user card has **Active / Away / Invisible** toggles:
+
+| Mode | You see | Others see |
+|------|---------|------------|
+| `active` | Green dot | Green dot (active) |
+| `away` | Yellow dot | Yellow dot (away) |
+| `invisible` | Grey dot | **Hidden** — omitted from list, avatars, and counts |
+
+- Client: `setPresenceMode` from `useRoomSocket` → `room:presence:set`.
+- UI: `filterParticipantsForViewer(participants, currentUserId)` before rendering.
+- Server: stores `presenceMode` on `RoomParticipant`; `room:ping` only restores active when mode is `active`.
+- Helpers: `filterParticipantsForViewer`, `isParticipantVisibleToViewer`, `normalizePresenceMode` in `@studyverce/shared`.
 
 ### Presence on avatar
 
 - **Active:** green dot (`bg-primary`)
 - **Away:** yellow dot (`bg-yellow-400`)
+- **Invisible (self only):** grey dot (`bg-muted-foreground/60`)
 - Do not re-add per-row Active/Away text badges.
 
 ### Row actions
@@ -88,7 +106,7 @@ Compact dropdown in header (and mobile strip). **Portal panel to `document.body`
 
 On panel open, batch-load friendship status via `getFriendshipStatuses` for other users.
 
-**Tooltips:** `PostItIconTooltip` with `side="bottom"` by default; **last filtered row uses `side="top"`** so tooltips are not clipped by `overflow-y-auto` on the list.
+**Tooltips:** `PostItIconTooltip` with `side="bottom"` by default; **last filtered row uses `side="top"`** so tooltips are not clipped by `overflow-y-auto` on the list. Row action buttons use **`align="end"`** so labels are not clipped on the panel’s right edge.
 
 ## State lift pattern
 
@@ -144,3 +162,7 @@ Visible on room pages. Dashboard uses custom top bar instead (`conditional-navba
 3. New friendship DB policy → migration + `database.types.ts`.
 4. Portaled panels/tooltips: watch `overflow-y-auto` clipping.
 5. Typecheck: `pnpm --filter web exec tsc --noEmit` and socket-server if events change.
+
+## Skills maintenance
+
+After any room/listing/social change, update this skill + [reference.md](reference.md), `room-features.mdc`, and root `AGENTS.md` if files or flows are new. See `.cursor/rules/skills-maintenance.mdc`.

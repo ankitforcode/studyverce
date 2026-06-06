@@ -32,9 +32,10 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 ## Cursor memory
 
 - **Rules**: `.cursor/rules/*.mdc` — auto-applied conventions by file type
-- **Skills**: `.cursor/skills/*/SKILL.md` — deep workflows (post-its, rooms, Supabase)
+- **Skills**: `.cursor/skills/*/SKILL.md` — deep workflows (index: `.cursor/skills/README.md`)
+- **Maintenance**: rule `skills-maintenance.mdc` — update skills/rules/AGENTS when features change
 
-Read the relevant skill before changing post-its, room UI, or migrations.
+Read the relevant skill **before** changing post-its, room UI, or migrations. Update that skill **in the same task** when you add or materially change a feature.
 
 ## Non-negotiables
 
@@ -44,6 +45,7 @@ Read the relevant skill before changing post-its, room UI, or migrations.
 4. New DB columns need a migration in `supabase/migrations/` and updates to `database.types.ts`, mapper, and shared types.
 5. Room overlay: pomodoro/timer uses `pointer-events-none` on wrappers; interactive children use `pointer-events-auto`.
 6. Minimize diff scope; match existing patterns in surrounding files.
+7. **Skills stay current**: after feature work, update the matching skill (`SKILL.md`, `reference.md`), relevant `.mdc` rule, and this file’s “Where to look” table if needed.
 
 ## Next.js (web app)
 

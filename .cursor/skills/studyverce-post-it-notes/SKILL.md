@@ -17,6 +17,7 @@ Read [reference.md](reference.md) for full file map, API list, and migration his
 4. Update `post-it-note.tsx` UI; wire through `post-it-canvas.tsx` → `room-post-it-stack.tsx`.
 5. If task list UI changes, update `room-todo-panel.tsx` and `room-client.tsx` state lift.
 6. Run `pnpm --filter web exec tsc --noEmit`.
+7. **Update docs**: this skill + `reference.md`, `post-it-notes.mdc`, and `AGENTS.md` if the change is user-visible (rule `skills-maintenance.mdc`).
 
 ## Workflow: fix interaction bug
 
