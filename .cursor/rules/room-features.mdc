@@ -1,5 +1,5 @@
 ---
-description: Study room page layout, overlays, chat, pomodoro, and sidebar panels
+description: Study room page layout, overlays, chat, pomodoro, header controls, participant menu, and sidebar panels
 globs: apps/web/src/components/room/**,apps/web/src/app/rooms/**
 alwaysApply: false
 ---
@@ -9,13 +9,23 @@ alwaysApply: false
 ## Layout (`room-client.tsx`)
 
 - Full-height shell below global navbar (`h-[calc(100dvh-4rem)]`).
+- Root element: `data-room-shell` for light-mode CSS variable overrides.
 - **Main section**: post-it overlay (`RoomPostItStack`, z-20) + pomodoro center (z-10).
 - **Aside**: `RoomTodoPanel` (collapsible) above `RoomChat`.
-- Background image with gradient overlay; header has music player, wallpaper picker, participants.
+- Background image with gradient overlay; header has participants, appearance, wallpaper, fullscreen, visibility (owner), favorite, share, music player.
 
-## Pointer events (critical)
+## Header icon buttons
 
-Pomodoro wrapper is `pointer-events-none`; timer card is `pointer-events-auto`. Post-it stack uses `pointer-events-none` on full-area wrapper with `pointer-events-auto` on notes/toolbar — otherwise post-its cannot be clicked/dragged.
+- Use `ROOM_HEADER_ICON_BUTTON` from `lib/room-ui.ts` for square header controls (hover: `bg-secondary`).
+- `RoomClient` must pass `roomOwnerId` and wire `ParticipantList` with `roomId`, `isRoomOwner`, `socket`.
+
+## Participant menu (`participant-list.tsx`)
+
+- Compact variant: click-to-open panel **portaled to `document.body`** (fixed position, `z-[120]`).
+- Search box filters by display name or handle; list scrolls with `max-h-64 overflow-y-auto`.
+- Presence: green dot = active, yellow dot = away — no per-row Active/Away badge.
+- Actions per other user: friend request (`friends/actions.ts`), kick for owner (`member-actions.ts` + `room:member:kick`).
+- Last row tooltips: `side="top"` to avoid overflow clipping.
 
 ## Post-its in rooms
 
@@ -25,8 +35,18 @@ Pomodoro wrapper is `pointer-events-none`; timer card is `pointer-events-auto`. 
 
 ## Realtime
 
-- `useRoomSocket` hook: chat, pomodoro, music broadcast, participants.
-- Room page server component passes initial messages, track, wallpaper, task hints.
+- `useRoomSocket` hook: chat, pomodoro, music broadcast, participants, visibility, membership revoked.
+- Kicked users: `room:membership-revoked` with `reason: "kicked"` → `/rooms?removed=kicked`.
+- Listing presence: `use-room-listing-presence.ts`, socket `/presence` endpoint.
+
+## Room listing (`rooms-directory.tsx`)
+
+- Tabs: trending, private, friends, favorites.
+- `RoomFavoriteButton` on cards; avoid `revalidatePath` in favorite toggle action.
+
+## Pointer events (critical)
+
+Pomodoro wrapper is `pointer-events-none`; timer card is `pointer-events-auto`. Post-it stack uses `pointer-events-none` on full-area wrapper with `pointer-events-auto` on notes/toolbar — otherwise post-its cannot be clicked/dragged.
 
 ## Navbar on room pages
 

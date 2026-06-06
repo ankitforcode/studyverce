@@ -20,5 +20,6 @@ alwaysApply: true
 ## Feature boundaries
 
 - **Dashboard**: stats shell (`dashboard-shell.tsx`); global navbar hidden via `conditional-navbar.tsx`.
-- **Rooms**: post-its, pomodoro, chat, music, wallpapers — orchestrated in `room-client.tsx`.
+- **Rooms**: post-its, pomodoro, chat, music, wallpapers, participant menu (search, friend/kick), favorites, share — orchestrated in `room-client.tsx`. See skill `studyverce-rooms`.
+- **Room listing** (`/rooms`): tabs (trending/private/friends/favorites), live presence badges, favorite hearts on cards.
 - **Post-its**: room-only; see rule `post-it-notes.mdc` and skill `studyverce-post-it-notes`.

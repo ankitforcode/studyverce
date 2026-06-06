@@ -13,9 +13,10 @@ import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { AppSocket } from "@/hooks/use-socket";
-import { ChevronDown, UserPlus, UserX, Users } from "lucide-react";
-import { ROOM_HEADER_CONTROL } from "@/lib/room-ui";
+import { ChevronDown, Search, UserPlus, UserX, Users } from "lucide-react";
+import { ROOM_FIELD, ROOM_HEADER_CONTROL } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface ParticipantListProps {
@@ -51,6 +52,21 @@ function sortParticipants(participants: RoomParticipant[]): RoomParticipant[] {
     if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
     return a.displayName.localeCompare(b.displayName);
   });
+}
+
+function filterParticipantsBySearch(
+  participants: RoomParticipant[],
+  query: string
+): RoomParticipant[] {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return participants;
+
+  const normalized = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  return participants.filter(
+    (p) =>
+      p.displayName.toLowerCase().includes(normalized) ||
+      p.username.toLowerCase().includes(normalized)
+  );
 }
 
 function ParticipantRow({
@@ -200,10 +216,15 @@ function CompactParticipantList({
   const [friendshipStatuses, setFriendshipStatuses] = useState<
     Record<string, FriendshipUiStatus>
   >({});
+  const [searchQuery, setSearchQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const sorted = useMemo(() => sortParticipants(participants), [participants]);
+  const filtered = useMemo(
+    () => filterParticipantsBySearch(sorted, searchQuery),
+    [sorted, searchQuery]
+  );
   const activeCount = participants.filter((p) => p.isActive).length;
   const awayCount = participants.length - activeCount;
   const youAreActive = participants.some(
@@ -246,18 +267,33 @@ function CompactParticipantList({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      if (searchQuery.trim()) {
+        setSearchQuery("");
+        return;
+      }
+      setOpen(false);
     }
 
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    const focusTimer = window.setTimeout(() => {
+      panelRef.current
+        ?.querySelector<HTMLInputElement>('input[aria-label="Search participants"]')
+        ?.focus();
+    }, 0);
     return () => {
+      window.clearTimeout(focusTimer);
       window.removeEventListener("resize", updatePanelPosition);
       window.removeEventListener("scroll", updatePanelPosition, true);
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, updatePanelPosition]);
+  }, [open, updatePanelPosition, searchQuery]);
+
+  useEffect(() => {
+    if (!open) setSearchQuery("");
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -310,25 +346,50 @@ function CompactParticipantList({
             You&apos;re the only one here right now.
           </p>
         ) : (
-          <ul className="max-h-64 space-y-0.5 overflow-y-auto py-1">
-            {sorted.map((p, index) => (
-              <ParticipantRow
-                key={p.userId}
-                participant={p}
-                currentUserId={currentUserId}
-                roomId={roomId}
-                roomOwnerId={roomOwnerId}
-                isRoomOwner={isRoomOwner}
-                socket={socket}
-                friendshipStatus={friendshipStatuses[p.userId] ?? "none"}
-                animationDelayMs={40 + index * 45}
-                actionTooltipSide={index === sorted.length - 1 ? "top" : "bottom"}
-                onFriendshipChange={(userId, status) => {
-                  setFriendshipStatuses((prev) => ({ ...prev, [userId]: status }));
-                }}
-              />
-            ))}
-          </ul>
+          <>
+            <div className="border-b border-border/50 px-2 py-2">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name or @handle"
+                  aria-label="Search participants"
+                  className={cn(ROOM_FIELD, "h-8 pl-8 text-xs")}
+                />
+              </div>
+            </div>
+
+            {filtered.length === 0 ? (
+              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                No users match &ldquo;{searchQuery.trim()}&rdquo;
+              </p>
+            ) : (
+              <ul className="max-h-64 space-y-0.5 overflow-y-auto py-1">
+                {filtered.map((p, index) => (
+                  <ParticipantRow
+                    key={p.userId}
+                    participant={p}
+                    currentUserId={currentUserId}
+                    roomId={roomId}
+                    roomOwnerId={roomOwnerId}
+                    isRoomOwner={isRoomOwner}
+                    socket={socket}
+                    friendshipStatus={friendshipStatuses[p.userId] ?? "none"}
+                    animationDelayMs={40 + index * 45}
+                    actionTooltipSide={index === filtered.length - 1 ? "top" : "bottom"}
+                    onFriendshipChange={(userId, status) => {
+                      setFriendshipStatuses((prev) => ({ ...prev, [userId]: status }));
+                    }}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
     ) : null;
