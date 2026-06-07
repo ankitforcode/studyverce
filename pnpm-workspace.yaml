@@ -5,3 +5,9 @@ packages:
 # pnpm 11+ blocks postinstall scripts unless explicitly allowed (ERR_PNPM_IGNORED_BUILDS).
 allowBuilds:
   esbuild: true
+  sharp: true
+  core-js: true
+  protobufjs: true
+  unrs-resolver: true
+  "@swc/core": true
+  "@parcel/watcher": true
