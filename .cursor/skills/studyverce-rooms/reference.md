@@ -45,7 +45,8 @@
 | `app/rooms/access-actions.ts` | `setRoomVisibility`, `getRoomShareLink`, access requests |
 | `app/friends/actions.ts` | `sendFriendRequest`, `acceptFriendRequest`, `getFriendshipStatuses`, `getPendingFriendRequestsInRoom` |
 | `app/rooms/music-actions.ts` | Track requests, playback |
-| `app/rooms/listing.ts` | Room listing RPCs per tab |
+| `lib/rooms/listing.ts` | Room listing loaders per tab (Redis-cached when `REDIS_URL` set) |
+| `lib/cache/listing.ts` | Listing tab cache (45s TTL) |
 
 ## Hooks & infra
 
@@ -55,7 +56,9 @@
 | `hooks/use-room-listing-presence.ts` | Live counts on `/rooms` cards |
 | `lib/room-ui.ts` | Glass tokens, `ROOM_HEADER_ICON_BUTTON`, portal helpers |
 | `lib/site-metadata.ts` | SEO metadata helpers |
-| `apps/socket-server/src/index.ts` | `room:member:kick`, presence, inactive kick |
+| `apps/socket-server/src/index.ts` | `room:member:kick`, presence, inactive kick, Socket.IO Redis adapter |
+| `apps/socket-server/src/redis-cache.ts` | Profile, chat, room-auth, active-count Redis caches |
+| `packages/redis/` | Shared keys, lazy client, invalidation (`invalidateRoomMusic`, etc.) |
 | `packages/shared/src/index.ts` | `RoomPresenceMode`, `viewPresenceMode`, socket events incl. `room:presence:set`, `room:member:kick` |
 
 ## Migrations (recent social/listing)

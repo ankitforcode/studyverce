@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@studyverce/db": "workspace:*",
+    "@studyverce/redis": "workspace:*",
     "@studyverce/rate-limit": "workspace:*",
     "@studyverce/shared": "workspace:*",
     "@supabase/ssr": "^0.6.1",

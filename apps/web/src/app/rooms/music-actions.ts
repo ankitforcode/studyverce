@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { invalidateRoomMusic } from "@studyverce/redis";
+import "@/lib/redis";
 import {
   type RoomTrack,
   type RoomTrackRequest,
@@ -478,6 +480,8 @@ async function applyRoomTrack(
     .eq("id", roomId);
 
   if (error) return { error: error.message };
+
+  await invalidateRoomMusic(roomId);
 
   if (!trackId) return { error: null, track: null };
 

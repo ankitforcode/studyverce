@@ -5,7 +5,7 @@ alwaysApply: true
 
 # StudyVerce overview
 
-- **Stack**: pnpm + Turborepo, Next.js 16 (`apps/web`, port 3001), Supabase Postgres + RLS, Socket.io room realtime.
+- **Stack**: pnpm + Turborepo, Next.js 16 (`apps/web`, port 3001), Supabase Postgres + RLS, Socket.io room realtime, Redis (`packages/redis`) for presence, chat/auth/profile caches, listing, post-it lazy persist, rate limits.
 - **Shared types**: `packages/shared/src/index.ts` — import `@studyverce/shared`.
 - **Server actions**: `apps/web/src/app/**/actions.ts` or `task-actions.ts`; use `createClient()` from `@/lib/supabase/server`.
 - **Client Supabase**: `@/lib/supabase/client` for browser fetches (post-its in rooms).

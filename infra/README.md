@@ -173,7 +173,7 @@ After `cdk deploy`:
 
 - NAT Gateway + private Fargate tasks
 - WAF on ALB
-- Socket.IO Redis adapter before scaling ECS `desiredCount` > 1
+- Socket.IO Redis adapter is enabled in `apps/socket-server` — safe to scale ECS `desiredCount` > 1
 
 ## Stack delete: capacity provider stuck
 

@@ -9,6 +9,7 @@ Discord-style virtual study rooms with pomodoro, chat, music, wallpapers, and **
 | `apps/web` | Next.js 16 app (port **3001**) |
 | `packages/shared` | Shared types (`UserPostItTask`, `PostItItem`, colors, etc.) |
 | `packages/db` | Database package |
+| `packages/redis` | Shared Redis client, cache keys, invalidation helpers |
 | `supabase/migrations/` | Postgres schema + RLS |
 
 Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
@@ -24,7 +25,8 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Friends list | `apps/web/src/app/friends/page.tsx`, `components/friends/friends-directory.tsx` |
 | Friends / kick | `apps/web/src/app/friends/actions.ts`, `apps/web/src/app/rooms/member-actions.ts` |
 | Favorites / share | `apps/web/src/app/rooms/favorite-actions.ts`, `room/room-favorite-button.tsx`, `room/room-share-link.tsx` |
-| Room listing | `apps/web/src/components/rooms/rooms-directory.tsx`, `app/rooms/listing.ts` |
+| Room listing | `apps/web/src/components/rooms/rooms-directory.tsx`, `lib/rooms/listing.ts`, `lib/cache/listing.ts` |
+| Redis caching | `packages/redis/`, `apps/socket-server/src/redis-cache.ts`, `apps/web/src/lib/redis.ts` |
 | Room UI tokens | `apps/web/src/lib/room-ui.ts` |
 | Todo sidebar | `apps/web/src/components/room/room-todo-panel.tsx` |
 | Dashboard shell | `apps/web/src/components/dashboard/dashboard-*.tsx` |

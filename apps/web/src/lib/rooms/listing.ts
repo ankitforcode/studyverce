@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCachedListing } from "@/lib/cache/listing";
 import type { StudyRoomSettings } from "@studyverce/shared";
 import { mergeRoomSettings } from "@studyverce/db";
+import "@/lib/redis";
 
 export type RoomJoinState = "join" | "pending" | "removed";
 export type RoomListingRole = "owned" | "member" | "pending" | "removed";
@@ -61,6 +63,10 @@ function resolveMode(settings: unknown): RoomListingItem["mode"] {
 }
 
 export async function getPublicRooms(search?: string): Promise<RoomListingItem[]> {
+  return getCachedListing("public", undefined, search, () => loadPublicRooms(search));
+}
+
+async function loadPublicRooms(search?: string): Promise<RoomListingItem[]> {
   const supabase = await createClient();
 
   let query = supabase
@@ -200,7 +206,11 @@ function mapAccessRoomRow(room: AccessRoomRow): RoomListingItem {
   };
 }
 
-export async function getPrivateRooms(_userId: string): Promise<RoomListingItem[]> {
+export async function getPrivateRooms(userId: string): Promise<RoomListingItem[]> {
+  return getCachedListing("private", userId, undefined, () => loadPrivateRooms());
+}
+
+async function loadPrivateRooms(): Promise<RoomListingItem[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase.rpc("get_user_private_rooms");
@@ -210,7 +220,11 @@ export async function getPrivateRooms(_userId: string): Promise<RoomListingItem[
   return (data as AccessRoomRow[]).map(mapAccessRoomRow);
 }
 
-export async function getFriendRooms(_userId: string): Promise<RoomListingItem[]> {
+export async function getFriendRooms(userId: string): Promise<RoomListingItem[]> {
+  return getCachedListing("friends", userId, undefined, () => loadFriendRooms());
+}
+
+async function loadFriendRooms(): Promise<RoomListingItem[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase.rpc("get_user_friend_rooms");
@@ -221,6 +235,10 @@ export async function getFriendRooms(_userId: string): Promise<RoomListingItem[]
 }
 
 export async function getFavoriteRooms(userId: string): Promise<RoomListingItem[]> {
+  return getCachedListing("favorites", userId, undefined, () => loadFavoriteRooms(userId));
+}
+
+async function loadFavoriteRooms(userId: string): Promise<RoomListingItem[]> {
   const supabase = await createClient();
 
   const { data: favorites, error: favError } = await supabase

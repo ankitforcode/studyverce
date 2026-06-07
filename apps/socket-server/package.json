@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --import dotenv/config src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node25 --format=esm --outfile=dist/index.js --external:express --external:cors --external:socket.io --external:ioredis --external:jsonwebtoken --external:jose --external:pg --external:@supabase/supabase-js",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node25 --format=esm --outfile=dist/index.js --external:express --external:cors --external:socket.io --external:@socket.io/redis-adapter --external:ioredis --external:jsonwebtoken --external:jose --external:pg --external:@supabase/supabase-js",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "@studyverce/rate-limit": "workspace:*",
+    "@studyverce/redis": "workspace:*",
     "@studyverce/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.8",
     "cors": "^2.8.5",

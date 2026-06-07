@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { invalidateRoomMemberAuth } from "@studyverce/redis";
+import "@/lib/redis";
 import type { Database } from "@/lib/supabase/database.types";
 import {
   createRoomSchema,
@@ -170,6 +172,7 @@ export async function joinRoom(roomId: string) {
     if (error) {
       return { error: error.message };
     }
+    await invalidateRoomMemberAuth(roomId, user.id);
   }
 
   return { success: true };

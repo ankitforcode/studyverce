@@ -3,6 +3,7 @@ import {
   getClientIpFromHeaders,
   type RateLimitResult,
 } from "@studyverce/rate-limit";
+import "@/lib/redis";
 
 /** For Route Handlers — call at the top of public handlers. */
 export async function enforceRateLimit(request: Request): Promise<Response | null> {

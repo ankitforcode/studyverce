@@ -2,7 +2,15 @@ import express from "express";
 import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import Redis from "ioredis";
+import {
+  configureLazyRedis,
+  redactRedisUrl,
+  resolveRedisUrl,
+  roomMusicKey,
+  roomParticipantsKey,
+} from "@studyverce/redis";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import jwt from "jsonwebtoken";
 import pg from "pg";
@@ -23,6 +31,20 @@ import {
   ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS,
   ROOM_PRESENCE_SWEEP_INTERVAL_MS,
 } from "@studyverce/shared";
+import {
+  appendChatMessage,
+  getCachedActiveCount,
+  getCachedChatHistory,
+  getCachedProfile,
+  getCachedRoomMember,
+  getCachedRoomOwnerCheck,
+  getCachedRoomOwnerId,
+  getCachedRoomOwnerOrMod,
+  invalidateActiveCount,
+  invalidateRoomMemberAuth,
+  listParticipantRoomKeys,
+  removeChatMessage,
+} from "./redis-cache";
 
 const PORT = parseInt(process.env.PORT ?? "3002", 10);
 
@@ -77,42 +99,21 @@ const log = {
   },
 };
 
-function redactRedisUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.password) parsed.password = "***";
-    return parsed.toString();
-  } catch {
-    return "<invalid-redis-url>";
-  }
-}
+configureLazyRedis({
+  label: "socket-server",
+  isEnabled: () =>
+    Boolean(process.env.REDIS_URL?.trim() || process.env.REDIS_HOST?.trim()),
+  resolveUrl: () =>
+    resolveRedisUrl({
+      requiredInProduction: true,
+      localFallback: "redis://localhost:6379",
+    }),
+});
 
-function resolveRedisUrl(): string {
-  const host = process.env.REDIS_HOST?.trim();
-  const port = process.env.REDIS_PORT?.trim() || "6379";
-  if (host) {
-    return `redis://${host}:${port}`;
-  }
-
-  const url = process.env.REDIS_URL?.trim();
-  if (url) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname) return url;
-    } catch {
-      // fall through
-    }
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "Redis is not configured. Set REDIS_HOST and REDIS_PORT (ECS/CDK) or REDIS_URL (local)."
-    );
-  }
-  return "redis://localhost:6379";
-}
-
-const REDIS_URL = resolveRedisUrl();
+const REDIS_URL = resolveRedisUrl({
+  requiredInProduction: true,
+  localFallback: "redis://localhost:6379",
+});
 const SUPABASE_URL = (process.env.SUPABASE_URL ?? "").trim();
 const JWT_SECRET = (process.env.SUPABASE_JWT_SECRET ?? "").trim();
 
@@ -242,6 +243,8 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string,
 );
 
 const redis = new Redis(REDIS_URL);
+const redisPub = redis.duplicate();
+const redisSub = redis.duplicate();
 redis.on("connect", () => {
   log.info("redis connected", { url: redactRedisUrl(REDIS_URL) });
 });
@@ -249,6 +252,8 @@ redis.on("ready", () => log.info("redis ready"));
 redis.on("error", (err) => log.error("redis error", err));
 redis.on("close", () => log.warn("redis connection closed"));
 redis.on("reconnecting", () => log.info("redis reconnecting"));
+io.adapter(createAdapter(redisPub, redisSub));
+log.info("socket.io redis adapter enabled");
 
 const pgPool = DATABASE_URL ? new pg.Pool({ connectionString: DATABASE_URL }) : null;
 if (pgPool) {
@@ -258,16 +263,8 @@ if (pgPool) {
   log.warn("DATABASE_URL not configured — chat persistence disabled");
 }
 
-function participantsKey(roomId: string) {
-  return `room:${roomId}:participants`;
-}
-
 function presenceWatchRoom(roomId: string) {
   return `presence-watch:${roomId}`;
-}
-
-function musicKey(roomId: string) {
-  return `room:${roomId}:music`;
 }
 
 function mapDbTrack(row: Record<string, unknown>): RoomTrack {
@@ -304,10 +301,10 @@ async function loadRoomMusicFromDb(roomId: string): Promise<RoomMusicState | nul
 }
 
 async function getCachedMusic(roomId: string): Promise<RoomMusicState | null> {
-  const cached = await redis.get(musicKey(roomId));
+  const cached = await redis.get(roomMusicKey(roomId));
   if (cached) return JSON.parse(cached) as RoomMusicState;
   const fromDb = await loadRoomMusicFromDb(roomId);
-  if (fromDb) await redis.set(musicKey(roomId), JSON.stringify(fromDb));
+  if (fromDb) await redis.set(roomMusicKey(roomId), JSON.stringify(fromDb));
   return fromDb;
 }
 
@@ -318,13 +315,13 @@ async function syncRoomMusic(roomId: string) {
 
   if (countActiveParticipants(participants) === 0) {
     state = { ...state, isPlaying: false };
-    await redis.set(musicKey(roomId), JSON.stringify(state));
+    await redis.set(roomMusicKey(roomId), JSON.stringify(state));
     return;
   }
 
   if (!state.isPlaying) {
     state = { ...state, isPlaying: true };
-    await redis.set(musicKey(roomId), JSON.stringify(state));
+    await redis.set(roomMusicKey(roomId), JSON.stringify(state));
   }
 
   io.to(roomId).emit("room:music", { roomId, state });
@@ -380,30 +377,32 @@ async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
 }
 
 async function getProfile(userId: string) {
-  if (!pgPool) {
+  return getCachedProfile(redis, userId, async () => {
+    if (!pgPool) {
+      return {
+        username: `user_${userId.slice(0, 8)}`,
+        displayName: "Anonymous",
+        avatarUrl: null,
+      };
+    }
+    const result = await pgPool.query(
+      `SELECT username, display_name, avatar_url FROM profiles WHERE id = $1`,
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return {
+        username: `user_${userId.slice(0, 8)}`,
+        displayName: "Anonymous",
+        avatarUrl: null,
+      };
+    }
+    const row = result.rows[0];
     return {
-      username: `user_${userId.slice(0, 8)}`,
-      displayName: "Anonymous",
-      avatarUrl: null,
+      username: row.username,
+      displayName: row.display_name,
+      avatarUrl: row.avatar_url,
     };
-  }
-  const result = await pgPool.query(
-    `SELECT username, display_name, avatar_url FROM profiles WHERE id = $1`,
-    [userId]
-  );
-  if (result.rows.length === 0) {
-    return {
-      username: `user_${userId.slice(0, 8)}`,
-      displayName: "Anonymous",
-      avatarUrl: null,
-    };
-  }
-  const row = result.rows[0];
-  return {
-    username: row.username,
-    displayName: row.display_name,
-    avatarUrl: row.avatar_url,
-  };
+  });
 }
 
 function parseStoredParticipant(userId: string, json: string): RoomParticipant {
@@ -431,7 +430,7 @@ async function setParticipantPresence(
   userId: string,
   mode: RoomPresenceMode
 ): Promise<RoomParticipant | null> {
-  const raw = await redis.hget(participantsKey(roomId), userId);
+  const raw = await redis.hget(roomParticipantsKey(roomId), userId);
   if (!raw) return null;
 
   const existing = parseStoredParticipant(userId, raw);
@@ -449,7 +448,7 @@ async function setParticipantPresence(
 }
 
 async function getParticipants(roomId: string): Promise<RoomParticipant[]> {
-  const data = await redis.hgetall(participantsKey(roomId));
+  const data = await redis.hgetall(roomParticipantsKey(roomId));
   return Object.entries(data).map(([userId, json]) => parseStoredParticipant(userId, json));
 }
 
@@ -458,7 +457,11 @@ function countActiveParticipants(participants: RoomParticipant[]): number {
 }
 
 async function saveParticipant(roomId: string, participant: RoomParticipant): Promise<void> {
-  await redis.hset(participantsKey(roomId), participant.userId, JSON.stringify(participant));
+  await redis.hset(
+    roomParticipantsKey(roomId),
+    participant.userId,
+    JSON.stringify(participant)
+  );
 }
 
 async function touchParticipant(
@@ -466,7 +469,7 @@ async function touchParticipant(
   userId: string,
   socketId: string
 ): Promise<RoomParticipant | null> {
-  const raw = await redis.hget(participantsKey(roomId), userId);
+  const raw = await redis.hget(roomParticipantsKey(roomId), userId);
   if (!raw) return null;
 
   const existing = parseStoredParticipant(userId, raw);
@@ -485,7 +488,7 @@ async function touchParticipant(
 }
 
 async function markParticipantLeft(roomId: string, userId: string): Promise<void> {
-  const raw = await redis.hget(participantsKey(roomId), userId);
+  const raw = await redis.hget(roomParticipantsKey(roomId), userId);
   if (!raw) return;
 
   const existing = parseStoredParticipant(userId, raw);
@@ -501,7 +504,9 @@ async function markParticipantLeft(roomId: string, userId: string): Promise<void
 
 async function removeParticipantFromRoom(roomId: string, userId: string): Promise<void> {
   const owner = await isRoomOwner(roomId, userId);
-  await redis.hdel(participantsKey(roomId), userId);
+  await redis.hdel(roomParticipantsKey(roomId), userId);
+  await invalidateRoomMemberAuth(redis, roomId, userId);
+  await invalidateActiveCount(redis, roomId);
 
   if (!owner && pgPool) {
     await pgPool.query(`DELETE FROM room_members WHERE room_id = $1 AND user_id = $2`, [
@@ -520,7 +525,7 @@ async function removeParticipantFromRoom(roomId: string, userId: string): Promis
 }
 
 async function sweepStaleParticipants(): Promise<void> {
-  const keys = await redis.keys("room:*:participants");
+  const keys = await listParticipantRoomKeys(redis);
   const now = Date.now();
 
   for (const key of keys) {
@@ -565,8 +570,10 @@ async function sweepStaleParticipants(): Promise<void> {
 }
 
 async function getActiveParticipantCount(roomId: string): Promise<number> {
-  const participants = await getParticipants(roomId);
-  return countActiveParticipants(participants);
+  return getCachedActiveCount(redis, roomId, async () => {
+    const participants = await getParticipants(roomId);
+    return countActiveParticipants(participants);
+  });
 }
 
 async function broadcastPresenceCount(roomId: string) {
@@ -575,12 +582,13 @@ async function broadcastPresenceCount(roomId: string) {
 }
 
 async function broadcastPresence(roomId: string) {
+  await invalidateActiveCount(redis, roomId);
   const participants = await getParticipants(roomId);
   io.to(roomId).emit("room:presence", { roomId, participants });
   await broadcastPresenceCount(roomId);
 }
 
-async function loadChatHistory(roomId: string): Promise<ChatMessage[]> {
+async function loadChatHistoryFromDb(roomId: string): Promise<ChatMessage[]> {
   if (!pgPool) return [];
   const result = await pgPool.query(
     `SELECT m.id, m.room_id, m.user_id, m.content, m.created_at,
@@ -604,6 +612,10 @@ async function loadChatHistory(roomId: string): Promise<ChatMessage[]> {
   }));
 }
 
+async function loadChatHistory(roomId: string): Promise<ChatMessage[]> {
+  return getCachedChatHistory(redis, roomId, () => loadChatHistoryFromDb(roomId));
+}
+
 async function persistMessage(
   roomId: string,
   userId: string,
@@ -618,7 +630,7 @@ async function persistMessage(
     [roomId, userId, content]
   );
   const row = result.rows[0];
-  return {
+  const message = {
     id: row.id,
     roomId: row.room_id,
     userId: row.user_id,
@@ -628,6 +640,8 @@ async function persistMessage(
     content: row.content,
     createdAt: row.created_at.toISOString(),
   };
+  await appendChatMessage(redis, roomId, message);
+  return message;
 }
 
 async function deleteMessage(messageId: string, roomId: string) {
@@ -636,49 +650,58 @@ async function deleteMessage(messageId: string, roomId: string) {
     messageId,
     roomId,
   ]);
+  await removeChatMessage(redis, roomId, messageId);
   return true;
 }
 
 async function isRoomMember(roomId: string, userId: string): Promise<boolean> {
   if (!pgPool) return true;
-  const result = await pgPool.query(
-    `SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2
-     UNION
-     SELECT 1 FROM study_rooms WHERE id = $1 AND is_public = TRUE
-     LIMIT 1`,
-    [roomId, userId]
-  );
-  return result.rows.length > 0;
+  return getCachedRoomMember(redis, roomId, userId, async () => {
+    const result = await pgPool!.query(
+      `SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2
+       UNION
+       SELECT 1 FROM study_rooms WHERE id = $1 AND is_public = TRUE
+       LIMIT 1`,
+      [roomId, userId]
+    );
+    return result.rows.length > 0;
+  });
 }
 
 async function isRoomOwnerOrMod(roomId: string, userId: string): Promise<boolean> {
   if (!pgPool) return false;
-  const result = await pgPool.query(
-    `SELECT 1 FROM study_rooms WHERE id = $1 AND owner_id = $2
-     UNION
-     SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2 AND role IN ('owner', 'moderator')
-     LIMIT 1`,
-    [roomId, userId]
-  );
-  return result.rows.length > 0;
+  return getCachedRoomOwnerOrMod(redis, roomId, userId, async () => {
+    const result = await pgPool!.query(
+      `SELECT 1 FROM study_rooms WHERE id = $1 AND owner_id = $2
+       UNION
+       SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2 AND role IN ('owner', 'moderator')
+       LIMIT 1`,
+      [roomId, userId]
+    );
+    return result.rows.length > 0;
+  });
 }
 
 async function isRoomOwner(roomId: string, userId: string): Promise<boolean> {
   if (!pgPool) return false;
-  const result = await pgPool.query(
-    `SELECT 1 FROM study_rooms WHERE id = $1 AND owner_id = $2 LIMIT 1`,
-    [roomId, userId]
-  );
-  return result.rows.length > 0;
+  return getCachedRoomOwnerCheck(redis, roomId, userId, async () => {
+    const result = await pgPool!.query(
+      `SELECT 1 FROM study_rooms WHERE id = $1 AND owner_id = $2 LIMIT 1`,
+      [roomId, userId]
+    );
+    return result.rows.length > 0;
+  });
 }
 
 async function getRoomOwnerId(roomId: string): Promise<string | null> {
   if (!pgPool) return null;
-  const result = await pgPool.query(
-    `SELECT owner_id FROM study_rooms WHERE id = $1 LIMIT 1`,
-    [roomId]
-  );
-  return (result.rows[0]?.owner_id as string | undefined) ?? null;
+  return getCachedRoomOwnerId(redis, roomId, async () => {
+    const result = await pgPool!.query(
+      `SELECT owner_id FROM study_rooms WHERE id = $1 LIMIT 1`,
+      [roomId]
+    );
+    return (result.rows[0]?.owner_id as string | undefined) ?? null;
+  });
 }
 
 async function notifyRoomOwnerInviteEvent(
@@ -973,7 +996,7 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const hadPresence = await redis.hget(participantsKey(roomId), user.id);
+      const hadPresence = await redis.hget(roomParticipantsKey(roomId), user.id);
 
       await socket.join(roomId);
 
@@ -1042,7 +1065,7 @@ io.on("connection", (socket) => {
   socket.on("room:ping", async ({ roomId }) => {
     if (!socket.rooms.has(roomId)) return;
 
-    const raw = await redis.hget(participantsKey(roomId), user.id);
+    const raw = await redis.hget(roomParticipantsKey(roomId), user.id);
     if (!raw) return;
 
     const wasInactive = !parseStoredParticipant(user.id, raw).isActive;
@@ -1161,7 +1184,7 @@ io.on("connection", (socket) => {
         ? { ...state, isPlaying: state.isPlaying ?? true }
         : state;
 
-    await redis.set(musicKey(roomId), JSON.stringify(nextState));
+    await redis.set(roomMusicKey(roomId), JSON.stringify(nextState));
     io.to(roomId).emit("room:music", { roomId, state: nextState });
   });
 

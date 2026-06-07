@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { invalidateRoomUserAuth } from "@studyverce/redis";
+import "@/lib/redis";
 
 export async function kickRoomMember(
   roomId: string,
@@ -49,6 +51,8 @@ export async function kickRoomMember(
   if (accessError) {
     console.error("kickRoomMember: revoke access", accessError.message);
   }
+
+  await invalidateRoomUserAuth(roomId, userId);
 
   return { error: null };
 }

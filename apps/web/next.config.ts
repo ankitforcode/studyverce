@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: monorepoRoot,
   },
-  serverExternalPackages: ["ioredis", "@studyverce/rate-limit"],
+  serverExternalPackages: ["ioredis", "@studyverce/redis", "@studyverce/rate-limit"],
   allowedDevOrigins: getAllowedDevOrigins(),
   async rewrites() {
     return [

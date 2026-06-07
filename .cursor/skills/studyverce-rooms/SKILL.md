@@ -129,6 +129,8 @@ Both must share the same array (includes closed tasks).
 
 Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks.
 
+**Redis (socket-server):** `@socket.io/redis-adapter` for multi-instance broadcasts; caches profiles (10m), room auth (2m), chat history (1h), music state, presence hashes, and active-count snapshots (3s). Web invalidates music/membership caches via `@studyverce/redis` when server actions change DB (`music-actions`, `member-actions`, `joinRoom`).
+
 | Event | Direction | Purpose |
 |-------|-----------|---------|
 | `room:member:kick` | client → server | Owner kicked a member |
@@ -143,6 +145,7 @@ Kicked users see banner on `rooms-directory.tsx` (`?removed=kicked`).
 - `rooms-directory.tsx` — tabs: trending, private, friends, favorites.
 - Private tab RPC `get_user_private_rooms`: owned, member, pending invite, or approved-without-membership (inactive leave — can rejoin). **Kicked** users get `revoked` access and are **not listed**.
 - Live presence badge on cards: `use-room-listing-presence.ts` + `/presence` rewrite in `next.config.ts`.
+- Listing tabs cache in Redis (45s TTL) when `REDIS_URL` is set — `lib/cache/listing.ts`; presence counts cached 3s on socket-server.
 - Favorites: `favorite-actions.ts`, migration `20250606000005_user_favorite_rooms.sql`.
 - **Do not** call `revalidatePath` from favorite toggle (caused client fetch errors).
 - Card description: room text only (no owner name).
