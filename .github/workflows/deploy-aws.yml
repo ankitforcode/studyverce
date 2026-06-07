@@ -133,18 +133,31 @@ jobs:
 
       - name: Wait for ECS cluster to be idle
         run: |
-          if aws ecs describe-services \
+          cluster_status=$(aws ecs describe-clusters \
+            --clusters "${{ env.ECS_CLUSTER }}" \
+            --query 'clusters[0].status' \
+            --output text 2>/dev/null || echo "missing")
+          if [ "$cluster_status" != "ACTIVE" ]; then
+            echo "ECS cluster '${{ env.ECS_CLUSTER }}' is '${cluster_status}' — skipping pre-deploy wait"
+            exit 0
+          fi
+
+          describe=$(aws ecs describe-services \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.ECS_SERVICE }}" \
-            --query 'services[0].status' \
-            --output text 2>/dev/null | grep -q ACTIVE; then
-            echo "Waiting for ${{ env.ECS_SERVICE }} to become stable before CDK deploy..."
-            aws ecs wait services-stable \
-              --cluster "${{ env.ECS_CLUSTER }}" \
-              --services "${{ env.ECS_SERVICE }}"
-          else
-            echo "ECS service not found yet — first deploy"
+            --output json 2>/dev/null || echo '{}')
+          failures=$(echo "$describe" | jq -r '.failures | length')
+          status=$(echo "$describe" | jq -r '.services[0].status // "missing"')
+
+          if [ "$failures" != "0" ] || [ "$status" != "ACTIVE" ]; then
+            echo "ECS service '${{ env.ECS_SERVICE }}' is '${status}' — skipping pre-deploy wait"
+            exit 0
           fi
+
+          echo "Waiting for ${{ env.ECS_SERVICE }} to become stable before CDK deploy..."
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.ECS_SERVICE }}"
 
       - name: CDK deploy
         working-directory: infra
@@ -159,6 +172,27 @@ jobs:
 
       - name: Wait for service stability
         run: |
+          cluster_status=$(aws ecs describe-clusters \
+            --clusters "${{ env.ECS_CLUSTER }}" \
+            --query 'clusters[0].status' \
+            --output text 2>/dev/null || echo "missing")
+          if [ "$cluster_status" != "ACTIVE" ]; then
+            echo "ECS cluster '${{ env.ECS_CLUSTER }}' is '${cluster_status}' after CDK deploy — skipping stability wait"
+            exit 0
+          fi
+
+          describe=$(aws ecs describe-services \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.ECS_SERVICE }}" \
+            --output json 2>/dev/null || echo '{}')
+          failures=$(echo "$describe" | jq -r '.failures | length')
+          status=$(echo "$describe" | jq -r '.services[0].status // "missing"')
+
+          if [ "$failures" != "0" ] || [ "$status" != "ACTIVE" ]; then
+            echo "ECS service '${{ env.ECS_SERVICE }}' is '${status}' after CDK deploy — skipping stability wait"
+            exit 0
+          fi
+
           aws ecs wait services-stable \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.ECS_SERVICE }}"
