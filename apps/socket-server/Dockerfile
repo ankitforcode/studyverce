@@ -10,11 +10,13 @@ COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/socket-server/package.json apps/socket-server/
 COPY packages/shared/package.json packages/shared/
 COPY packages/rate-limit/package.json packages/rate-limit/
+COPY packages/redis/package.json packages/redis/
 
 RUN pnpm install --frozen-lockfile
 
 COPY packages/shared packages/shared
 COPY packages/rate-limit packages/rate-limit
+COPY packages/redis packages/redis
 COPY apps/socket-server apps/socket-server
 
 RUN pnpm --filter @studyverce/socket-server build
@@ -33,6 +35,7 @@ COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/socket-server/package.json apps/socket-server/
 COPY packages/shared/package.json packages/shared/
 COPY packages/rate-limit/package.json packages/rate-limit/
+COPY packages/redis/package.json packages/redis/
 
 COPY --from=builder /app/apps/socket-server/dist ./apps/socket-server/dist
 
