@@ -3,9 +3,16 @@
 # Platform must be "Web" (WEB_COMPUTE), not static — or you get S3 404 on custom domain.
 #
 # StudyVerce uses server actions, API routes, and Supabase SSR — do not use output: "export".
+#
+# Diff deploy: skip build + deploy when the latest commit has no changes under apps/web.
+# See https://docs.aws.amazon.com/amplify/latest/userguide/build-settings.html#enable-diff-deploy
 version: 1
 applications:
   - appRoot: apps/web
+    env:
+      variables:
+        AMPLIFY_DIFF_DEPLOY: "true"
+        AMPLIFY_DIFF_DEPLOY_ROOT: apps/web
     frontend:
       buildPath: /
       phases:

@@ -1,3 +1,4 @@
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecr from "aws-cdk-lib/aws-ecr";
@@ -6,6 +7,7 @@ import * as elasticache from "aws-cdk-lib/aws-elasticache";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
+import * as route53 from "aws-cdk-lib/aws-route53";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 
@@ -30,6 +32,16 @@ export interface StudyverceStackProps extends cdk.StackProps {
    * Override: cdk deploy -c socketImageTag=abc1234
    */
   readonly socketImageTag?: string;
+  /**
+   * Route 53 hosted zone for DNS validation and the socket CNAME.
+   * Override: cdk deploy -c hostedZoneName=studyverce.com
+   */
+  readonly hostedZoneName?: string;
+  /**
+   * Public socket hostname (ACM cert + Route 53 record).
+   * Override: cdk deploy -c socketDomainName=websocket.studyverce.com
+   */
+  readonly socketDomainName?: string;
 }
 
 const ECR_REPOSITORY_NAME = "studyverce-socket";
@@ -72,6 +84,11 @@ export class StudyverceStack extends cdk.Stack {
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
       "HTTP from internet"
+    );
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "HTTPS from internet"
     );
 
     const socketSecurityGroup = new ec2.SecurityGroup(this, "SocketSecurityGroup", {
@@ -248,12 +265,32 @@ export class StudyverceStack extends cdk.Stack {
     });
     loadBalancer.setAttribute("idle_timeout.timeout_seconds", "3600");
 
-    const listener = loadBalancer.addListener("HttpListener", {
-      port: 80,
+    const hostedZoneName =
+      props?.hostedZoneName ??
+      (this.node.tryGetContext("hostedZoneName") as string | undefined) ??
+      "studyverce.com";
+    const socketDomainName =
+      props?.socketDomainName ??
+      (this.node.tryGetContext("socketDomainName") as string | undefined) ??
+      "websocket.studyverce.com";
+
+    const hostedZone = route53.HostedZone.fromLookup(this, "HostedZone", {
+      domainName: hostedZoneName,
+    });
+
+    const certificate = new acm.Certificate(this, "SocketCertificate", {
+      domainName: socketDomainName,
+      validation: acm.CertificateValidation.fromDns(hostedZone),
+    });
+
+    const httpsListener = loadBalancer.addListener("HttpsListener", {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      certificates: [certificate],
       open: true,
     });
 
-    const targetGroup = listener.addTargets("SocketTargets", {
+    const targetGroup = httpsListener.addTargets("SocketTargets", {
       port: 3002,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [service],
@@ -265,6 +302,27 @@ export class StudyverceStack extends cdk.Stack {
       stickinessCookieDuration: cdk.Duration.hours(1),
     });
     targetGroup.setAttribute("stickiness.enabled", "true");
+
+    loadBalancer.addListener("HttpListener", {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      open: true,
+      defaultAction: elbv2.ListenerAction.redirect({
+        protocol: "HTTPS",
+        port: "443",
+        permanent: true,
+      }),
+    });
+
+    const socketRecordName = socketDomainName.endsWith(`.${hostedZoneName}`)
+      ? socketDomainName.slice(0, -(hostedZoneName.length + 1))
+      : socketDomainName;
+
+    new route53.CnameRecord(this, "SocketWebSocketCname", {
+      zone: hostedZone,
+      recordName: socketRecordName,
+      domainName: loadBalancer.loadBalancerDnsName,
+    });
 
     new cdk.CfnOutput(this, "EcrRepositoryUri", {
       value: repository.repositoryUri,
@@ -278,7 +336,17 @@ export class StudyverceStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "SocketAlbDnsName", {
       value: loadBalancer.loadBalancerDnsName,
-      description: "Set NEXT_PUBLIC_SOCKET_URL=http(s)://<this-host>",
+      description: "ALB DNS name (CNAME target for websocket subdomain)",
+    });
+
+    new cdk.CfnOutput(this, "SocketDomainName", {
+      value: socketDomainName,
+      description: "Set NEXT_PUBLIC_SOCKET_URL=https://<this-host>",
+    });
+
+    new cdk.CfnOutput(this, "SocketCertificateArn", {
+      value: certificate.certificateArn,
+      description: "ACM certificate for the socket ALB (DNS-validated via Route 53)",
     });
 
     new cdk.CfnOutput(this, "RedisEndpoint", {

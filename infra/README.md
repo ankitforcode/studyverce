@@ -11,7 +11,8 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 | ElastiCache Redis (`cache.t4g.micro`) | Single-node Redis instance |
 | ECR `studyverce-socket` | Created by CI if missing; CDK imports by name |
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
-| ALB `studyverce-socket` | HTTPS/WebSocket entry (HTTP :80 scaffold) |
+| ALB `studyverce-socket` | HTTPS/WebSocket on :443 (`websocket.studyverce.com`) |
+| ACM + Route 53 | DNS-validated cert; CNAME `websocket` → ALB |
 | Secrets Manager `studyverce/socket-server` | Supabase URL, JWT secret, `DATABASE_URL` |
 
 **Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Override Redis node size: `cdk deploy -c cacheNodeType=cache.t4g.small`.
@@ -22,6 +23,7 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 - Docker (for socket image builds)
 - Node.js 20+
 - Supabase Cloud project with migrations applied (`supabase db push`)
+- Route 53 hosted zone for `studyverce.com` in the same AWS account (CDK looks it up on deploy)
 
 ## One-time AWS setup
 
@@ -54,6 +56,7 @@ Attach policies (tighten for production):
 - `AmazonECS_FullAccess`
 - `CloudFormationFullAccess` (or scoped CDK deploy policy)
 - `SecretsManagerReadWrite` (socket secret updates)
+- Route 53 + ACM (create cert, validation records, and `websocket` CNAME)
 
 Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 
@@ -78,7 +81,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only |
 | `NEXT_PUBLIC_APP_URL` | Amplify app URL |
-| `NEXT_PUBLIC_SOCKET_URL` | `http://<SocketAlbDnsName>` from CDK output (use HTTPS after ACM) |
+| `NEXT_PUBLIC_SOCKET_URL` | `https://websocket.studyverce.com` (CDK output **SocketDomainName**) |
 | `REDIS_URL` | Optional — use Upstash or ElastiCache endpoint if web needs Redis |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Optional |
 
@@ -144,14 +147,13 @@ The Next.js web app deploys via **Amplify Console Git integration** on branch pu
 
 After `cdk deploy`:
 
-- **SocketAlbDnsName** → set `NEXT_PUBLIC_SOCKET_URL` in Amplify
+- **SocketDomainName** → set `NEXT_PUBLIC_SOCKET_URL=https://<value>` in Amplify
+- **SocketAlbDnsName** → ALB hostname (CNAME target)
 - **EcrRepositoryUri** → CI pushes here
 - **RedisEndpoint** → injected into socket task as `REDIS_HOST` + `REDIS_PORT`
 
 ## Production hardening (later)
 
-- ACM certificate + ALB HTTPS listener (:443)
-- Custom domain (Route 53) for socket host, e.g. `socket.example.com`
 - NAT Gateway + private Fargate tasks
 - WAF on ALB
 - Socket.IO Redis adapter before scaling ECS `desiredCount` > 1
@@ -174,5 +176,5 @@ npm run synth
 npm run diff
 npm run deploy
 aws logs tail /studyverce/socket-server --follow
-curl http://<SocketAlbDnsName>/health
+curl https://websocket.studyverce.com/health
 ```
