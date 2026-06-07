@@ -115,14 +115,21 @@ The user has `profiles.is_admin = true`, `plan_tier = institution`, and onboardi
 
 #### Email confirmation template (local)
 
-Signup confirmation uses `supabase/templates/confirm-signup.html` (wired in `supabase/config.toml`). The logo is served from `apps/web/public/logo-email.png` via `{{ .SiteURL }}`.
+Signup confirmation uses `supabase/templates/confirm-signup.html` (wired in `supabase/config.toml`). The header logo is embedded inline (generated from `apps/web/public/logo-email.svg`).
+
+Regenerate the PNG after editing the SVG:
+
+```bash
+./scripts/sync-email-logo.sh
+```
+
+Then update the inline `data:image/png;base64,...` in the template if the icon changed.
 
 1. Restart Supabase after editing the template: `supabase stop --no-backup && supabase start`
-2. Run the web app (`pnpm dev`) so the logo URL resolves in Inbucket previews
-3. Sign up at `/auth/signup` with a new email
-4. Open **Inbucket** at [http://localhost:54324](http://localhost:54324) to preview the message
+2. Sign up at `/auth/signup` with a new email
+3. Open **Inbucket** at [http://localhost:54324](http://localhost:54324) to preview the message
 
-For hosted Supabase, paste the same HTML into **Authentication → Email Templates → Confirm signup** in the dashboard. Set **Site URL** to your production app URL so `logo-email.png` loads.
+For hosted Supabase, paste the same HTML into **Authentication → Email Templates → Confirm signup** in the dashboard.
 
 ### 4. Start Redis and ngrok (OAuth / HTTPS redirects)
 

@@ -1,11 +1,9 @@
 Confirm your email — StudyVerce
 
-Thanks for signing up. Verify {{ .Email }} to unlock study rooms, Pomodoro timers, and more.
+Thanks for signing up. Verify your account to unlock study rooms, Pomodoro timers, and more.
 
 Confirm your email:
 {{ .ConfirmationURL }}
-
-This link expires in 24 hours.
 
 If you didn't sign up for StudyVerce, you can safely ignore this email.
 
