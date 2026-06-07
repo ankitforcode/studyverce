@@ -38,7 +38,12 @@ enable_signup = true
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations = false
+# Required for signup confirmation emails in local Inbucket (http://localhost:54324).
+enable_confirmations = true
+
+[auth.email.template.confirmation]
+subject = "Confirm your email — StudyVerce"
+content_path = "./supabase/templates/confirm-signup.html"
 
 [auth.external.google]
 enabled = true

@@ -8,7 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
 import { loginPath, onboardingPath, safeRedirectPath } from "@/lib/auth/paths";
@@ -21,6 +22,7 @@ function SignupForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const isRoomRedirect = redirect.startsWith("/rooms/") && redirect !== "/rooms/new";
 
@@ -30,7 +32,7 @@ function SignupForm() {
     setError(null);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -40,6 +42,12 @@ function SignupForm() {
 
     if (signUpError) {
       setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data.session) {
+      setConfirmationSent(true);
       setLoading(false);
       return;
     }
@@ -68,6 +76,42 @@ function SignupForm() {
           : "Join StudyVerce and start studying together"
       }
     >
+      {confirmationSent ? (
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10">
+            <Mail className="h-7 w-7 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Check your email</p>
+            <p className="text-sm text-muted-foreground">
+              We sent a confirmation link to{" "}
+              <span className="font-medium text-foreground">{email}</span>. Open it to finish
+              creating your account.
+            </p>
+          </div>
+          {process.env.NODE_ENV === "development" && (
+            <p className="text-xs text-muted-foreground">
+              Local dev: preview the message in{" "}
+              <a
+                href="http://localhost:54324"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                Inbucket
+              </a>
+              .
+            </p>
+          )}
+          <Link
+            href={loginPath(redirect)}
+            className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+          >
+            Back to sign in
+          </Link>
+        </div>
+      ) : (
+        <>
       <div className="mb-5 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-muted-foreground">
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span>Free to join — virtual rooms, Pomodoro timers, and study chat included.</span>
@@ -131,6 +175,8 @@ function SignupForm() {
           Sign in
         </Link>
       </p>
+        </>
+      )}
     </AuthPageShell>
   );
 }
