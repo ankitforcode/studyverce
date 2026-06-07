@@ -3,11 +3,12 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Mail, Lock } from "lucide-react";
+import { Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
@@ -114,19 +115,14 @@ function LoginForm() {
               Forgot password?
             </Link>
           </div>
-          <div className="relative">
-            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-9"
-              required
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            autoComplete="current-password"
+            placeholder="Your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </div>
 
         {error && (

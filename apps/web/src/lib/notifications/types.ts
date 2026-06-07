@@ -17,6 +17,7 @@ export type NotificationAction =
   | "membership_kicked"
   | "music_request_sent"
   | "share_link_copied"
+  | "password_reset"
   | "generic";
 
 export type AppNotification = {

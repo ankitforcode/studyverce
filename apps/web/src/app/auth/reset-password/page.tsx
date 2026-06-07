@@ -3,15 +3,18 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useNotifications } from "@/components/notifications/notification-provider";
+import { PasswordInput } from "@/components/auth/password-input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { loginPath } from "@/lib/auth/paths";
 
 function ResetPasswordForm() {
   const router = useRouter();
+  const { toast } = useNotifications();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +59,7 @@ function ResetPasswordForm() {
       return;
     }
 
+    toast(notificationMessages.passwordResetSuccess());
     router.push("/dashboard");
     router.refresh();
   }
@@ -94,38 +98,28 @@ function ResetPasswordForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="password">New password</Label>
-          <div className="relative">
-            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="At least 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-9"
-              minLength={6}
-              required
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            autoComplete="new-password"
+            placeholder="At least 6 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={6}
+            required
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="confirm-password">Confirm password</Label>
-          <div className="relative">
-            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Repeat your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-9"
-              minLength={6}
-              required
-            />
-          </div>
+          <PasswordInput
+            id="confirm-password"
+            autoComplete="new-password"
+            placeholder="Repeat your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            minLength={6}
+            required
+          />
         </div>
 
         {error && (

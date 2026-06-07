@@ -52,6 +52,20 @@ function ForgotPasswordForm() {
             Open the link in your inbox to choose a new password. The link expires after a short
             time.
           </p>
+          {process.env.NODE_ENV === "development" && (
+            <p className="text-xs text-muted-foreground">
+              Local dev: preview the message in{" "}
+              <a
+                href="http://localhost:54324"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                Inbucket
+              </a>
+              .
+            </p>
+          )}
           <Link href={loginPath(redirect)}>
             <Button variant="outline" className="w-full gap-2">
               <ArrowLeft className="h-4 w-4" />

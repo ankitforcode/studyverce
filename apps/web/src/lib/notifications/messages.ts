@@ -141,6 +141,13 @@ export const notificationMessages = {
     title: "Link copied",
     message: "Room share link copied to your clipboard.",
   }),
+  passwordResetSuccess: (): ToastInput => ({
+    action: "password_reset",
+    kind: "success",
+    title: "Password updated",
+    message: "Your password was reset successfully.",
+    persist: false,
+  }),
   actionError: (message: string): ToastInput => ({
     action: "generic",
     kind: "error",

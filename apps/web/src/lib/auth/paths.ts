@@ -1,3 +1,6 @@
+/** Auth routes that are valid post-login redirect targets (e.g. password recovery). */
+const ALLOWED_AUTH_REDIRECT_PATHS = new Set(["/auth/reset-password"]);
+
 export function loginPath(redirectTo: string): string {
   return `/auth/login?redirect=${encodeURIComponent(redirectTo)}`;
 }
@@ -18,7 +21,9 @@ export function safeRedirectPath(path: string | null | undefined): string | null
   try {
     const url = new URL(path, "http://localhost");
     if (!url.pathname.startsWith("/")) return null;
-    if (url.pathname.startsWith("/auth/")) return null;
+    if (url.pathname.startsWith("/auth/") && !ALLOWED_AUTH_REDIRECT_PATHS.has(url.pathname)) {
+      return null;
+    }
     return `${url.pathname}${url.search}`;
   } catch {
     return null;
@@ -41,6 +46,11 @@ export function resolvePostAuthDestination(
   onboardingCompleted: boolean
 ): string {
   const safe = safeRedirectPath(redirectTo);
+
+  if (safe === "/auth/reset-password") {
+    return safe;
+  }
+
   const destination = safe ?? "/dashboard";
 
   if (!onboardingCompleted && destination !== "/onboarding") {

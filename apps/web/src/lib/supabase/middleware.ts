@@ -42,6 +42,11 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && request.nextUrl.pathname.startsWith("/auth/")) {
+    // Allow recovery flow to finish on the reset-password form.
+    if (request.nextUrl.pathname === "/auth/reset-password") {
+      return supabaseResponse;
+    }
+
     const redirectParam = safeRedirectPath(request.nextUrl.searchParams.get("redirect"));
     if (redirectParam) {
       return NextResponse.redirect(new URL(redirectParam, request.url));
