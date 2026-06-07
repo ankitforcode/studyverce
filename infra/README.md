@@ -22,13 +22,20 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 
 ## One-time AWS setup
 
-### 1. Bootstrap CDK
+### 1. Bootstrap CDK (once per AWS account + region)
+
+CDK must be bootstrapped before the first `cdk deploy`. Your workflow uses **`eu-north-1`** — bootstrap that region explicitly:
 
 ```bash
+aws sso login   # or ensure AWS credentials are active
 cd infra
 npm install
-npx cdk bootstrap
+npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/eu-north-1
 ```
+
+This creates the CDK toolkit stack (S3 asset bucket, IAM roles, SSM version parameter). Safe to re-run; idempotent.
+
+The GitHub Actions workflow also runs `cdk bootstrap` before deploy. The OIDC role needs permission to create that toolkit stack on first run.
 
 ### 2. GitHub Actions OIDC role
 
