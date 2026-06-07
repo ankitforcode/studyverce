@@ -13,7 +13,7 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket on :443 (`websocket.studyverce.com`) |
 | ACM + Route 53 | DNS-validated cert; CNAME `websocket` → ALB |
-| Secrets Manager `studyverce/socket-server` | Supabase URL, JWT secret, `DATABASE_URL` |
+| SSM `/socket/production/*` | Socket secrets → ECS env (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`) |
 
 **Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Override Redis node size: `cdk deploy -c cacheNodeType=cache.t4g.small`.
 
@@ -55,8 +55,8 @@ Attach policies (tighten for production):
 - `AmazonEC2ContainerRegistryPowerUser`
 - `AmazonECS_FullAccess`
 - `CloudFormationFullAccess` (or scoped CDK deploy policy)
-- `SecretsManagerReadWrite` (socket secret updates)
 - Route 53 + ACM (create cert, validation records, and `websocket` CNAME)
+- SSM `GetParameter` on `/socket/production/*` (task execution role reads params at launch)
 
 Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 
@@ -107,13 +107,26 @@ cd infra
 npx cdk deploy -c corsOrigin=https://www.studyverce.com -c vpcId=vpc-0cd78532e2b1cacf1
 ```
 
-### 6. Configure socket secrets
+### 6. Configure socket secrets (SSM Parameter Store)
 
-Update Secrets Manager secret `studyverce/socket-server`:
+Create or update these parameters before the first healthy ECS deploy:
 
-- `SUPABASE_URL` — `https://<ref>.supabase.co`
-- `SUPABASE_JWT_SECRET` — Supabase Dashboard → API → JWT Secret
-- `DATABASE_URL` — Supabase **pooler** URL (port `6543`)
+| SSM path | ECS env | Type | Value |
+|----------|---------|------|-------|
+| `/socket/production/database_url` | `DATABASE_URL` | String | Supabase **pooler** URL (port `6543`) |
+| `/socket/production/supabase_url` | `SUPABASE_URL` | String | `https://<ref>.supabase.co` |
+| `/socket/production/supabase_jwt_secret` | `SUPABASE_JWT_SECRET` | SecureString | Supabase Dashboard → API → JWT Secret |
+
+```bash
+aws ssm put-parameter --name /socket/production/database_url --type String \
+  --value 'postgresql://postgres.PROJECT:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres' --overwrite
+
+aws ssm put-parameter --name /socket/production/supabase_url --type String \
+  --value 'https://YOUR_PROJECT.supabase.co' --overwrite
+
+aws ssm put-parameter --name /socket/production/supabase_jwt_secret --type SecureString \
+  --value 'YOUR_JWT_SECRET' --overwrite
+```
 
 ### 7. First socket image
 

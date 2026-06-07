@@ -8,7 +8,7 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as route53 from "aws-cdk-lib/aws-route53";
-import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 
 export interface StudyverceStackProps extends cdk.StackProps {
@@ -42,7 +42,26 @@ export interface StudyverceStackProps extends cdk.StackProps {
    * Override: cdk deploy -c socketDomainName=websocket.studyverce.com
    */
   readonly socketDomainName?: string;
+  /**
+   * SSM Parameter Store path for the socket Postgres URL.
+   * Override: cdk deploy -c databaseUrlParamPath=/socket/production/database_url
+   */
+  readonly databaseUrlParamPath?: string;
+  /**
+   * SSM Parameter Store path for Supabase project URL.
+   * Override: cdk deploy -c supabaseUrlParamPath=/socket/production/supabase_url
+   */
+  readonly supabaseUrlParamPath?: string;
+  /**
+   * SSM Parameter Store path for Supabase JWT secret.
+   * Override: cdk deploy -c supabaseJwtSecretParamPath=/socket/production/supabase_jwt_secret
+   */
+  readonly supabaseJwtSecretParamPath?: string;
 }
+
+const DEFAULT_DATABASE_URL_PARAM = "/socket/production/database_url";
+const DEFAULT_SUPABASE_URL_PARAM = "/socket/production/supabase_url";
+const DEFAULT_SUPABASE_JWT_SECRET_PARAM = "/socket/production/supabase_jwt_secret";
 
 const ECR_REPOSITORY_NAME = "studyverce-socket";
 
@@ -134,17 +153,34 @@ export class StudyverceStack extends cdk.Stack {
     });
     redis.addDependency(redisSubnetGroup);
 
-    const socketSecret = new secretsmanager.Secret(this, "SocketSecret", {
-      secretName: "studyverce/socket-server",
-      description: "Supabase and Postgres credentials for the socket server",
-      secretObjectValue: {
-        SUPABASE_URL: cdk.SecretValue.unsafePlainText("https://YOUR_PROJECT.supabase.co"),
-        SUPABASE_JWT_SECRET: cdk.SecretValue.unsafePlainText("REPLACE_ME"),
-        DATABASE_URL: cdk.SecretValue.unsafePlainText(
-          "postgresql://postgres.PROJECT:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres"
-        ),
-      },
-    });
+    const databaseUrlParamPath =
+      props?.databaseUrlParamPath ??
+      (this.node.tryGetContext("databaseUrlParamPath") as string | undefined) ??
+      DEFAULT_DATABASE_URL_PARAM;
+    const supabaseUrlParamPath =
+      props?.supabaseUrlParamPath ??
+      (this.node.tryGetContext("supabaseUrlParamPath") as string | undefined) ??
+      DEFAULT_SUPABASE_URL_PARAM;
+    const supabaseJwtSecretParamPath =
+      props?.supabaseJwtSecretParamPath ??
+      (this.node.tryGetContext("supabaseJwtSecretParamPath") as string | undefined) ??
+      DEFAULT_SUPABASE_JWT_SECRET_PARAM;
+
+    const databaseUrlParam = ssm.StringParameter.fromStringParameterName(
+      this,
+      "DatabaseUrlParam",
+      databaseUrlParamPath
+    );
+    const supabaseUrlParam = ssm.StringParameter.fromStringParameterName(
+      this,
+      "SupabaseUrlParam",
+      supabaseUrlParamPath
+    );
+    const supabaseJwtSecretParam = ssm.StringParameter.fromStringParameterName(
+      this,
+      "SupabaseJwtSecretParam",
+      supabaseJwtSecretParamPath
+    );
 
     const socketImageTag =
       props?.socketImageTag ??
@@ -190,7 +226,9 @@ export class StudyverceStack extends cdk.Stack {
         ),
       ],
     });
-    socketSecret.grantRead(taskExecutionRole);
+    databaseUrlParam.grantRead(taskExecutionRole);
+    supabaseUrlParam.grantRead(taskExecutionRole);
+    supabaseJwtSecretParam.grantRead(taskExecutionRole);
     repository.grantPull(taskExecutionRole);
 
     const taskDefinition = new ecs.FargateTaskDefinition(this, "SocketTaskDefinition", {
@@ -218,12 +256,9 @@ export class StudyverceStack extends cdk.Stack {
         REDIS_PORT: redisPort,
       },
       secrets: {
-        SUPABASE_URL: ecs.Secret.fromSecretsManager(socketSecret, "SUPABASE_URL"),
-        SUPABASE_JWT_SECRET: ecs.Secret.fromSecretsManager(
-          socketSecret,
-          "SUPABASE_JWT_SECRET"
-        ),
-        DATABASE_URL: ecs.Secret.fromSecretsManager(socketSecret, "DATABASE_URL"),
+        SUPABASE_URL: ecs.Secret.fromSsmParameter(supabaseUrlParam),
+        SUPABASE_JWT_SECRET: ecs.Secret.fromSsmParameter(supabaseJwtSecretParam),
+        DATABASE_URL: ecs.Secret.fromSsmParameter(databaseUrlParam),
       },
       healthCheck: {
         command: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3002/health || exit 1"],
@@ -359,9 +394,19 @@ export class StudyverceStack extends cdk.Stack {
       description: "ElastiCache Redis node class",
     });
 
-    new cdk.CfnOutput(this, "SocketSecretArn", {
-      value: socketSecret.secretArn,
-      description: "Update secret values before first healthy deploy",
+    new cdk.CfnOutput(this, "DatabaseUrlParamPath", {
+      value: databaseUrlParamPath,
+      description: "SSM Parameter Store path injected into ECS as DATABASE_URL",
+    });
+
+    new cdk.CfnOutput(this, "SupabaseUrlParamPath", {
+      value: supabaseUrlParamPath,
+      description: "SSM Parameter Store path injected into ECS as SUPABASE_URL",
+    });
+
+    new cdk.CfnOutput(this, "SupabaseJwtSecretParamPath", {
+      value: supabaseJwtSecretParamPath,
+      description: "SSM Parameter Store path injected into ECS as SUPABASE_JWT_SECRET",
     });
 
     new cdk.CfnOutput(this, "EcsClusterName", {
