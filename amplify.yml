@@ -29,7 +29,7 @@ applications:
             - env | grep -e '^REDIS_URL=' >> apps/web/.env.production || true
             - pnpm --filter web build
             - 'test -f apps/web/.next/required-server-files.json || (echo "SSR artifact missing required-server-files.json" && exit 1)'
-            - 'STANDALONE=apps/web/.next/standalone && if [ -d "$STANDALONE/apps/web" ]; then cp -r apps/web/.next/static "$STANDALONE/apps/web/.next/static" && cp -r apps/web/public "$STANDALONE/apps/web/public" && (cd "$STANDALONE" && shopt -s dotglob && mv apps/web/* . && rmdir apps/web); else cp -r apps/web/.next/static "$STANDALONE/.next/static" && cp -r apps/web/public "$STANDALONE/public"; fi'
+            - 'STANDALONE=apps/web/.next/standalone && NESTED="$STANDALONE/apps/web" && if [ -d "$NESTED" ]; then cp -r apps/web/.next/static "$NESTED/.next/static" && cp -r apps/web/public "$NESTED/public" && if [ -d "$NESTED/node_modules" ]; then mkdir -p "$STANDALONE/node_modules" && cp -rn "$NESTED/node_modules/." "$STANDALONE/node_modules/" 2>/dev/null || true; fi && shopt -s dotglob && for f in "$NESTED"/*; do b=$(basename "$f"); [ "$b" = "node_modules" ] && continue; rm -rf "$STANDALONE/$b" 2>/dev/null || true; mv "$f" "$STANDALONE/"; done && rm -rf "$NESTED"; else cp -r apps/web/.next/static "$STANDALONE/.next/static" && cp -r apps/web/public "$STANDALONE/public"; fi'
             - 'test -f apps/web/.next/standalone/node_modules/next/package.json || (echo "standalone missing next dependency" && exit 1)'
       artifacts:
         baseDirectory: apps/web/.next
