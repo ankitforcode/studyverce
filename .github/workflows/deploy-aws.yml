@@ -28,6 +28,7 @@ jobs:
     outputs:
       infra: ${{ steps.filter.outputs.infra }}
       socket: ${{ steps.filter.outputs.socket }}
+      deploy: ${{ steps.filter.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -42,10 +43,66 @@ jobs:
               - 'packages/rate-limit/**'
               - 'apps/socket-server/Dockerfile'
               - 'pnpm-lock.yaml'
+            deploy:
+              - 'infra/**'
+              - 'apps/socket-server/**'
+              - 'packages/shared/**'
+              - 'packages/rate-limit/**'
+              - 'apps/socket-server/Dockerfile'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/deploy-aws.yml'
+
+  build-push-socket:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure ECR repository exists
+        run: |
+          if aws ecr describe-repositories \
+            --repository-names "${{ env.ECR_REPOSITORY }}" \
+            --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
+            echo "ECR repository ${{ env.ECR_REPOSITORY }} already exists"
+          else
+            echo "Creating ECR repository ${{ env.ECR_REPOSITORY }}"
+            aws ecr create-repository \
+              --repository-name "${{ env.ECR_REPOSITORY }}" \
+              --region "${{ env.AWS_REGION }}" \
+              --image-scanning-configuration scanOnPush=true \
+              --encryption-configuration encryptionType=AES256
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push socket image to ECR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/socket-server/Dockerfile
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy-infrastructure:
-    needs: changes
-    if: needs.changes.outputs.infra == 'true' || github.event_name == 'workflow_dispatch'
+    needs: [changes, build-push-socket]
+    if: |
+      always() &&
+      (needs.changes.outputs.deploy == 'true' || github.event_name == 'workflow_dispatch') &&
+      needs.build-push-socket.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,49 +135,14 @@ jobs:
         working-directory: infra
         env:
           CORS_ORIGIN: ${{ env.CORS_ORIGIN }}
+          SOCKET_IMAGE_TAG: ${{ needs.build-push-socket.outputs.image_tag }}
         run: |
           npx cdk deploy ${{ env.CDK_STACK_NAME }} \
             --require-approval never \
-            -c corsOrigin="$CORS_ORIGIN"
+            -c corsOrigin="$CORS_ORIGIN" \
+            -c socketImageTag="$SOCKET_IMAGE_TAG"
 
-  build-push-socket:
-    needs: [changes, deploy-infrastructure]
-    if: |
-      always() &&
-      (
-        needs.changes.outputs.socket == 'true' ||
-        needs.changes.outputs.infra == 'true' ||
-        github.event_name == 'workflow_dispatch'
-      ) &&
-      (needs.deploy-infrastructure.result == 'success' || needs.deploy-infrastructure.result == 'skipped')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push socket image to ECR
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/socket-server/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Force ECS deployment
+      - name: Force ECS deployment with new image
         run: |
           aws ecs update-service \
             --cluster "${{ env.ECS_CLUSTER }}" \

@@ -9,7 +9,7 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 | Existing VPC (`vpc-0cd78532e2b1cacf1` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
 | Subnets | **Public only** — ALB, ECS Fargate Spot (`assignPublicIp`), and ElastiCache |
 | ElastiCache for Valkey (`cache.t4g.micro`) | Provisioned Valkey OSS node — Redis-compatible API |
-| ECR `studyverce-socket` | Socket server container images |
+| ECR `studyverce-socket` | Created by CI if missing; CDK imports by name |
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket entry (HTTP :80 scaffold) |
 | Secrets Manager `studyverce/socket-server` | Supabase URL, JWT secret, `DATABASE_URL` |
@@ -114,28 +114,29 @@ Update Secrets Manager secret `studyverce/socket-server`:
 
 ### 7. First socket image
 
-Push an image before ECS can become healthy:
+Run the **Deploy AWS** GitHub Action on `main` (builds image, creates ECR if needed, then CDK deploy). Manual alternative:
 
 ```bash
-# From repo root
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account>.dkr.ecr.us-east-1.amazonaws.com
-docker build -f apps/socket-server/Dockerfile -t studyverce-socket .
-docker tag studyverce-socket:latest <account>.dkr.ecr.us-east-1.amazonaws.com/studyverce-socket:latest
-docker push <account>.dkr.ecr.us-east-1.amazonaws.com/studyverce-socket:latest
-aws ecs update-service --cluster studyverce --service studyverce-socket --force-new-deployment
+# From repo root (replace region/account/tag)
+aws ecr describe-repositories --repository-names studyverce-socket --region eu-north-1 \
+  || aws ecr create-repository --repository-name studyverce-socket --region eu-north-1
+TAG=$(git rev-parse HEAD)
+docker build -f apps/socket-server/Dockerfile -t studyverce-socket:$TAG .
+# login, tag, push to ECR, then:
+cd infra && npx cdk deploy -c socketImageTag=$TAG -c corsOrigin=https://www.studyverce.com
 ```
-
-Or run the **Deploy AWS** GitHub Action on `main`.
 
 ## Ongoing deploys
 
 `.github/workflows/deploy-aws.yml` on push to `main`:
 
-| Path change | Job |
-|-------------|-----|
-| `infra/**` | `cdk deploy`, then **Docker build → ECR → ECS** (first deploy needs an image) |
-| `apps/socket-server/**`, shared packages | Docker build → ECR → ECS rolling deploy |
-| `workflow_dispatch` | Both jobs |
+1. **build-push-socket** — ensure ECR repo exists (`aws ecr describe-repositories` / `create-repository`), build image, push **`studyverce-socket:<git-sha>`** only
+2. **deploy-infrastructure** — `cdk deploy -c socketImageTag=<git-sha>`, then `ecs update-service --force-new-deployment`
+
+| Path change | Runs |
+|-------------|------|
+| `infra/**`, socket app, or workflow file | Full pipeline |
+| `workflow_dispatch` | Full pipeline |
 
 The Next.js web app deploys via **Amplify Console Git integration** on branch push (not GitHub Actions).
 

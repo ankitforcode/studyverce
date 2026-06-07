@@ -25,7 +25,14 @@ export interface StudyverceStackProps extends cdk.StackProps {
    * Override: cdk deploy -c cacheNodeType=cache.t4g.small
    */
   readonly cacheNodeType?: string;
+  /**
+   * ECR image tag for the socket container (CI passes git SHA).
+   * Override: cdk deploy -c socketImageTag=abc1234
+   */
+  readonly socketImageTag?: string;
 }
+
+const ECR_REPOSITORY_NAME = "studyverce-socket";
 
 /** Public subnets only — no NAT gateway; tasks reach the internet via public IPs. */
 function publicSubnetIds(vpc: ec2.IVpc): string[] {
@@ -122,11 +129,17 @@ export class StudyverceStack extends cdk.Stack {
       },
     });
 
-    const repository = new ecr.Repository(this, "SocketRepository", {
-      repositoryName: "studyverce-socket",
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      lifecycleRules: [{ maxImageCount: 20 }],
-    });
+    const socketImageTag =
+      props?.socketImageTag ??
+      (this.node.tryGetContext("socketImageTag") as string | undefined) ??
+      "latest";
+
+    // Created by CI (aws ecr create-repository) when missing; CDK imports by name.
+    const repository = ecr.Repository.fromRepositoryName(
+      this,
+      "SocketRepository",
+      ECR_REPOSITORY_NAME
+    );
 
     const cluster = new ecs.Cluster(this, "Cluster", {
       vpc,
@@ -162,7 +175,7 @@ export class StudyverceStack extends cdk.Stack {
     const valkeyPort = valkey.attrRedisEndpointPort;
 
     const container = taskDefinition.addContainer("socket-server", {
-      image: ecs.ContainerImage.fromEcrRepository(repository, "latest"),
+      image: ecs.ContainerImage.fromEcrRepository(repository, socketImageTag),
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "socket",
         logGroup,
@@ -238,7 +251,12 @@ export class StudyverceStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "EcrRepositoryUri", {
       value: repository.repositoryUri,
-      description: "Push socket-server images here",
+      description: "Socket-server ECR repository (managed by CI)",
+    });
+
+    new cdk.CfnOutput(this, "SocketImageTag", {
+      value: socketImageTag,
+      description: "ECS task image tag deployed by this stack revision",
     });
 
     new cdk.CfnOutput(this, "SocketAlbDnsName", {
