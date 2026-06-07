@@ -20,6 +20,11 @@ export interface StudyverceStackProps extends cdk.StackProps {
    * Override: cdk deploy -c vpcId=vpc-xxxxxxxx
    */
   readonly vpcId?: string;
+  /**
+   * ElastiCache for Valkey node size (smallest: cache.t4g.micro).
+   * Override: cdk deploy -c cacheNodeType=cache.t4g.small
+   */
+  readonly cacheNodeType?: string;
 }
 
 /** Public subnets only — no NAT gateway; tasks reach the internet via public IPs. */
@@ -73,28 +78,37 @@ export class StudyverceStack extends cdk.Stack {
       "Socket traffic from ALB"
     );
 
-    const redisSecurityGroup = new ec2.SecurityGroup(this, "RedisSecurityGroup", {
+    const valkeySecurityGroup = new ec2.SecurityGroup(this, "ValkeySecurityGroup", {
       vpc,
-      description: "StudyVerce ElastiCache Redis",
+      description: "StudyVerce ElastiCache Valkey",
       allowAllOutbound: false,
     });
-    redisSecurityGroup.addIngressRule(
+    valkeySecurityGroup.addIngressRule(
       socketSecurityGroup,
       ec2.Port.tcp(6379),
-      "Redis from socket tasks"
+      "Valkey from socket tasks"
     );
 
-    // Valkey: Redis-compatible API with 100 MB minimum metered storage (vs 1 GB for Redis OSS).
-    const redis = new elasticache.CfnServerlessCache(this, "Redis", {
-      engine: "valkey",
-      serverlessCacheName: `${cdk.Stack.of(this).stackName.toLowerCase()}-redis`,
+    const cacheNodeType =
+      props?.cacheNodeType ??
+      (this.node.tryGetContext("cacheNodeType") as string | undefined) ??
+      "cache.t4g.micro";
+
+    const valkeySubnetGroup = new elasticache.CfnSubnetGroup(this, "ValkeySubnetGroup", {
+      description: "StudyVerce Valkey — public subnets",
       subnetIds: publicSubnetIds(vpc),
-      securityGroupIds: [redisSecurityGroup.securityGroupId],
-      cacheUsageLimits: {
-        dataStorage: { maximum: 1, unit: "GB" },
-        ecpuPerSecond: { maximum: 1000 },
-      },
+      cacheSubnetGroupName: "studyverce-valkey",
     });
+
+    const valkey = new elasticache.CfnCacheCluster(this, "Valkey", {
+      engine: "valkey",
+      cacheNodeType,
+      numCacheNodes: 1,
+      clusterName: "studyverce-valkey",
+      cacheSubnetGroupName: valkeySubnetGroup.ref,
+      vpcSecurityGroupIds: [valkeySecurityGroup.securityGroupId],
+    });
+    valkey.addDependency(valkeySubnetGroup);
 
     const socketSecret = new secretsmanager.Secret(this, "SocketSecret", {
       secretName: "studyverce/socket-server",
@@ -144,8 +158,8 @@ export class StudyverceStack extends cdk.Stack {
       executionRole: taskExecutionRole,
     });
 
-    const redisHost = redis.attrEndpointAddress;
-    const redisPort = redis.attrEndpointPort;
+    const valkeyHost = valkey.attrRedisEndpointAddress;
+    const valkeyPort = valkey.attrRedisEndpointPort;
 
     const container = taskDefinition.addContainer("socket-server", {
       image: ecs.ContainerImage.fromEcrRepository(repository, "latest"),
@@ -157,7 +171,7 @@ export class StudyverceStack extends cdk.Stack {
         NODE_ENV: "production",
         PORT: "3002",
         CORS_ORIGIN: corsOrigin,
-        REDIS_URL: `redis://${redisHost}:${redisPort}`,
+        REDIS_URL: `redis://${valkeyHost}:${valkeyPort}`,
       },
       secrets: {
         SUPABASE_URL: ecs.Secret.fromSecretsManager(socketSecret, "SUPABASE_URL"),
@@ -232,9 +246,14 @@ export class StudyverceStack extends cdk.Stack {
       description: "Set NEXT_PUBLIC_SOCKET_URL=http(s)://<this-host>",
     });
 
-    new cdk.CfnOutput(this, "RedisEndpoint", {
-      value: `${redisHost}:${redisPort}`,
-      description: "ElastiCache Redis endpoint (injected into ECS as REDIS_URL)",
+    new cdk.CfnOutput(this, "ValkeyEndpoint", {
+      value: `${valkeyHost}:${valkeyPort}`,
+      description: "ElastiCache Valkey endpoint (injected into ECS as REDIS_URL)",
+    });
+
+    new cdk.CfnOutput(this, "ValkeyNodeType", {
+      value: cacheNodeType,
+      description: "ElastiCache for Valkey node class",
     });
 
     new cdk.CfnOutput(this, "SocketSecretArn", {

@@ -210,7 +210,7 @@ pnpm dev
 |---------|------|
 | Next.js web | **AWS Amplify** (`amplify.yml`, app root `apps/web`) |
 | Socket.IO server | **AWS ECS Fargate** (CDK in `infra/`) |
-| Redis | **ElastiCache Serverless** (CDK) or Upstash |
+| Redis / Valkey | **ElastiCache for Valkey** (`cache.t4g.micro`, CDK) or Upstash |
 | Auth + Postgres + Storage | **Supabase Cloud** |
 
 See [`infra/README.md`](infra/README.md) for CDK bootstrap, secrets, and GitHub Actions (`/.github/workflows/deploy-aws.yml`).

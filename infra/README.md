@@ -8,13 +8,13 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 |----------|---------|
 | Existing VPC (`vpc-0cd78532e2b1cacf1` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
 | Subnets | **Public only** — ALB, ECS Fargate Spot (`assignPublicIp`), and ElastiCache |
-| ElastiCache Serverless (Valkey) | Redis-compatible; **100 MB** minimum metered storage |
+| ElastiCache for Valkey (`cache.t4g.micro`) | Provisioned Valkey OSS node — Redis-compatible API |
 | ECR `studyverce-socket` | Socket server container images |
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket entry (HTTP :80 scaffold) |
 | Secrets Manager `studyverce/socket-server` | Supabase URL, JWT secret, `DATABASE_URL` |
 
-**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Valkey uses the Redis protocol (`REDIS_URL` unchanged). For Redis OSS instead, set `engine: "redis"` in `studyverce-stack.ts` (1 GB minimum storage).
+**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Valkey speaks the Redis protocol (`REDIS_URL` unchanged). Override node size: `cdk deploy -c cacheNodeType=cache.t4g.small`.
 
 ## Prerequisites
 
@@ -133,8 +133,9 @@ Or run the **Deploy AWS** GitHub Action on `main`.
 
 | Path change | Job |
 |-------------|-----|
-| `infra/**` | `cdk deploy` |
-| `apps/socket-server/**`, shared packages | Build → ECR → ECS rolling deploy |
+| `infra/**` | `cdk deploy`, then **Docker build → ECR → ECS** (first deploy needs an image) |
+| `apps/socket-server/**`, shared packages | Docker build → ECR → ECS rolling deploy |
+| `workflow_dispatch` | Both jobs |
 
 The Next.js web app deploys via **Amplify Console Git integration** on branch push (not GitHub Actions).
 
