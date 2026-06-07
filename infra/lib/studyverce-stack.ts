@@ -107,13 +107,18 @@ export class StudyverceStack extends cdk.Stack {
       cacheSubnetGroupName: "studyverce-valkey",
     });
 
-    const valkey = new elasticache.CfnCacheCluster(this, "Valkey", {
+    // Valkey requires ReplicationGroup (CacheCluster API rejects engine=valkey).
+    const valkey = new elasticache.CfnReplicationGroup(this, "Valkey", {
+      replicationGroupDescription: "StudyVerce Valkey",
+      replicationGroupId: "studyverce-valkey",
       engine: "valkey",
       cacheNodeType,
-      numCacheNodes: 1,
-      clusterName: "studyverce-valkey",
+      numNodeGroups: 1,
+      replicasPerNodeGroup: 0,
+      automaticFailoverEnabled: false,
+      multiAzEnabled: false,
       cacheSubnetGroupName: valkeySubnetGroup.ref,
-      vpcSecurityGroupIds: [valkeySecurityGroup.securityGroupId],
+      securityGroupIds: [valkeySecurityGroup.securityGroupId],
     });
     valkey.addDependency(valkeySubnetGroup);
 
@@ -171,8 +176,8 @@ export class StudyverceStack extends cdk.Stack {
       executionRole: taskExecutionRole,
     });
 
-    const valkeyHost = valkey.attrRedisEndpointAddress;
-    const valkeyPort = valkey.attrRedisEndpointPort;
+    const valkeyHost = valkey.attrPrimaryEndPointAddress;
+    const valkeyPort = valkey.attrPrimaryEndPointPort;
 
     const container = taskDefinition.addContainer("socket-server", {
       image: ecs.ContainerImage.fromEcrRepository(repository, socketImageTag),
