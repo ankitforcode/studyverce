@@ -114,8 +114,8 @@ Create or update these parameters before the first healthy ECS deploy:
 | SSM path | ECS env | Type | Value |
 |----------|---------|------|-------|
 | `/socket/production/database_url` | `DATABASE_URL` | String | Supabase **pooler** URL (port `6543`) |
-| `/socket/production/supabase_url` | `SUPABASE_URL` | String | `https://<ref>.supabase.co` |
-| `/socket/production/supabase_jwt_secret` | `SUPABASE_JWT_SECRET` | SecureString | Supabase Dashboard → API → JWT Secret |
+| `/socket/production/supabase_url` | `SUPABASE_URL` | String | `https://<ref>.supabase.co` — **required** for ES256 tokens (JWKS verification) |
+| `/socket/production/supabase_jwt_secret` | `SUPABASE_JWT_SECRET` | SecureString | Legacy HS256 JWT secret (fallback; optional if project uses ES256 signing keys) |
 
 ```bash
 aws ssm put-parameter --name /socket/production/database_url --type String \

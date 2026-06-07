@@ -3,6 +3,7 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import Redis from "ioredis";
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import jwt from "jsonwebtoken";
 import pg from "pg";
 import type {
@@ -112,8 +113,50 @@ function resolveRedisUrl(): string {
 }
 
 const REDIS_URL = resolveRedisUrl();
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET ?? "";
+const SUPABASE_URL = (process.env.SUPABASE_URL ?? "").trim();
+const JWT_SECRET = (process.env.SUPABASE_JWT_SECRET ?? "").trim();
+
+let supabaseJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+function supabaseAuthIssuer(): string | null {
+  if (!SUPABASE_URL) return null;
+  return `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
+}
+
+function getSupabaseJwks(): ReturnType<typeof createRemoteJWKSet> {
+  const issuer = supabaseAuthIssuer();
+  if (!issuer) {
+    throw new Error("SUPABASE_URL is required to verify asymmetric Supabase JWTs");
+  }
+  if (!supabaseJwks) {
+    supabaseJwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
+  }
+  return supabaseJwks;
+}
+
+function formatJwtError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+function getJwtAlgorithm(token: string): string | null {
+  try {
+    const header = JSON.parse(Buffer.from(token.split(".")[0] ?? "", "base64url").toString()) as {
+      alg?: unknown;
+    };
+    return typeof header.alg === "string" ? header.alg : null;
+  } catch {
+    return null;
+  }
+}
+
+function payloadToUser(payload: JWTPayload): AuthenticatedUser | null {
+  if (typeof payload.sub !== "string") return null;
+  return {
+    id: payload.sub,
+    email: typeof payload.email === "string" ? payload.email : undefined,
+  };
+}
 
 function resolveDatabaseUrl(): string {
   if (process.env.DATABASE_URL) {
@@ -288,19 +331,50 @@ async function syncRoomMusic(roomId: string) {
 }
 
 async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
-  if (!JWT_SECRET) {
-    log.warn("SUPABASE_JWT_SECRET not set — decoding JWT payload without verification");
+  const alg = getJwtAlgorithm(token);
+
+  if (alg && alg !== "HS256") {
+    const issuer = supabaseAuthIssuer();
+    if (!issuer) {
+      log.warn("asymmetric JWT rejected — SUPABASE_URL missing", { alg });
+      return null;
+    }
     try {
-      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
-      return { id: payload.sub, email: payload.email };
-    } catch {
+      const { payload } = await jwtVerify(token, getSupabaseJwks(), { issuer });
+      return payloadToUser(payload);
+    } catch (err) {
+      log.warn("asymmetric JWT verification failed", {
+        alg,
+        issuer,
+        reason: formatJwtError(err),
+      });
       return null;
     }
   }
+
+  if (!JWT_SECRET) {
+    log.warn("SUPABASE_JWT_SECRET not set — decoding HS256 JWT payload without verification");
+    try {
+      const payload = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString()) as {
+        sub?: string;
+        email?: string;
+      };
+      if (!payload.sub) return null;
+      return { id: payload.sub, email: payload.email };
+    } catch (err) {
+      log.warn("HS256 JWT decode failed", { reason: formatJwtError(err) });
+      return null;
+    }
+  }
+
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { sub: string; email?: string };
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as {
+      sub: string;
+      email?: string;
+    };
     return { id: payload.sub, email: payload.email };
-  } catch {
+  } catch (err) {
+    log.warn("HS256 JWT verification failed", { reason: formatJwtError(err) });
     return null;
   }
 }
@@ -684,6 +758,9 @@ io.use(async (socket, next) => {
     log.warn("connection rejected: invalid token", {
       socketId: socket.id,
       address: socket.handshake.address,
+      alg: getJwtAlgorithm(token),
+      supabaseUrl: SUPABASE_URL ? "configured" : "missing",
+      jwtSecret: JWT_SECRET ? "configured" : "missing",
     });
     return next(new Error("Invalid token"));
   }
