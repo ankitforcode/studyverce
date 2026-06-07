@@ -2,7 +2,7 @@
 #   docker build -f apps/socket-server/Dockerfile -t studyverce-socket .
 FROM node:25.8.1-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
+RUN npm install -g pnpm@11.5.2
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN pnpm --filter @studyverce/socket-server build
 FROM node:25.8.1-alpine AS runner
 
 RUN apk add --no-cache wget
-RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
+RUN npm install -g pnpm@11.5.2
 
 WORKDIR /app
 
