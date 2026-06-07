@@ -59,6 +59,28 @@ export const notificationMessages = {
     title: "Request declined",
     message: `You declined ${name}'s access request.`,
   }),
+  inviteAccessRequested: (
+    memberName: string,
+    roomName: string,
+    roomSlug: string
+  ): ToastInput => ({
+    action: "invite_access_requested",
+    kind: "info",
+    title: "Invite access request",
+    message: `${memberName} requested to join ${roomName} via your share link.`,
+    href: `/rooms/${roomSlug}`,
+  }),
+  inviteMemberJoined: (
+    memberName: string,
+    roomName: string,
+    roomSlug: string
+  ): ToastInput => ({
+    action: "invite_member_joined",
+    kind: "success",
+    title: "Member joined",
+    message: `${memberName} joined ${roomName} from your invite link.`,
+    href: `/rooms/${roomSlug}`,
+  }),
   favoriteAdded: (roomName?: string): ToastInput => ({
     action: "favorite_added",
     kind: "success",

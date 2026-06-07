@@ -11,12 +11,17 @@ import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
-import { forgotPasswordPath, signupPath } from "@/lib/auth/paths";
+import {
+  forgotPasswordPath,
+  onboardingPath,
+  safeRedirectPath,
+  signupPath,
+} from "@/lib/auth/paths";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/dashboard";
+  const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/dashboard";
   const authError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,7 +38,10 @@ function LoginForm() {
     setError(null);
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (signInError) {
       setError(signInError.message);
@@ -42,7 +50,20 @@ function LoginForm() {
     }
 
     trackEvent("login_completed", { method: "email" });
-    router.push(redirect);
+
+    const userId = signInData.user?.id;
+    const { data: profile } = userId
+      ? await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", userId)
+          .maybeSingle()
+      : { data: null };
+
+    const destination = profile?.onboarding_completed
+      ? redirect
+      : onboardingPath(redirect);
+    router.push(destination);
     router.refresh();
   }
 

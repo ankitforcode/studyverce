@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { resolvePostAuthDestination, safeRedirectPath } from "@/lib/auth/paths";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 
@@ -8,13 +9,28 @@ export async function GET(request: Request) {
 
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = safeRedirectPath(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      redirect(`${origin}${next}`);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      let onboardingCompleted = false;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", user.id)
+          .maybeSingle();
+        onboardingCompleted = profile?.onboarding_completed ?? false;
+      }
+
+      const destination = resolvePostAuthDestination(next, onboardingCompleted);
+      redirect(`${origin}${destination}`);
     }
   }
 

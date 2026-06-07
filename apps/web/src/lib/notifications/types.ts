@@ -8,6 +8,8 @@ export type NotificationAction =
   | "access_requested"
   | "access_approved"
   | "access_rejected"
+  | "invite_access_requested"
+  | "invite_member_joined"
   | "favorite_added"
   | "favorite_removed"
   | "room_visibility_changed"

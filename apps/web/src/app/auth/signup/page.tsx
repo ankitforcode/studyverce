@@ -11,12 +11,12 @@ import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
-import { loginPath } from "@/lib/auth/paths";
+import { loginPath, onboardingPath, safeRedirectPath } from "@/lib/auth/paths";
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/onboarding";
+  const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/onboarding";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ function SignupForm() {
     }
 
     trackEvent("signup_completed", { method: "email" });
-    router.push("/onboarding");
+    router.push(onboardingPath(redirect));
     router.refresh();
   }
 

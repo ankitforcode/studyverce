@@ -263,6 +263,17 @@ export interface RoomFriendRequest {
   createdAt: string;
 }
 
+/** Private-room owner alert when someone uses a share invite. */
+export interface RoomInviteOwnerNotification {
+  roomId: string;
+  roomSlug: string;
+  roomName: string;
+  memberUserId: string;
+  memberDisplayName: string;
+  memberUsername: string;
+  kind: "access_requested" | "member_joined";
+}
+
 export interface RoomMusicState {
   trackId: string | null;
   audioUrl: string | null;
@@ -466,6 +477,7 @@ export interface ServerToClientEvents {
   }) => void;
   "room:friend-request:new": (payload: { request: RoomFriendRequest }) => void;
   "room:friend-request:removed": (payload: { requesterId: string }) => void;
+  "room:invite-owner-notification": (payload: RoomInviteOwnerNotification) => void;
   "session:started": (payload: { sessionId: string }) => void;
   "session:ended": (payload: { sessionId: string }) => void;
   error: (payload: { message: string }) => void;

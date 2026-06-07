@@ -1,3 +1,4 @@
+import { safeRedirectPath } from "@/lib/auth/paths";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -35,13 +36,19 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
-    url.searchParams.set("redirect", request.nextUrl.pathname);
+    const returnPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    url.searchParams.set("redirect", returnPath);
     return NextResponse.redirect(url);
   }
 
   if (user && request.nextUrl.pathname.startsWith("/auth/")) {
+    const redirectParam = safeRedirectPath(request.nextUrl.searchParams.get("redirect"));
+    if (redirectParam) {
+      return NextResponse.redirect(new URL(redirectParam, request.url));
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

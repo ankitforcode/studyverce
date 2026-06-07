@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SUBJECT_TAGS } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/client";
+import { safeRedirectPath } from "@/lib/auth/paths";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/dashboard";
+  const isInviteRedirect = redirect.includes("/invite");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [subjectTags, setSubjectTags] = useState<string[]>([]);
@@ -35,7 +39,7 @@ export default function OnboardingPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      router.push("/auth/login");
+      router.push(`/auth/login?redirect=${encodeURIComponent(redirect)}`);
       return;
     }
 
@@ -55,7 +59,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(redirect);
     router.refresh();
   }
 
@@ -64,7 +68,11 @@ export default function OnboardingPage() {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Set up your profile</CardTitle>
-          <CardDescription>Tell us a bit about yourself to personalize your experience</CardDescription>
+          <CardDescription>
+            {isInviteRedirect
+              ? "Finish your profile, then you can request access to the study room."
+              : "Tell us a bit about yourself to personalize your experience"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -123,11 +131,23 @@ export default function OnboardingPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Saving..." : "Complete setup"}
+              {loading
+                ? "Saving..."
+                : isInviteRedirect
+                  ? "Continue to room invite"
+                  : "Complete setup"}
             </Button>
           </form>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingForm />
+    </Suspense>
   );
 }

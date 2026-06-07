@@ -510,6 +510,36 @@ async function getRoomOwnerId(roomId: string): Promise<string | null> {
   return (result.rows[0]?.owner_id as string | undefined) ?? null;
 }
 
+async function notifyRoomOwnerInviteEvent(
+  roomId: string,
+  kind: "access_requested" | "member_joined",
+  member: { userId: string; displayName: string; username: string }
+): Promise<void> {
+  if (!pgPool) return;
+
+  const ownerId = await getRoomOwnerId(roomId);
+  if (!ownerId || ownerId === member.userId) return;
+
+  const roomResult = await pgPool.query(
+    `SELECT slug, name, is_public FROM study_rooms WHERE id = $1 LIMIT 1`,
+    [roomId]
+  );
+  const room = roomResult.rows[0] as
+    | { slug: string; name: string; is_public: boolean }
+    | undefined;
+  if (!room || room.is_public) return;
+
+  io.to(userChannel(ownerId)).emit("room:invite-owner-notification", {
+    roomId,
+    roomSlug: room.slug,
+    roomName: room.name,
+    memberUserId: member.userId,
+    memberDisplayName: member.displayName,
+    memberUsername: member.username,
+    kind,
+  });
+}
+
 async function startStudySession(
   userId: string,
   roomId?: string,
@@ -580,6 +610,11 @@ io.on("connection", (socket) => {
         return;
       }
       io.to(roomId).emit("room:access-request:new", { request });
+      await notifyRoomOwnerInviteEvent(roomId, "access_requested", {
+        userId: user.id,
+        displayName: request.requesterName ?? profile.displayName,
+        username: request.requesterUsername ?? profile.username,
+      });
     } catch (err) {
       console.error("access:request-created error", err);
       socket.emit("error", { message: "Failed to notify room owner" });
@@ -741,6 +776,8 @@ io.on("connection", (socket) => {
         return;
       }
 
+      const hadPresence = await redis.hget(participantsKey(roomId), user.id);
+
       await socket.join(roomId);
 
       const now = new Date().toISOString();
@@ -757,6 +794,22 @@ io.on("connection", (socket) => {
       };
 
       await saveParticipant(roomId, participant);
+
+      if (!hadPresence && pgPool) {
+        const approvedInvite = await pgPool.query(
+          `SELECT 1 FROM room_access_requests
+           WHERE room_id = $1 AND user_id = $2 AND status = 'approved'
+           LIMIT 1`,
+          [roomId, user.id]
+        );
+        if (approvedInvite.rows.length > 0) {
+          await notifyRoomOwnerInviteEvent(roomId, "member_joined", {
+            userId: user.id,
+            displayName: profile.displayName,
+            username: profile.username,
+          });
+        }
+      }
 
       const history = await loadChatHistory(roomId);
       socket.emit("chat:history", { messages: history });

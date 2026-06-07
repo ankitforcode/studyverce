@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { onboardingPath } from "@/lib/auth/paths";
 import { createClient } from "@/lib/supabase/server";
 import {
   getMyRoomAccessStatus,
@@ -29,6 +30,16 @@ export default async function RoomInvitePage({
 
   if (!user) {
     redirect(`/auth/login?redirect=${encodeURIComponent(redirectTarget)}`);
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile?.onboarding_completed) {
+    redirect(onboardingPath(redirectTarget));
   }
 
   const preview = await getRoomSharePreview(slug, token ?? null);
