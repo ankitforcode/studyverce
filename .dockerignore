@@ -1,0 +1,13 @@
+node_modules
+.next
+dist
+.git
+.github
+infra/cdk.out
+**/.env
+**/.env.*
+!.env.example
+supabase/.branches
+supabase/.temp
+*.md
+.cursor

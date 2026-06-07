@@ -1,0 +1,25 @@
+# AWS Amplify Hosting — monorepo Next.js app (apps/web).
+# In Amplify Console: set AMPLIFY_MONOREPO_APP_ROOT=apps/web when connecting the repo.
+#
+# StudyVerce uses server actions, API routes, and Supabase SSR — do not use output: "export".
+# Set env vars in Amplify Console (Environment variables) before the first deploy.
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - corepack enable
+            - cd ../.. && pnpm install --frozen-lockfile
+        build:
+          commands:
+            - cd ../.. && pnpm --filter web build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - ../../node_modules/**/*
+          - node_modules/**/*

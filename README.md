@@ -206,12 +206,14 @@ pnpm dev
 
 ## Deployment
 
-| Service | Recommended Host |
-|---------|-----------------|
-| Next.js web | Vercel |
-| Socket.IO server | Fly.io or Railway |
-| Redis | Upstash or ElastiCache |
-| Supabase | Supabase Cloud |
+| Service | Host |
+|---------|------|
+| Next.js web | **AWS Amplify** (`amplify.yml`, app root `apps/web`) |
+| Socket.IO server | **AWS ECS Fargate** (CDK in `infra/`) |
+| Redis | **ElastiCache Serverless** (CDK) or Upstash |
+| Auth + Postgres + Storage | **Supabase Cloud** |
+
+See [`infra/README.md`](infra/README.md) for CDK bootstrap, secrets, and GitHub Actions (`/.github/workflows/deploy-aws.yml`).
 
 ## Scripts
 
