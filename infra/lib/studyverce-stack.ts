@@ -15,7 +15,25 @@ export interface StudyverceStackProps extends cdk.StackProps {
    * Override: cdk deploy -c corsOrigin=https://app.example.com
    */
   readonly corsOrigin?: string;
+  /**
+   * Existing VPC to use (default VPC in eu-north-1).
+   * Override: cdk deploy -c vpcId=vpc-xxxxxxxx
+   */
+  readonly vpcId?: string;
 }
+
+/** Public subnets only — no NAT gateway; tasks reach the internet via public IPs. */
+function publicSubnetIds(vpc: ec2.IVpc): string[] {
+  const ids = vpc.publicSubnets.map((subnet) => subnet.subnetId);
+  if (ids.length === 0) {
+    throw new Error(
+      "VPC has no public subnets. This stack does not create NAT gateways or private subnets."
+    );
+  }
+  return ids;
+}
+
+const PUBLIC_SUBNETS: ec2.SubnetSelection = { subnetType: ec2.SubnetType.PUBLIC };
 
 export class StudyverceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: StudyverceStackProps) {
@@ -26,22 +44,12 @@ export class StudyverceStack extends cdk.Stack {
       (this.node.tryGetContext("corsOrigin") as string | undefined) ??
       "https://localhost:3001";
 
-    const vpc = new ec2.Vpc(this, "Vpc", {
-      maxAzs: 2,
-      natGateways: 0,
-      subnetConfiguration: [
-        {
-          name: "Public",
-          subnetType: ec2.SubnetType.PUBLIC,
-          cidrMask: 24,
-        },
-        {
-          name: "Private",
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-          cidrMask: 24,
-        },
-      ],
-    });
+    const vpcId =
+      props?.vpcId ??
+      (this.node.tryGetContext("vpcId") as string | undefined) ??
+      "vpc-0cd78532e2b1cacf1";
+
+    const vpc = ec2.Vpc.fromLookup(this, "Vpc", { vpcId });
 
     const albSecurityGroup = new ec2.SecurityGroup(this, "AlbSecurityGroup", {
       vpc,
@@ -76,10 +84,11 @@ export class StudyverceStack extends cdk.Stack {
       "Redis from socket tasks"
     );
 
+    // Valkey: Redis-compatible API with 100 MB minimum metered storage (vs 1 GB for Redis OSS).
     const redis = new elasticache.CfnServerlessCache(this, "Redis", {
-      engine: "redis",
+      engine: "valkey",
       serverlessCacheName: `${cdk.Stack.of(this).stackName.toLowerCase()}-redis`,
-      subnetIds: vpc.isolatedSubnets.map((subnet) => subnet.subnetId),
+      subnetIds: publicSubnetIds(vpc),
       securityGroupIds: [redisSecurityGroup.securityGroupId],
       cacheUsageLimits: {
         dataStorage: { maximum: 1, unit: "GB" },
@@ -108,6 +117,7 @@ export class StudyverceStack extends cdk.Stack {
     const cluster = new ecs.Cluster(this, "Cluster", {
       vpc,
       clusterName: "studyverce",
+      enableFargateCapacityProviders: true,
     });
 
     const logGroup = new logs.LogGroup(this, "SocketLogGroup", {
@@ -129,8 +139,8 @@ export class StudyverceStack extends cdk.Stack {
 
     const taskDefinition = new ecs.FargateTaskDefinition(this, "SocketTaskDefinition", {
       family: "studyverce-socket",
-      cpu: 512,
-      memoryLimitMiB: 1024,
+      cpu: 256,
+      memoryLimitMiB: 512,
       executionRole: taskExecutionRole,
     });
 
@@ -174,7 +184,13 @@ export class StudyverceStack extends cdk.Stack {
       desiredCount: 1,
       assignPublicIp: true,
       securityGroups: [socketSecurityGroup],
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      vpcSubnets: PUBLIC_SUBNETS,
+      capacityProviderStrategies: [
+        {
+          capacityProvider: "FARGATE_SPOT",
+          weight: 1,
+        },
+      ],
       circuitBreaker: { rollback: true },
       healthCheckGracePeriod: cdk.Duration.seconds(60),
     });
@@ -182,6 +198,7 @@ export class StudyverceStack extends cdk.Stack {
     const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "SocketAlb", {
       vpc,
       internetFacing: true,
+      vpcSubnets: PUBLIC_SUBNETS,
       securityGroup: albSecurityGroup,
       loadBalancerName: "studyverce-socket",
     });
@@ -231,6 +248,11 @@ export class StudyverceStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "EcsServiceName", {
       value: service.serviceName,
+    });
+
+    new cdk.CfnOutput(this, "VpcId", {
+      value: vpc.vpcId,
+      description: "Existing VPC used by this stack",
     });
   }
 }

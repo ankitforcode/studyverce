@@ -6,12 +6,15 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 
 | Resource | Purpose |
 |----------|---------|
-| VPC (public + isolated subnets, no NAT) | Dev-cost networking |
-| ElastiCache Serverless (Redis) | Presence, timers, rate limits |
+| Existing VPC (`vpc-0cd78532e2b1cacf1` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
+| Subnets | **Public only** — ALB, ECS Fargate Spot (`assignPublicIp`), and ElastiCache |
+| ElastiCache Serverless (Valkey) | Redis-compatible; **100 MB** minimum metered storage |
 | ECR `studyverce-socket` | Socket server container images |
-| ECS Fargate `studyverce-socket` | Socket.IO service |
+| ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket entry (HTTP :80 scaffold) |
 | Secrets Manager `studyverce/socket-server` | Supabase URL, JWT secret, `DATABASE_URL` |
+
+**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Valkey uses the Redis protocol (`REDIS_URL` unchanged). For Redis OSS instead, set `engine: "redis"` in `studyverce-stack.ts` (1 GB minimum storage).
 
 ## Prerequisites
 
@@ -98,7 +101,7 @@ Then redeploy. Monorepo apps created without “My app is a monorepo” often st
 
 ```bash
 cd infra
-npx cdk deploy -c corsOrigin=https://main.d1234.amplifyapp.com
+npx cdk deploy -c corsOrigin=https://www.studyverce.com -c vpcId=vpc-0cd78532e2b1cacf1
 ```
 
 ### 6. Configure socket secrets
