@@ -14,11 +14,13 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_REGION: 'eu-north-1'
   ECR_REPOSITORY: studyverce-socket
   ECS_CLUSTER: studyverce
   ECS_SERVICE: studyverce-socket
   CDK_STACK_NAME: StudyverceStack
+  # Socket server CORS allowlist — must match the live Amplify web origin.
+  CORS_ORIGIN: https://www.studyverce.com
 
 jobs:
   changes:
@@ -66,10 +68,12 @@ jobs:
 
       - name: CDK deploy
         working-directory: infra
+        env:
+          CORS_ORIGIN: ${{ env.CORS_ORIGIN }}
         run: |
           npx cdk deploy ${{ env.CDK_STACK_NAME }} \
             --require-approval never \
-            -c corsOrigin="${{ vars.AMPLIFY_APP_URL }}"
+            -c corsOrigin="$CORS_ORIGIN"
 
   deploy-socket:
     needs: [changes, deploy-infrastructure]

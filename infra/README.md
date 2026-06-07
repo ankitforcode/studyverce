@@ -53,7 +53,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 |------|------|---------|
 | Secret | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::123456789012:role/GitHubActionsStudyverceDeploy` |
 | Variable | `AWS_REGION` | `us-east-1` |
-| Variable | `AMPLIFY_APP_URL` | `https://main.d1234.amplifyapp.com` (socket `CORS_ORIGIN`) |
+| Workflow env | `CORS_ORIGIN` in `.github/workflows/deploy-aws.yml` | e.g. `https://www.studyverce.com` (socket CORS allowlist) |
 
 ### 4. Amplify Hosting (web)
 
@@ -77,6 +77,15 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 7. Set `NEXT_PUBLIC_APP_URL` to your canonical origin (e.g. `https://www.studyverce.com`).
 
 **404 on custom domain (`server: AmazonS3` in response headers)?** The monorepo artifact path was wrong or Amplify is not in Web Compute mode. Root `amplify.yml` must use `buildPath: /` and `baseDirectory: apps/web/.next`, plus repo-root `.npmrc` with `node-linker=hoisted`.
+
+**`CustomerError: framework looks wrong` after setting `WEB_COMPUTE`?** Platform and framework are separate. Update the **branch** framework:
+
+```bash
+aws amplify update-app --app-id <APP_ID> --platform WEB_COMPUTE --region <REGION>
+aws amplify update-branch --app-id <APP_ID> --branch-name main --framework 'Next.js - SSR' --region <REGION>
+```
+
+Then redeploy. Monorepo apps created without “My app is a monorepo” often stay `platform=WEB` and `framework=Web`.
 
 ### 5. Deploy infrastructure
 
