@@ -16,6 +16,7 @@ import {
   STUDY_ASSISTANT_SUGGESTIONS,
   type StudyAssistantMessage,
 } from "@/lib/study-assistant";
+import { parseStudyAssistantSseChunk } from "@/lib/study-assistant-stream";
 
 interface RoomStudyAssistantProps {
   roomId: string;
@@ -66,6 +67,9 @@ export function RoomStudyAssistant({
   const [messages, setMessages] = useState<StudyAssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -83,7 +87,7 @@ export function RoomStudyAssistant({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, streamingMessageId]);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -112,6 +116,7 @@ export function RoomStudyAssistant({
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    setStreamingMessageId(null);
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -133,18 +138,60 @@ export function RoomStudyAssistant({
         }),
       });
 
-      const data = (await res.json()) as {
-        error?: string;
-        message?: StudyAssistantMessage;
-      };
+      const contentType = res.headers.get("content-type") ?? "";
 
       if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
         setError(data.error ?? "Something went wrong");
         return;
       }
 
-      if (data.message) {
-        setMessages((prev) => [...prev, data.message!]);
+      if (!contentType.includes("text/event-stream") || !res.body) {
+        setError("Unexpected response from assistant.");
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantId: string | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const { events, remainder } = parseStudyAssistantSseChunk(buffer);
+        buffer = remainder;
+
+        for (const event of events) {
+          if (event.type === "start") {
+            assistantId = event.id;
+            setStreamingMessageId(event.id);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: event.id,
+                role: "assistant",
+                content: "",
+                createdAt: event.createdAt,
+              },
+            ]);
+          } else if (event.type === "delta" && assistantId) {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantId
+                  ? {
+                      ...message,
+                      content: message.content + event.content,
+                    }
+                  : message
+              )
+            );
+          } else if (event.type === "error") {
+            setError(event.error);
+          }
+        }
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
@@ -152,6 +199,7 @@ export function RoomStudyAssistant({
       }
     } finally {
       setLoading(false);
+      setStreamingMessageId(null);
       abortRef.current = null;
     }
   }
@@ -171,11 +219,13 @@ export function RoomStudyAssistant({
   function handleStop() {
     abortRef.current?.abort();
     setLoading(false);
+    setStreamingMessageId(null);
   }
 
   function handleClear() {
     abortRef.current?.abort();
     setLoading(false);
+    setStreamingMessageId(null);
     setMessages([]);
     setError(null);
     if (typeof window !== "undefined") {
@@ -262,7 +312,7 @@ export function RoomStudyAssistant({
                 )
               )}
 
-              {loading && (
+              {loading && !streamingMessageId && (
                 <div className="flex gap-2">
                   <div
                     className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"

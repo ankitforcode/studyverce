@@ -5,10 +5,12 @@ import {
   buildStudyAssistantLlmMessages,
   STUDY_ASSISTANT_MAX_CONTENT_LEN,
 } from "@/lib/study-assistant-compliance";
+import { stubStudyAssistantReply } from "@/lib/study-assistant";
 import {
-  stubStudyAssistantReply,
-  type StudyAssistantMessage,
-} from "@/lib/study-assistant";
+  chunkTextForStream,
+  encodeStudyAssistantSse,
+  extractOpenAiDeltaContent,
+} from "@/lib/study-assistant-stream";
 import { stripPostItHtml } from "@/lib/post-it-rich-text";
 
 const MAX_MESSAGES = 24;
@@ -19,6 +21,37 @@ type ChatRequestBody = {
   goalText?: string;
   messages?: { role: "user" | "assistant"; content: string }[];
 };
+
+function streamResponse(
+  handler: (
+    push: (event: Parameters<typeof encodeStudyAssistantSse>[0]) => void
+  ) => Promise<void>
+) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const push = (event: Parameters<typeof encodeStudyAssistantSse>[0]) => {
+        controller.enqueue(encodeStudyAssistantSse(event));
+      };
+
+      try {
+        await handler(push);
+      } catch (err) {
+        console.error("[study-assistant]", err);
+        push({ type: "error", error: "Failed to reach AI service." });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
 
 export async function POST(request: Request) {
   const limited = await rateLimitOrNull(request);
@@ -55,20 +88,29 @@ export async function POST(request: Request) {
     ? stripPostItHtml(body.goalText).trim()
     : undefined;
 
+  const messageId = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     const content = stubStudyAssistantReply(lastUser.content, {
       goalText,
       roomName: body.roomName,
     });
-    return NextResponse.json({
-      message: {
-        id: crypto.randomUUID(),
-        role: "assistant" as const,
-        content,
-        createdAt: new Date().toISOString(),
-      } satisfies StudyAssistantMessage,
-      provider: "stub",
+
+    return streamResponse(async (push) => {
+      push({
+        type: "start",
+        id: messageId,
+        role: "assistant",
+        createdAt,
+      });
+
+      for (const chunk of chunkTextForStream(content)) {
+        push({ type: "delta", content: chunk });
+      }
+
+      push({ type: "done", provider: "stub" });
     });
   }
 
@@ -78,7 +120,14 @@ export async function POST(request: Request) {
     goalText,
   });
 
-  try {
+  return streamResponse(async (push) => {
+    push({
+      type: "start",
+      id: messageId,
+      role: "assistant",
+      createdAt,
+    });
+
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -89,6 +138,7 @@ export async function POST(request: Request) {
         model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
         temperature: 0.5,
         max_tokens: 600,
+        stream: true,
         messages: [{ role: "system", content: system }, ...llmMessages],
       }),
     });
@@ -96,33 +146,47 @@ export async function POST(request: Request) {
     if (!res.ok) {
       const errText = await res.text();
       console.error("[study-assistant] OpenAI error:", res.status, errText);
-      return NextResponse.json(
-        { error: "AI service unavailable. Try again shortly." },
-        { status: 502 }
-      );
+      push({
+        type: "error",
+        error: "AI service unavailable. Try again shortly.",
+      });
+      return;
     }
 
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content =
-      data.choices?.[0]?.message?.content?.trim() ||
-      "I couldn't generate a reply. Please try again.";
+    if (!res.body) {
+      push({ type: "error", error: "AI service unavailable. Try again shortly." });
+      return;
+    }
 
-    return NextResponse.json({
-      message: {
-        id: crypto.randomUUID(),
-        role: "assistant" as const,
-        content,
-        createdAt: new Date().toISOString(),
-      } satisfies StudyAssistantMessage,
-      provider: "openai",
-    });
-  } catch (err) {
-    console.error("[study-assistant]", err);
-    return NextResponse.json(
-      { error: "Failed to reach AI service." },
-      { status: 502 }
-    );
-  }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let receivedContent = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const delta = extractOpenAiDeltaContent(line);
+        if (delta) {
+          receivedContent = true;
+          push({ type: "delta", content: delta });
+        }
+      }
+    }
+
+    if (!receivedContent) {
+      push({
+        type: "delta",
+        content: "I couldn't generate a reply. Please try again.",
+      });
+    }
+
+    push({ type: "done", provider: "openai" });
+  });
 }
