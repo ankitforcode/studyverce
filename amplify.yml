@@ -19,11 +19,13 @@ applications:
       phases:
         preBuild:
           commands:
+            - nvm use 25.8.1
             - npm install -g pnpm@11.5.2
             - pnpm config set store-dir .pnpm-store
             - pnpm install --frozen-lockfile
         build:
           commands:
+            - nvm use 25.8.1
             - env | grep -e '^NEXT_PUBLIC_' >> apps/web/.env.production || true
             - env | grep -e '^SUPABASE_SERVICE_ROLE_KEY=' >> apps/web/.env.production || true
             - env | grep -e '^REDIS_URL=' >> apps/web/.env.production || true
@@ -31,8 +33,10 @@ applications:
             - 'test -f apps/web/.next/required-server-files.json || (echo "SSR artifact missing required-server-files.json" && exit 1)'
             - 'STANDALONE=apps/web/.next/standalone && NESTED="$STANDALONE/apps/web" && if [ -d "$NESTED" ]; then cp -r apps/web/.next/static/. "$NESTED/.next/static/" && cp -r apps/web/public "$STANDALONE/public" && if [ -d "$NESTED/node_modules" ]; then mkdir -p "$STANDALONE/node_modules" && cp -aL "$NESTED/node_modules/." "$STANDALONE/node_modules/"; fi && shopt -s dotglob && for f in "$NESTED"/*; do b=$(basename "$f"); [ "$b" = "node_modules" ] && continue; rm -rf "$STANDALONE/$b" 2>/dev/null || true; mv "$f" "$STANDALONE/"; done && rm -rf "$NESTED"; else cp -r apps/web/.next/static "$STANDALONE/.next/static" && cp -r apps/web/public "$STANDALONE/public"; fi'
             - 'STANDALONE=apps/web/.next/standalone && if [ ! -f "$STANDALONE/node_modules/next/package.json" ]; then mkdir -p "$STANDALONE/node_modules" && cp -aL node_modules/next "$STANDALONE/node_modules/" && if [ -d node_modules/@next ]; then cp -aL node_modules/@next "$STANDALONE/node_modules/"; fi; fi'
-            - 'rm -rf apps/web/.next/node_modules && cp -aL apps/web/.next/standalone/node_modules apps/web/.next/node_modules'
-            - 'rm -rf apps/web/node_modules && cp -aL apps/web/.next/standalone/node_modules apps/web/node_modules'
+            - 'NM=apps/web/.next/standalone/node_modules && rm -rf "$NM/next/next-swc-fallback" "$NM/@swc" "$NM/@esbuild"'
+            - 'rm -rf apps/web/.next/cache apps/web/.next/node_modules apps/web/node_modules'
+            - 'mv apps/web/.next/standalone/node_modules apps/web/.next/node_modules'
+            - 'rm -rf apps/web/.next/standalone/.next'
             - 'test -f apps/web/.next/node_modules/next/package.json || (echo "artifact missing next dependency" && exit 1)'
       artifacts:
         baseDirectory: apps/web/.next
