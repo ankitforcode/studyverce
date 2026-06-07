@@ -147,11 +147,17 @@ export class StudyverceStack extends cdk.Stack {
     });
 
     // Register Fargate capacity providers once (avoid CDK auto-association updates racing ECS deploys).
-    new ecs.CfnClusterCapacityProviderAssociations(this, "ClusterCapacityProviders", {
-      cluster: cluster.clusterName,
-      capacityProviders: ["FARGATE", "FARGATE_SPOT"],
-      defaultCapacityProviderStrategy: [],
-    });
+    const clusterCapacityProviders = new ecs.CfnClusterCapacityProviderAssociations(
+      this,
+      "ClusterCapacityProviders",
+      {
+        cluster: cluster.clusterName,
+        capacityProviders: ["FARGATE", "FARGATE_SPOT"],
+        defaultCapacityProviderStrategy: [],
+      }
+    );
+    // Create: cluster → capacity providers → service. Delete: service → capacity providers → cluster.
+    clusterCapacityProviders.addDependency(cluster.node.defaultChild as ecs.CfnCluster);
 
     const logGroup = new logs.LogGroup(this, "SocketLogGroup", {
       logGroupName: "/studyverce/socket-server",
@@ -231,6 +237,7 @@ export class StudyverceStack extends cdk.Stack {
       healthCheckGracePeriod: cdk.Duration.seconds(60),
     });
     service.node.addDependency(redis);
+    service.node.addDependency(clusterCapacityProviders);
 
     const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "SocketAlb", {
       vpc,

@@ -156,6 +156,16 @@ After `cdk deploy`:
 - WAF on ALB
 - Socket.IO Redis adapter before scaling ECS `desiredCount` > 1
 
+## Stack delete: capacity provider stuck
+
+If `ClusterCapacityProviders` fails to delete with *capacity provider is in use*:
+
+1. Scale the service to 0: `aws ecs update-service --cluster studyverce --service studyverce-socket --desired-count 0`
+2. Wait until no tasks are running: `aws ecs wait services-stable --cluster studyverce --services studyverce-socket`
+3. Retry stack delete, or delete the service manually then continue rollback.
+
+The CDK stack wires **delete order** as: ECS service → capacity provider associations → cluster (via `DependsOn`).
+
 ## Useful commands
 
 ```bash
