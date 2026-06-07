@@ -26,6 +26,7 @@ applications:
             - env | grep -e '^NEXT_PUBLIC_' >> apps/web/.env.production || true
             - env | grep -e '^SUPABASE_SERVICE_ROLE_KEY=' >> apps/web/.env.production || true
             - env | grep -e '^REDIS_URL=' >> apps/web/.env.production || true
+            - env | grep -e '^OPENAI_API_KEY=' >> apps/web/.env.production || true
             - pnpm --filter web build
             - test -f apps/web/.next/required-server-files.json || (echo "SSR artifact missing — Amplify needs apps/web/.next/required-server-files.json" && exit 1)
       artifacts:
