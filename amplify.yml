@@ -19,15 +19,14 @@ applications:
       phases:
         preBuild:
           commands:
-            - nvm install 25.8.1
-            - nvm use 25.8.1
+            # Amplify supports Node 20/22/24 only (not 25 — missing libatomic on build image).
+            - nvm use 22
             - npm install -g pnpm@11.5.2
             - pnpm config set store-dir .pnpm-store
             - pnpm install --frozen-lockfile
         build:
           commands:
-            - nvm install 25.8.1
-            - nvm use 25.8.1
+            - nvm use 22
             - env | grep -e '^NEXT_PUBLIC_' >> apps/web/.env.production || true
             - env | grep -e '^SUPABASE_SERVICE_ROLE_KEY=' >> apps/web/.env.production || true
             - env | grep -e '^REDIS_URL=' >> apps/web/.env.production || true

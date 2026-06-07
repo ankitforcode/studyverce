@@ -72,7 +72,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 
 1. Amplify Console → **Create app** → connect this GitHub repo.
 2. Set **Monorepo app root**: `apps/web` (or env `AMPLIFY_MONOREPO_APP_ROOT=apps/web`).
-3. Build spec: use root `amplify.yml` (auto-detected).
+3. Build spec: use root `amplify.yml` (auto-detected). Amplify build/runtime supports **Node 20, 22, or 24** only — `amplify.yml` uses `nvm use 22` (Node 25 fails on the build image).
 4. Add environment variables (Amplify Console → Environment variables):
 
 | Variable | Notes |
