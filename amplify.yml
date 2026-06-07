@@ -32,7 +32,7 @@ applications:
             - 'STANDALONE=apps/web/.next/standalone && NESTED="$STANDALONE/apps/web" && if [ -d "$NESTED" ]; then cp -r apps/web/.next/static/. "$NESTED/.next/static/" && cp -r apps/web/public "$STANDALONE/public" && if [ -d "$NESTED/node_modules" ]; then mkdir -p "$STANDALONE/node_modules" && cp -aL "$NESTED/node_modules/." "$STANDALONE/node_modules/"; fi && shopt -s dotglob && for f in "$NESTED"/*; do b=$(basename "$f"); [ "$b" = "node_modules" ] && continue; rm -rf "$STANDALONE/$b" 2>/dev/null || true; mv "$f" "$STANDALONE/"; done && rm -rf "$NESTED"; else cp -r apps/web/.next/static "$STANDALONE/.next/static" && cp -r apps/web/public "$STANDALONE/public"; fi'
             - 'STANDALONE=apps/web/.next/standalone && if [ ! -f "$STANDALONE/node_modules/next/package.json" ]; then mkdir -p "$STANDALONE/node_modules" && cp -aL node_modules/next "$STANDALONE/node_modules/" && if [ -d node_modules/@next ]; then cp -aL node_modules/@next "$STANDALONE/node_modules/"; fi; fi'
             - 'rm -rf apps/web/.next/node_modules && cp -aL apps/web/.next/standalone/node_modules apps/web/.next/node_modules'
-            - 'mkdir -p apps/web/node_modules && cp -aL apps/web/.next/standalone/node_modules/. apps/web/node_modules/'
+            - 'rm -rf apps/web/node_modules && cp -aL apps/web/.next/standalone/node_modules apps/web/node_modules'
             - 'test -f apps/web/.next/node_modules/next/package.json || (echo "artifact missing next dependency" && exit 1)'
       artifacts:
         baseDirectory: apps/web/.next
