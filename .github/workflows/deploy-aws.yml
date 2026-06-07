@@ -131,6 +131,21 @@ jobs:
         working-directory: infra
         run: npx cdk bootstrap "aws://${{ steps.aws-account.outputs.account_id }}/${{ env.AWS_REGION }}"
 
+      - name: Wait for ECS cluster to be idle
+        run: |
+          if aws ecs describe-services \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.ECS_SERVICE }}" \
+            --query 'services[0].status' \
+            --output text 2>/dev/null | grep -q ACTIVE; then
+            echo "Waiting for ${{ env.ECS_SERVICE }} to become stable before CDK deploy..."
+            aws ecs wait services-stable \
+              --cluster "${{ env.ECS_CLUSTER }}" \
+              --services "${{ env.ECS_SERVICE }}"
+          else
+            echo "ECS service not found yet — first deploy"
+          fi
+
       - name: CDK deploy
         working-directory: infra
         env:
@@ -141,13 +156,6 @@ jobs:
             --require-approval never \
             -c corsOrigin="$CORS_ORIGIN" \
             -c socketImageTag="$SOCKET_IMAGE_TAG"
-
-      - name: Force ECS deployment with new image
-        run: |
-          aws ecs update-service \
-            --cluster "${{ env.ECS_CLUSTER }}" \
-            --service "${{ env.ECS_SERVICE }}" \
-            --force-new-deployment
 
       - name: Wait for service stability
         run: |

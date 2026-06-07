@@ -8,13 +8,13 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 |----------|---------|
 | Existing VPC (`vpc-0cd78532e2b1cacf1` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
 | Subnets | **Public only** — ALB, ECS Fargate Spot (`assignPublicIp`), and ElastiCache |
-| ElastiCache for Valkey (`cache.t4g.micro`) | Provisioned Valkey OSS node — Redis-compatible API |
+| ElastiCache Redis (`cache.t4g.micro`) | Single-node Redis instance |
 | ECR `studyverce-socket` | Created by CI if missing; CDK imports by name |
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket entry (HTTP :80 scaffold) |
 | Secrets Manager `studyverce/socket-server` | Supabase URL, JWT secret, `DATABASE_URL` |
 
-**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Valkey speaks the Redis protocol (`REDIS_URL` unchanged). Override node size: `cdk deploy -c cacheNodeType=cache.t4g.small`.
+**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Override Redis node size: `cdk deploy -c cacheNodeType=cache.t4g.small`.
 
 ## Prerequisites
 
