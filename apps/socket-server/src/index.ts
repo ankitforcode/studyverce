@@ -25,6 +25,67 @@ import {
 
 const PORT = parseInt(process.env.PORT ?? "3002", 10);
 
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+const LOG_LEVELS: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
+function resolveLogLevel(): LogLevel {
+  const raw = (process.env.SOCKET_LOG_LEVEL ?? process.env.LOG_LEVEL ?? "").toLowerCase();
+  if (raw === "debug" || raw === "info" || raw === "warn" || raw === "error") {
+    return raw;
+  }
+  return process.env.NODE_ENV === "production" ? "info" : "debug";
+}
+
+const activeLogLevel = resolveLogLevel();
+
+function shouldLog(level: LogLevel): boolean {
+  return LOG_LEVELS[level] >= LOG_LEVELS[activeLogLevel];
+}
+
+function formatMeta(meta?: Record<string, unknown>): string {
+  if (!meta || Object.keys(meta).length === 0) return "";
+  return ` ${JSON.stringify(meta)}`;
+}
+
+const log = {
+  debug(message: string, meta?: Record<string, unknown>) {
+    if (shouldLog("debug")) {
+      console.log(`[socket-server] DEBUG ${message}${formatMeta(meta)}`);
+    }
+  },
+  info(message: string, meta?: Record<string, unknown>) {
+    if (shouldLog("info")) {
+      console.log(`[socket-server] ${message}${formatMeta(meta)}`);
+    }
+  },
+  warn(message: string, meta?: Record<string, unknown>) {
+    if (shouldLog("warn")) {
+      console.warn(`[socket-server] WARN ${message}${formatMeta(meta)}`);
+    }
+  },
+  error(message: string, err?: unknown, meta?: Record<string, unknown>) {
+    if (shouldLog("error")) {
+      console.error(`[socket-server] ERROR ${message}${formatMeta(meta)}`, err ?? "");
+    }
+  },
+};
+
+function redactRedisUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.password) parsed.password = "***";
+    return parsed.toString();
+  } catch {
+    return "<invalid-redis-url>";
+  }
+}
+
 function resolveRedisUrl(): string {
   const host = process.env.REDIS_HOST?.trim();
   const port = process.env.REDIS_PORT?.trim() || "6379";
@@ -113,6 +174,8 @@ app.get("/presence", async (req, res) => {
       ? raw.split(",").map((id) => id.trim()).filter(Boolean)
       : [];
 
+  log.debug("GET /presence", { roomCount: roomIds.length, roomIds });
+
   const counts: Record<string, number> = {};
   await Promise.all(
     roomIds.map(async (roomId) => {
@@ -136,12 +199,20 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string,
 );
 
 const redis = new Redis(REDIS_URL);
-const pgPool = DATABASE_URL ? new pg.Pool({ connectionString: DATABASE_URL }) : null;
+redis.on("connect", () => {
+  log.info("redis connected", { url: redactRedisUrl(REDIS_URL) });
+});
+redis.on("ready", () => log.info("redis ready"));
+redis.on("error", (err) => log.error("redis error", err));
+redis.on("close", () => log.warn("redis connection closed"));
+redis.on("reconnecting", () => log.info("redis reconnecting"));
 
-if (!pgPool) {
-  console.warn("DATABASE_URL not configured — chat persistence disabled on socket server");
+const pgPool = DATABASE_URL ? new pg.Pool({ connectionString: DATABASE_URL }) : null;
+if (pgPool) {
+  pgPool.on("error", (err) => log.error("postgres pool error", err));
+  log.info("chat persistence enabled via Postgres");
 } else {
-  console.log("Chat persistence enabled via Postgres");
+  log.warn("DATABASE_URL not configured — chat persistence disabled");
 }
 
 function participantsKey(roomId: string) {
@@ -218,7 +289,7 @@ async function syncRoomMusic(roomId: string) {
 
 async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
   if (!JWT_SECRET) {
-    console.warn("SUPABASE_JWT_SECRET not set — socket auth disabled for dev");
+    log.warn("SUPABASE_JWT_SECRET not set — decoding JWT payload without verification");
     try {
       const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
       return { id: payload.sub, email: payload.email };
@@ -412,6 +483,7 @@ async function sweepStaleParticipants(): Promise<void> {
     }
 
     if (changed) {
+      log.debug("presence sweep updated room", { roomId });
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
     }
@@ -601,15 +673,28 @@ async function endStudySession(sessionId: string, focusMinutes: number, breakMin
 io.use(async (socket, next) => {
   const token = socket.handshake.auth.token as string | undefined;
   if (!token) {
+    log.warn("connection rejected: missing auth token", {
+      socketId: socket.id,
+      address: socket.handshake.address,
+    });
     return next(new Error("Authentication required"));
   }
   const user = await verifyToken(token);
   if (!user) {
+    log.warn("connection rejected: invalid token", {
+      socketId: socket.id,
+      address: socket.handshake.address,
+    });
     return next(new Error("Invalid token"));
   }
   const profile = await getProfile(user.id);
   socket.data.user = user;
   socket.data.profile = profile;
+  log.info("client authenticated", {
+    userId: user.id,
+    username: profile.username,
+    socketId: socket.id,
+  });
   next();
 });
 
@@ -620,6 +705,11 @@ function userChannel(userId: string) {
 io.on("connection", (socket) => {
   const { user, profile } = socket.data;
   void socket.join(userChannel(user.id));
+  log.info("client connected", {
+    userId: user.id,
+    username: profile.username,
+    socketId: socket.id,
+  });
 
   socket.on("access:request-created", async ({ roomId, request }) => {
     if (!pgPool) return;
@@ -641,7 +731,7 @@ io.on("connection", (socket) => {
         username: request.requesterUsername ?? profile.username,
       });
     } catch (err) {
-      console.error("access:request-created error", err);
+      log.error("access:request-created failed", err, { userId: user.id, roomId });
       socket.emit("error", { message: "Failed to notify room owner" });
     }
   });
@@ -660,7 +750,7 @@ io.on("connection", (socket) => {
       });
       io.to(roomId).emit("room:access-request:removed", { requestId });
     } catch (err) {
-      console.error("access:reviewed error", err);
+      log.error("access:reviewed failed", err, { userId: user.id, roomId, requestId });
       socket.emit("error", { message: "Failed to broadcast access review" });
     }
   });
@@ -680,7 +770,7 @@ io.on("connection", (socket) => {
       }
       io.to(roomId).emit("room:music-request:new", { request });
     } catch (err) {
-      console.error("music:request-created error", err);
+      log.error("music:request-created failed", err, { userId: user.id, roomId });
       socket.emit("error", { message: "Failed to notify room owner" });
     }
   });
@@ -699,7 +789,7 @@ io.on("connection", (socket) => {
       });
       io.to(roomId).emit("room:music-request:removed", { requestId });
     } catch (err) {
-      console.error("music:reviewed error", err);
+      log.error("music:reviewed failed", err, { userId: user.id, roomId, requestId });
       socket.emit("error", { message: "Failed to broadcast music review" });
     }
   });
@@ -719,7 +809,7 @@ io.on("connection", (socket) => {
       }
       io.to(userChannel(toUserId)).emit("room:friend-request:new", { request });
     } catch (err) {
-      console.error("friend:request-created error", err);
+      log.error("friend:request-created failed", err, { userId: user.id, roomId, toUserId });
       socket.emit("error", { message: "Failed to notify friend request recipient" });
     }
   });
@@ -732,6 +822,8 @@ io.on("connection", (socket) => {
   socket.on("rooms:presence:subscribe", async ({ roomIds }) => {
     const uniqueIds = [...new Set(roomIds.filter(Boolean))];
     if (uniqueIds.length === 0) return;
+
+    log.debug("rooms:presence:subscribe", { userId: user.id, roomIds: uniqueIds });
 
     for (const roomId of uniqueIds) {
       await socket.join(presenceWatchRoom(roomId));
@@ -754,8 +846,10 @@ io.on("connection", (socket) => {
 
   socket.on("room:member:kick", async ({ roomId, userId }) => {
     try {
+      log.info("room:member:kick", { actorId: user.id, roomId, targetUserId: userId });
       const owner = await isRoomOwner(roomId, user.id);
       if (!owner) {
+        log.warn("room:member:kick denied — not owner", { userId: user.id, roomId });
         socket.emit("error", { message: "Only the room owner can remove members" });
         return;
       }
@@ -788,7 +882,7 @@ io.on("connection", (socket) => {
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
     } catch (err) {
-      console.error("room:member:kick error", err);
+      log.error("room:member:kick failed", err, { userId: user.id, roomId, targetUserId: userId });
       socket.emit("error", { message: "Failed to remove member" });
     }
   });
@@ -797,6 +891,7 @@ io.on("connection", (socket) => {
     try {
       const member = await isRoomMember(roomId, user.id);
       if (!member) {
+        log.warn("room:join denied — not a member", { userId: user.id, roomId });
         socket.emit("error", { message: "Not a member of this room" });
         return;
       }
@@ -844,15 +939,23 @@ io.on("connection", (socket) => {
         socket.emit("room:music", { roomId, state: music });
       }
 
+      log.info("room:join", {
+        userId: user.id,
+        roomId,
+        socketId: socket.id,
+        returning: Boolean(hadPresence),
+        historyMessages: history.length,
+      });
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
     } catch (err) {
-      console.error("room:join error", err);
+      log.error("room:join failed", err, { userId: user.id, roomId });
       socket.emit("error", { message: "Failed to join room" });
     }
   });
 
   socket.on("room:leave", async ({ roomId }) => {
+    log.info("room:leave", { userId: user.id, roomId, socketId: socket.id });
     await socket.leave(roomId);
     await markParticipantLeft(roomId, user.id);
     await broadcastPresence(roomId);
@@ -879,17 +982,19 @@ io.on("connection", (socket) => {
       if (!socket.rooms.has(roomId)) return;
       if (mode !== "active" && mode !== "away" && mode !== "invisible") return;
 
+      log.debug("room:presence:set", { userId: user.id, roomId, mode });
       await setParticipantPresence(roomId, user.id, mode);
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
     } catch (err) {
-      console.error("room:presence:set error", err);
+      log.error("room:presence:set failed", err, { userId: user.id, roomId, mode });
       socket.emit("error", { message: "Failed to update presence" });
     }
   });
 
   socket.on("chat:send", async ({ roomId, content }) => {
     if (!content.trim()) return;
+    log.debug("chat:send", { userId: user.id, roomId, length: content.trim().length });
     const message = await persistMessage(roomId, user.id, content.trim());
     if (message) {
       io.to(roomId).emit("chat:message", message);
@@ -995,8 +1100,15 @@ io.on("connection", (socket) => {
     socket.emit("session:ended", { sessionId });
   });
 
-  socket.on("disconnect", async () => {
+  socket.on("disconnect", async (reason) => {
     const rooms = Array.from(socket.rooms).filter((r) => r !== socket.id);
+    log.info("client disconnected", {
+      userId: user.id,
+      socketId: socket.id,
+      reason,
+      roomCount: rooms.length,
+      rooms,
+    });
     for (const roomId of rooms) {
       await markParticipantLeft(roomId, user.id);
       await broadcastPresence(roomId);
@@ -1009,6 +1121,17 @@ setInterval(() => {
   void sweepStaleParticipants();
 }, ROOM_PRESENCE_SWEEP_INTERVAL_MS);
 
+log.info("starting socket server", {
+  port: PORT,
+  nodeEnv: process.env.NODE_ENV ?? "development",
+  logLevel: activeLogLevel,
+  redis: redactRedisUrl(REDIS_URL),
+  database: pgPool ? "configured" : "disabled",
+  supabaseUrl: SUPABASE_URL ? "configured" : "missing",
+  jwtSecret: JWT_SECRET ? "configured" : "missing",
+  corsOrigins,
+});
+
 httpServer.listen(PORT, () => {
-  console.log(`Socket server running on port ${PORT}`);
+  log.info("socket server listening", { port: PORT });
 });
