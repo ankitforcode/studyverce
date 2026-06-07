@@ -91,7 +91,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 
 **404 on custom domain (`server: AmazonS3` in response headers)?** The monorepo artifact path was wrong or Amplify is not in Web Compute mode. Root `amplify.yml` must use `buildPath: /` and `baseDirectory: apps/web/.next`, plus repo-root `.npmrc` with `node-linker=hoisted`.
 
-**Build error: `node_modules` missing `next`?** `apps/web/next.config.ts` must set `output: "standalone"` and `outputFileTracingRoot` to the monorepo root so Amplify gets traced runtime deps inside `apps/web/.next/standalone`.
+**Build error: `node_modules` missing `next`?** `apps/web/next.config.ts` must set `output: "standalone"` and `outputFileTracingRoot` to the monorepo root. After build, `amplify.yml` copies `standalone/node_modules` to both `apps/web/.next/node_modules` (artifact path Amplify validates) and `apps/web/node_modules` (appRoot).
 
 **`CustomerError: framework looks wrong` after setting `WEB_COMPUTE`?** Platform and framework are separate. Update the **branch** framework:
 
