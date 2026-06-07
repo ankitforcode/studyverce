@@ -6,7 +6,7 @@ RUN corepack enable
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/socket-server/package.json apps/socket-server/
 COPY packages/shared/package.json packages/shared/
 COPY packages/rate-limit/package.json packages/rate-limit/
@@ -29,14 +29,15 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3002
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/socket-server/package.json apps/socket-server/
 COPY packages/shared/package.json packages/shared/
 COPY packages/rate-limit/package.json packages/rate-limit/
 
 COPY --from=builder /app/apps/socket-server/dist ./apps/socket-server/dist
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/node_modules ./node_modules
+
+# Production deps only (hoisted via .npmrc); workspace packages are bundled into dist.
+RUN pnpm install --frozen-lockfile --prod --filter @studyverce/socket-server...
 
 WORKDIR /app/apps/socket-server
 
