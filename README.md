@@ -32,7 +32,7 @@ studyverce/
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 25.8.1+
 - pnpm 9+
 - Docker (for Redis)
 - Supabase project ([supabase.com](https://supabase.com))

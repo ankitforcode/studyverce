@@ -1,8 +1,8 @@
 # Build from monorepo root:
 #   docker build -f apps/socket-server/Dockerfile -t studyverce-socket .
-FROM node:22-alpine AS builder
+FROM node:25.8.1-alpine AS builder
 
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
 
 WORKDIR /app
 
@@ -19,10 +19,10 @@ COPY apps/socket-server apps/socket-server
 
 RUN pnpm --filter @studyverce/socket-server build
 
-FROM node:22-alpine AS runner
+FROM node:25.8.1-alpine AS runner
 
 RUN apk add --no-cache wget
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
 
 WORKDIR /app
 

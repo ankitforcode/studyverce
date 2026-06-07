@@ -21,7 +21,7 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 
 - AWS CLI + CDK CLI (`npm i -g aws-cdk`)
 - Docker (for socket image builds)
-- Node.js 20+
+- Node.js 25.8.1+
 - Supabase Cloud project with migrations applied (`supabase db push`)
 - Route 53 hosted zone for `studyverce.com` in the same AWS account (CDK looks it up on deploy)
 
