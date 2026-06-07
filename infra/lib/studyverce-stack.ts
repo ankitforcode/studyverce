@@ -190,7 +190,9 @@ export class StudyverceStack extends cdk.Stack {
         NODE_ENV: "production",
         PORT: "3002",
         CORS_ORIGIN: corsOrigin,
-        REDIS_URL: `redis://${redisHost}:${redisPort}`,
+        // Pass host/port separately — Fn::Join URL strings can resolve to redis://: before Redis exists.
+        REDIS_HOST: redisHost,
+        REDIS_PORT: redisPort,
       },
       secrets: {
         SUPABASE_URL: ecs.Secret.fromSecretsManager(socketSecret, "SUPABASE_URL"),
@@ -209,6 +211,7 @@ export class StudyverceStack extends cdk.Stack {
       },
     });
     container.addPortMappings({ containerPort: 3002, protocol: ecs.Protocol.TCP });
+    taskDefinition.node.addDependency(redis);
 
     const service = new ecs.FargateService(this, "SocketService", {
       cluster,
@@ -227,6 +230,7 @@ export class StudyverceStack extends cdk.Stack {
       circuitBreaker: { rollback: true },
       healthCheckGracePeriod: cdk.Duration.seconds(60),
     });
+    service.node.addDependency(redis);
 
     const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "SocketAlb", {
       vpc,

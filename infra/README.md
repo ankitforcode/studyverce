@@ -75,7 +75,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 | Variable | Notes |
 |----------|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only |
 | `NEXT_PUBLIC_APP_URL` | Amplify app URL |
 | `NEXT_PUBLIC_SOCKET_URL` | `http://<SocketAlbDnsName>` from CDK output (use HTTPS after ACM) |
@@ -146,7 +146,7 @@ After `cdk deploy`:
 
 - **SocketAlbDnsName** → set `NEXT_PUBLIC_SOCKET_URL` in Amplify
 - **EcrRepositoryUri** → CI pushes here
-- **RedisEndpoint** → injected into socket task as `REDIS_URL`
+- **RedisEndpoint** → injected into socket task as `REDIS_HOST` + `REDIS_PORT`
 
 ## Production hardening (later)
 
