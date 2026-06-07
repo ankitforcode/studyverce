@@ -95,7 +95,7 @@ export class StudyverceStack extends cdk.Stack {
       "cache.t4g.micro";
 
     const valkeySubnetGroup = new elasticache.CfnSubnetGroup(this, "ValkeySubnetGroup", {
-      description: "StudyVerce Valkey — public subnets",
+      description: "StudyVerce Valkey public subnets",
       subnetIds: publicSubnetIds(vpc),
       cacheSubnetGroupName: "studyverce-valkey",
     });
