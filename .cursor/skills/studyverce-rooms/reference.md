@@ -56,7 +56,7 @@
 | `hooks/use-room-listing-presence.ts` | Live counts on `/rooms` cards |
 | `lib/room-ui.ts` | Glass tokens, `ROOM_HEADER_ICON_BUTTON`, portal helpers |
 | `lib/site-metadata.ts` | SEO metadata helpers |
-| `apps/socket-server/src/index.ts` | `room:member:kick`, presence, inactive kick, Socket.IO Redis adapter |
+| `apps/socket-server/src/index.ts` | `room:member:kick`, presence, inactive kick; `SOCKET_REDIS_ADAPTER` (off when single ECS task) |
 | `apps/socket-server/src/redis-cache.ts` | Profile, chat, room-auth, active-count Redis caches |
 | `packages/redis/` | Shared keys, lazy client, invalidation (`invalidateRoomMusic`, etc.) |
 | `packages/shared/src/index.ts` | `RoomPresenceMode`, `viewPresenceMode`, socket events incl. `room:presence:set`, `room:member:kick` |

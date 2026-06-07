@@ -1,10 +1,23 @@
+/** Upstash (or similar) free-tier targets — tune via env where noted in README. */
+export const REDIS_BUDGET = {
+  maxStorageMb: 256,
+  maxCommandsPerMonth: 500_000,
+} as const;
+
 export const REDIS_TTL = {
   profileSeconds: 600,
   roomAuthSeconds: 120,
   roomOwnerSeconds: 300,
-  activeCountSeconds: 3,
+  /** Bumped from 3s to cut /presence GET load (~4× fewer commands). */
+  activeCountSeconds: 15,
   chatSeconds: 3600,
-  listingSeconds: 45,
+  /** Bumped from 45s — listing is invalidated on room mutations. */
+  listingSeconds: 120,
+  /** Refreshed on each participant write; empty hashes are deleted. */
+  participantsSeconds: 2 * 60 * 60,
+  roomMusicSeconds: 3600,
+  postItTaskSeconds: 4 * 60 * 60,
+  postItGenSeconds: 300,
 } as const;
 
 export function profileKey(userId: string) {
@@ -33,6 +46,11 @@ export function roomMusicKey(roomId: string) {
 
 export function roomParticipantsKey(roomId: string) {
   return `room:${roomId}:participants`;
+}
+
+/** SET of room IDs with a non-empty participants hash (avoids SCAN on sweeps). */
+export function roomParticipantsRoomsKey() {
+  return "room:participant_rooms";
 }
 
 export function roomActiveCountKey(roomId: string) {

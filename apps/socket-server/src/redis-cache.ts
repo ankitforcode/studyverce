@@ -7,9 +7,11 @@ import {
   roomChatKey,
   roomMemberAuthKey,
   roomModAuthKey,
+  roomMusicKey,
   roomOwnerAuthKey,
   roomOwnerIdKey,
-  scanRedisKeys,
+  roomParticipantsKey,
+  roomParticipantsRoomsKey,
 } from "@studyverce/redis";
 
 const CHAT_HISTORY_LIMIT = 50;
@@ -126,6 +128,54 @@ export async function invalidateActiveCount(redis: Redis, roomId: string): Promi
   await redis.del(roomActiveCountKey(roomId));
 }
 
+export async function setCachedRoomMusic(
+  redis: Redis,
+  roomId: string,
+  state: unknown
+): Promise<void> {
+  await redis.set(
+    roomMusicKey(roomId),
+    JSON.stringify(state),
+    "EX",
+    REDIS_TTL.roomMusicSeconds
+  );
+}
+
+export async function saveRoomParticipant(
+  redis: Redis,
+  roomId: string,
+  userId: string,
+  json: string
+): Promise<void> {
+  const key = roomParticipantsKey(roomId);
+  const pipeline = redis.pipeline();
+  pipeline.hset(key, userId, json);
+  pipeline.expire(key, REDIS_TTL.participantsSeconds);
+  pipeline.sadd(roomParticipantsRoomsKey(), roomId);
+  await pipeline.exec();
+}
+
+export async function removeRoomParticipant(
+  redis: Redis,
+  roomId: string,
+  userId: string
+): Promise<void> {
+  const key = roomParticipantsKey(roomId);
+  await redis.hdel(key, userId);
+  const remaining = await redis.hlen(key);
+  if (remaining === 0) {
+    const pipeline = redis.pipeline();
+    pipeline.del(key);
+    pipeline.srem(roomParticipantsRoomsKey(), roomId);
+    await pipeline.exec();
+  }
+}
+
+export async function listParticipantRoomKeys(redis: Redis): Promise<string[]> {
+  const roomIds = await redis.smembers(roomParticipantsRoomsKey());
+  return roomIds.map((roomId) => roomParticipantsKey(roomId));
+}
+
 export async function getCachedChatHistory(
   redis: Redis,
   roomId: string,
@@ -184,6 +234,3 @@ export async function removeChatMessage(
   await pipeline.exec();
 }
 
-export async function listParticipantRoomKeys(redis: Redis): Promise<string[]> {
-  return scanRedisKeys(redis, "room:*:participants");
-}

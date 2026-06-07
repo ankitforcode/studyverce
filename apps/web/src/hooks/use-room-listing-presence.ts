@@ -41,7 +41,7 @@ export function useRoomListingPresence(roomIdsKey: string) {
 
     const interval = window.setInterval(() => {
       void fetchCounts();
-    }, 15_000);
+    }, 30_000);
 
     return () => {
       cancelled = true;

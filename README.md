@@ -215,6 +215,22 @@ pnpm dev
 
 See [`infra/README.md`](infra/README.md) for CDK bootstrap, secrets, and GitHub Actions (`/.github/workflows/deploy-aws.yml`).
 
+### Redis budget (Upstash)
+
+Production targets **256 MB storage** and **500k commands/month** (`REDIS_BUDGET` in `packages/redis/src/keys.ts`). Defaults are tuned for that:
+
+| Knob | Default | Why |
+|------|---------|-----|
+| `SOCKET_REDIS_ADAPTER` | `false` on ECS (`desiredCount: 1`) | Skips Socket.IO pub/sub through Redis — largest command saver. Set `true` before scaling ECS past one task. |
+| Presence sweep | 60s | Was 15s — fewer `HGETALL` sweeps. |
+| Active count cache | 15s | Was 3s — fewer `/presence` Redis reads. |
+| Listing cache | 120s | Was 45s — room list invalidates on mutations. |
+| Post-it lazy flush | 2000ms debounce | Batches drag/resize writes. |
+| Participant / music keys | TTL + room index SET | Keys expire; sweeps use `SMEMBERS` instead of `SCAN`. |
+| Rate limits | Lua `INCR`+`EXPIRE` script | 1 command per bucket check instead of up to 4. |
+
+Monitor usage in the Upstash console. If you approach the cap, raise debounce/TTL values or disable `RATE_LIMIT_ENABLED` on Amplify (socket server still rate-limits).
+
 ## Scripts
 
 ```bash

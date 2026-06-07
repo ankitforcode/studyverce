@@ -129,7 +129,7 @@ Both must share the same array (includes closed tasks).
 
 Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks.
 
-**Redis (socket-server):** `@socket.io/redis-adapter` for multi-instance broadcasts; caches profiles (10m), room auth (2m), chat history (1h), music state, presence hashes, and active-count snapshots (3s). Web invalidates music/membership caches via `@studyverce/redis` when server actions change DB (`music-actions`, `member-actions`, `joinRoom`).
+**Redis (socket-server):** `SOCKET_REDIS_ADAPTER=true` only when ECS `desiredCount > 1`; production single-task runs in-memory adapter. Caches profiles (10m), room auth (2m), chat (1h), music (1h TTL), presence hashes (2h TTL + `room:participant_rooms` index), active-count (15s). Budget targets: 256 MB / 500k cmds/mo (`REDIS_BUDGET` in `packages/redis`). Web invalidates via `@studyverce/redis` on DB mutations.
 
 | Event | Direction | Purpose |
 |-------|-----------|---------|
@@ -145,7 +145,7 @@ Kicked users see banner on `rooms-directory.tsx` (`?removed=kicked`).
 - `rooms-directory.tsx` — tabs: trending, private, friends, favorites.
 - Private tab RPC `get_user_private_rooms`: owned, member, pending invite, or approved-without-membership (inactive leave — can rejoin). **Kicked** users get `revoked` access and are **not listed**.
 - Live presence badge on cards: `use-room-listing-presence.ts` + `/presence` rewrite in `next.config.ts`.
-- Listing tabs cache in Redis (45s TTL) when `REDIS_URL` is set — `lib/cache/listing.ts`; presence counts cached 3s on socket-server.
+- Listing tabs cache in Redis (120s TTL) when `REDIS_URL` is set — `lib/cache/listing.ts`; presence counts cached 15s on socket-server; sweep every 60s.
 - Favorites: `favorite-actions.ts`, migration `20250606000005_user_favorite_rooms.sql`.
 - **Do not** call `revalidatePath` from favorite toggle (caused client fetch errors).
 - Card description: room text only (no owner name).

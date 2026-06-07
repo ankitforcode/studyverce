@@ -1,9 +1,9 @@
 import { after } from "next/server";
 import type { PostItColor, PostItItem, UserPostItTask } from "@studyverce/shared";
+import { REDIS_TTL } from "@studyverce/redis";
 import { getPostItRedis, isPostItCacheEnabled } from "@/lib/post-it-cache/redis";
 
-const TASK_TTL_SEC = 60 * 60 * 24;
-const DEFAULT_FLUSH_DEBOUNCE_MS = 800;
+const DEFAULT_FLUSH_DEBOUNCE_MS = 2000;
 
 export type PostItTaskPatch = {
   title?: string;
@@ -95,7 +95,7 @@ export async function setCachedPostItTask(
     taskKey(userId, task.id),
     JSON.stringify(task),
     "EX",
-    TASK_TTL_SEC
+    REDIS_TTL.postItTaskSeconds
   );
 }
 
@@ -155,7 +155,12 @@ export async function cachePostItUpdate(
       if (redis.status !== "ready") {
         await redis.connect();
       }
-      const generation = await redis.incr(genKey(userId, merged.id));
+      const generation = await redis
+        .multi()
+        .incr(genKey(userId, merged.id))
+        .expire(genKey(userId, merged.id), REDIS_TTL.postItGenSeconds)
+        .exec()
+        .then((result) => Number(result?.[0]?.[1] ?? 0));
       scheduleLazyPostItFlush(userId, merged.id, generation);
     }
   }

@@ -215,6 +215,8 @@ export class StudyverceStack extends cdk.Stack {
         NODE_ENV: "production",
         PORT: "3002",
         CORS_ORIGIN: corsOrigin,
+        // Single Fargate task — skip Socket.IO Redis adapter to save Upstash commands.
+        SOCKET_REDIS_ADAPTER: "false",
       },
       secrets: {
         SUPABASE_URL: ecs.Secret.fromSsmParameter(supabaseUrlParam),

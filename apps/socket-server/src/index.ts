@@ -10,6 +10,8 @@ import {
   resolveRedisUrl,
   roomMusicKey,
   roomParticipantsKey,
+  roomParticipantsRoomsKey,
+  scanRedisKeys,
 } from "@studyverce/redis";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import jwt from "jsonwebtoken";
@@ -44,6 +46,9 @@ import {
   invalidateRoomMemberAuth,
   listParticipantRoomKeys,
   removeChatMessage,
+  removeRoomParticipant,
+  saveRoomParticipant,
+  setCachedRoomMusic,
 } from "./redis-cache";
 
 const PORT = parseInt(process.env.PORT ?? "3002", 10);
@@ -243,8 +248,6 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string,
 );
 
 const redis = new Redis(REDIS_URL);
-const redisPub = redis.duplicate();
-const redisSub = redis.duplicate();
 redis.on("connect", () => {
   log.info("redis connected", { url: redactRedisUrl(REDIS_URL) });
 });
@@ -252,8 +255,34 @@ redis.on("ready", () => log.info("redis ready"));
 redis.on("error", (err) => log.error("redis error", err));
 redis.on("close", () => log.warn("redis connection closed"));
 redis.on("reconnecting", () => log.info("redis reconnecting"));
-io.adapter(createAdapter(redisPub, redisSub));
-log.info("socket.io redis adapter enabled");
+
+const useRedisAdapter = process.env.SOCKET_REDIS_ADAPTER === "true";
+if (useRedisAdapter) {
+  const redisPub = redis.duplicate();
+  const redisSub = redis.duplicate();
+  io.adapter(createAdapter(redisPub, redisSub));
+  log.info("socket.io redis adapter enabled");
+} else {
+  log.info(
+    "socket.io redis adapter disabled (set SOCKET_REDIS_ADAPTER=true when ECS desiredCount > 1)"
+  );
+}
+
+async function backfillParticipantRoomIndex(): Promise<void> {
+  const indexed = await redis.scard(roomParticipantsRoomsKey());
+  if (indexed > 0) return;
+
+  const keys = await scanRedisKeys(redis, "room:*:participants");
+  if (keys.length === 0) return;
+
+  const roomIds = keys.map((key) => key.slice("room:".length, -":participants".length));
+  await redis.sadd(roomParticipantsRoomsKey(), ...roomIds);
+  log.info("backfilled participant room index", { roomCount: roomIds.length });
+}
+
+void backfillParticipantRoomIndex().catch((err) => {
+  log.error("participant room index backfill failed", err);
+});
 
 const pgPool = DATABASE_URL ? new pg.Pool({ connectionString: DATABASE_URL }) : null;
 if (pgPool) {
@@ -304,7 +333,7 @@ async function getCachedMusic(roomId: string): Promise<RoomMusicState | null> {
   const cached = await redis.get(roomMusicKey(roomId));
   if (cached) return JSON.parse(cached) as RoomMusicState;
   const fromDb = await loadRoomMusicFromDb(roomId);
-  if (fromDb) await redis.set(roomMusicKey(roomId), JSON.stringify(fromDb));
+  if (fromDb) await setCachedRoomMusic(redis, roomId, fromDb);
   return fromDb;
 }
 
@@ -315,13 +344,13 @@ async function syncRoomMusic(roomId: string) {
 
   if (countActiveParticipants(participants) === 0) {
     state = { ...state, isPlaying: false };
-    await redis.set(roomMusicKey(roomId), JSON.stringify(state));
+    await setCachedRoomMusic(redis, roomId, state);
     return;
   }
 
   if (!state.isPlaying) {
     state = { ...state, isPlaying: true };
-    await redis.set(roomMusicKey(roomId), JSON.stringify(state));
+    await setCachedRoomMusic(redis, roomId, state);
   }
 
   io.to(roomId).emit("room:music", { roomId, state });
@@ -457,8 +486,9 @@ function countActiveParticipants(participants: RoomParticipant[]): number {
 }
 
 async function saveParticipant(roomId: string, participant: RoomParticipant): Promise<void> {
-  await redis.hset(
-    roomParticipantsKey(roomId),
+  await saveRoomParticipant(
+    redis,
+    roomId,
     participant.userId,
     JSON.stringify(participant)
   );
@@ -468,11 +498,12 @@ async function touchParticipant(
   roomId: string,
   userId: string,
   socketId: string
-): Promise<RoomParticipant | null> {
+): Promise<{ participant: RoomParticipant; wasInactive: boolean } | null> {
   const raw = await redis.hget(roomParticipantsKey(roomId), userId);
   if (!raw) return null;
 
   const existing = parseStoredParticipant(userId, raw);
+  const wasInactive = !existing.isActive;
   const now = new Date().toISOString();
   const mode = normalizePresenceMode(existing.presenceMode);
   const isActive = presenceModeToActive(mode);
@@ -484,7 +515,7 @@ async function touchParticipant(
     awaySinceAt: isActive ? null : existing.awaySinceAt ?? now,
   };
   await saveParticipant(roomId, updated);
-  return updated;
+  return { participant: updated, wasInactive };
 }
 
 async function markParticipantLeft(roomId: string, userId: string): Promise<void> {
@@ -504,7 +535,7 @@ async function markParticipantLeft(roomId: string, userId: string): Promise<void
 
 async function removeParticipantFromRoom(roomId: string, userId: string): Promise<void> {
   const owner = await isRoomOwner(roomId, userId);
-  await redis.hdel(roomParticipantsKey(roomId), userId);
+  await removeRoomParticipant(redis, roomId, userId);
   await invalidateRoomMemberAuth(redis, roomId, userId);
   await invalidateActiveCount(redis, roomId);
 
@@ -1065,13 +1096,10 @@ io.on("connection", (socket) => {
   socket.on("room:ping", async ({ roomId }) => {
     if (!socket.rooms.has(roomId)) return;
 
-    const raw = await redis.hget(roomParticipantsKey(roomId), user.id);
-    if (!raw) return;
+    const result = await touchParticipant(roomId, user.id, socket.id);
+    if (!result) return;
 
-    const wasInactive = !parseStoredParticipant(user.id, raw).isActive;
-    const updated = await touchParticipant(roomId, user.id, socket.id);
-
-    if (wasInactive && updated?.isActive) {
+    if (result.wasInactive && result.participant.isActive) {
       await broadcastPresence(roomId);
       await syncRoomMusic(roomId);
     }
@@ -1184,7 +1212,7 @@ io.on("connection", (socket) => {
         ? { ...state, isPlaying: state.isPlaying ?? true }
         : state;
 
-    await redis.set(roomMusicKey(roomId), JSON.stringify(nextState));
+    await setCachedRoomMusic(redis, roomId, nextState);
     io.to(roomId).emit("room:music", { roomId, state: nextState });
   });
 

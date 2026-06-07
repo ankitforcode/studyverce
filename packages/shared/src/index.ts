@@ -86,7 +86,7 @@ export const ROOM_PRESENCE_AWAY_THRESHOLD_MS = 5 * 60 * 1000;
 export const ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS = 30 * 60 * 1000;
 
 /** Server sweep interval to detect away / inactive members. */
-export const ROOM_PRESENCE_SWEEP_INTERVAL_MS = 15_000;
+export const ROOM_PRESENCE_SWEEP_INTERVAL_MS = 60_000;
 
 export interface ChatMessage {
   id: string;

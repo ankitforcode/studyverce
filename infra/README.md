@@ -14,7 +14,7 @@ CDK stack for **socket server + ALB**. The Next.js web app deploys separately vi
 | ACM + Route 53 | DNS-validated cert; CNAME `websocket` → ALB |
 | SSM `/socket/production/*` | Socket secrets → ECS env (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `REDIS_URL`) |
 
-**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Redis is billed by Upstash (not this stack).
+**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Redis is billed by Upstash (not this stack). Defaults target **256 MB** storage and **500k commands/month** — see root `README.md` → *Redis budget*.
 
 ## Prerequisites
 
@@ -176,7 +176,7 @@ After `cdk deploy`:
 
 - NAT Gateway + private Fargate tasks
 - WAF on ALB
-- Socket.IO Redis adapter is enabled in `apps/socket-server` — safe to scale ECS `desiredCount` > 1
+- When scaling ECS `desiredCount` > 1, set `SOCKET_REDIS_ADAPTER=true` on the socket task (CDK env) so Socket.IO can fan out across tasks
 
 ## Stack delete: capacity provider stuck
 

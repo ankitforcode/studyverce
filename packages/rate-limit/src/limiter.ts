@@ -50,24 +50,31 @@ function failClosed(endpointId: string, rule: RateLimitRule): RateLimitResult {
   };
 }
 
+const RATE_LIMIT_SCRIPT = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+elseif redis.call('TTL', KEYS[1]) < 0 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+local ttl = redis.call('TTL', KEYS[1])
+return {count, ttl}
+`;
+
 async function consumeBucket(
   redis: import("ioredis").default,
   key: string,
   rule: RateLimitRule
 ): Promise<{ allowed: boolean; count: number; resetAt: number }> {
   const ttl = rule.windowSeconds;
-  const count = await redis.incr(key);
-
-  if (count === 1) {
-    await redis.expire(key, ttl);
-  } else {
-    const remainingTtl = await redis.ttl(key);
-    if (remainingTtl < 0) {
-      await redis.expire(key, ttl);
-    }
-  }
-
-  const ttlSeconds = await redis.ttl(key);
+  const result = (await redis.eval(
+    RATE_LIMIT_SCRIPT,
+    1,
+    key,
+    String(ttl)
+  )) as [number, number];
+  const count = Number(result[0]);
+  const ttlSeconds = Number(result[1]);
   const resetAt = Date.now() + Math.max(ttlSeconds, 1) * 1000;
 
   return {
