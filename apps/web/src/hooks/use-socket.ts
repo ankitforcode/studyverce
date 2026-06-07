@@ -17,6 +17,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { getSocketIoClientUrl } from "@/lib/socket-client";
 import { sendRoomMessage, deleteRoomMessage } from "@/app/rooms/chat-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -145,6 +147,7 @@ export function useRoomSocket(
 ) {
   const router = useRouter();
   const routerRef = useRef(router);
+  const { toast } = useNotifications();
   const { socket, connected, connectionError } = useSocket();
 
   useEffect(() => {
@@ -244,6 +247,11 @@ export function useRoomSocket(
       if (payload.roomId !== roomId) return;
       joinedRef.current = false;
       const reason = payload.reason === "kicked" ? "kicked" : "inactive";
+      toast(
+        reason === "kicked"
+          ? notificationMessages.membershipKicked()
+          : notificationMessages.membershipInactive()
+      );
       routerRef.current.push(`/rooms?removed=${reason}`);
     });
 
@@ -259,7 +267,7 @@ export function useRoomSocket(
       socket.off("room:music");
       socket.off("room:membership-revoked");
     };
-  }, [socket, connected, roomId, joinRoom]);
+  }, [socket, connected, roomId, joinRoom, toast]);
 
   useEffect(() => {
     if (!socket || !connected || !joinedRef.current) return;

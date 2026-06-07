@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { signOutAction } from "@/app/auth/actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { Avatar } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { appNavSections } from "@/lib/app-nav";
@@ -35,6 +36,7 @@ export function NavbarProfileMenu({
   pendingFriendRequests = 0,
 }: NavbarProfileMenuProps) {
   const pathname = usePathname();
+  const { unreadCount } = useNotifications();
   const profileHref = `/profile/${username}`;
 
   return (
@@ -112,6 +114,11 @@ export function NavbarProfileMenu({
                       {item.href === "/friends" && pendingFriendRequests > 0 && (
                         <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
                           {pendingFriendRequests > 9 ? "9+" : pendingFriendRequests}
+                        </span>
+                      )}
+                      {item.href === "/notifications" && unreadCount > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+                          {unreadCount > 9 ? "9+" : unreadCount}
                         </span>
                       )}
                     </Link>

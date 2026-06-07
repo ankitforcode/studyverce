@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { Check, Clock, Music2, X } from "lucide-react";
 import type { RoomTrackRequest } from "@studyverce/shared";
 import { approveTrackRequest, rejectTrackRequest } from "@/app/rooms/music-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import type { AppSocket } from "@/hooks/use-socket";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,7 @@ export function RoomMusicRequestsModal({
   onRequestsChange,
   onApproved,
 }: RoomMusicRequestsModalProps) {
+  const { toast } = useNotifications();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const count = requests.length;
@@ -48,9 +51,15 @@ export function RoomMusicRequestsModal({
       const result = await approveTrackRequest(request.id);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       onRequestsChange(requests.filter((r) => r.id !== request.id));
+      toast(
+        notificationMessages.musicRequestApproved(
+          request.track?.name ?? "Track"
+        )
+      );
       if (result.requestedBy) {
         emitReview(request.id, result.requestedBy, "approved");
       }
@@ -66,9 +75,15 @@ export function RoomMusicRequestsModal({
       const result = await rejectTrackRequest(request.id);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       onRequestsChange(requests.filter((r) => r.id !== request.id));
+      toast(
+        notificationMessages.musicRequestRejected(
+          request.track?.name ?? "Track"
+        )
+      );
       if (result.requestedBy) {
         emitReview(request.id, result.requestedBy, "rejected");
       }

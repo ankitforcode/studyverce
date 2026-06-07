@@ -3,7 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { toggleRoomFavorite } from "@/app/rooms/favorite-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Button } from "@/components/ui/button";
 import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,7 @@ export function RoomFavoriteButton({
   className,
   onChange,
 }: RoomFavoriteButtonProps) {
+  const { toast } = useNotifications();
   const [favorited, setFavorited] = useState(initialFavorited);
   const [pending, startTransition] = useTransition();
 
@@ -34,10 +37,14 @@ export function RoomFavoriteButton({
     startTransition(async () => {
       try {
         const result = await toggleRoomFavorite(roomId);
-        if (result.error) return;
+        if (result.error) {
+          toast(notificationMessages.actionError(result.error));
+          return;
+        }
         const next = result.favorited ?? !favorited;
         setFavorited(next);
         onChange?.(next);
+        toast(next ? notificationMessages.favoriteAdded() : notificationMessages.favoriteRemoved());
       } catch {
         /* ignore aborted refetches / network blips */
       }

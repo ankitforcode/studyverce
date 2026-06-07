@@ -29,7 +29,9 @@ import { cn } from "@/lib/utils";
 import { PROVIDER_LABELS } from "@/lib/music/providers";
 import { usePathname } from "next/navigation";
 import type { AppSocket } from "@/hooks/use-socket";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { RoomMusicStreaming } from "@/components/room/room-music-streaming";
+import { notificationMessages } from "@/lib/notifications/messages";
 import {
   getTrackLibrary,
   getMyTracks,
@@ -75,6 +77,7 @@ export function RoomMusicPicker({
   const [pending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const { toast } = useNotifications();
 
   useEffect(() => {
     setMounted(true);
@@ -124,9 +127,11 @@ export function RoomMusicPicker({
       const result = await requestRoomTrack(roomId, track.id);
       if (result.error) {
         setActionError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       setActionError("Request sent! Waiting for the room owner to approve.");
+      toast(notificationMessages.musicRequestSent(track.name));
       if (result.request) {
         socket?.emit("music:request-created", {
           roomId,

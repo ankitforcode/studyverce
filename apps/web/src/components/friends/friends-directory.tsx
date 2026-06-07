@@ -10,6 +10,8 @@ import {
   type FriendListEntry,
   type PendingFriendRequest,
 } from "@/app/friends/actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,6 +142,7 @@ export function FriendsDirectory({
   initialPending,
 }: FriendsDirectoryProps) {
   const router = useRouter();
+  const { toast } = useNotifications();
   const [friends, setFriends] = useState(initialFriends);
   const [pending, setPending] = useState(initialPending);
   const [query, setQuery] = useState("");
@@ -187,20 +190,36 @@ export function FriendsDirectory({
   );
 
   function handleAccept(userId: string) {
+    const request = pending.find((entry) => entry.userId === userId);
     setPendingActionId(userId);
     startActionTransition(async () => {
       const result = await acceptFriendRequest(userId);
       setPendingActionId(null);
-      if (!result.error) router.refresh();
+      if (result.error) {
+        toast(notificationMessages.actionError(result.error));
+        return;
+      }
+      if (request) {
+        toast(notificationMessages.friendRequestAccepted(request.displayName));
+      }
+      router.refresh();
     });
   }
 
   function handleDecline(userId: string) {
+    const request = pending.find((entry) => entry.userId === userId);
     setPendingActionId(userId);
     startActionTransition(async () => {
       const result = await declineFriendRequest(userId);
       setPendingActionId(null);
-      if (!result.error) router.refresh();
+      if (result.error) {
+        toast(notificationMessages.actionError(result.error));
+        return;
+      }
+      if (request) {
+        toast(notificationMessages.friendRequestDeclined(request.displayName));
+      }
+      router.refresh();
     });
   }
 

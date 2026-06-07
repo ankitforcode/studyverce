@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { Check, Clock, Users, X } from "lucide-react";
 import type { RoomAccessRequest } from "@studyverce/shared";
 import { approveAccessRequest, rejectAccessRequest } from "@/app/rooms/access-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import type { AppSocket } from "@/hooks/use-socket";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Modal } from "@/components/ui/modal";
 import { Avatar, Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,7 @@ export function RoomAccessRequestsModal({
   socket,
   onRequestsChange,
 }: RoomAccessRequestsModalProps) {
+  const { toast } = useNotifications();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const count = requests.length;
@@ -46,9 +49,11 @@ export function RoomAccessRequestsModal({
       const result = await approveAccessRequest(request.id);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       onRequestsChange(requests.filter((r) => r.id !== request.id));
+      toast(notificationMessages.accessGranted(request.requesterName ?? "Member"));
       if (result.userId) {
         emitReview(request.id, result.userId, "approved");
       }
@@ -61,9 +66,11 @@ export function RoomAccessRequestsModal({
       const result = await rejectAccessRequest(request.id);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       onRequestsChange(requests.filter((r) => r.id !== request.id));
+      toast(notificationMessages.accessDenied(request.requesterName ?? "Member"));
       if (result.userId) {
         emitReview(request.id, result.userId, "rejected");
       }

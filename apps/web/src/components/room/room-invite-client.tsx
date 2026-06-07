@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { Clock, DoorOpen, Loader2, Users } from "lucide-react";
 import type { RoomAccessRequestStatus, RoomSharePreview } from "@studyverce/shared";
 import { requestRoomAccess } from "@/app/rooms/access-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { useSocket } from "@/hooks/use-socket";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +25,7 @@ export function RoomInviteClient({
   accessStatus,
 }: RoomInviteClientProps) {
   const router = useRouter();
+  const { toast } = useNotifications();
   const { socket, connected } = useSocket();
   const [status, setStatus] = useState(accessStatus);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +45,11 @@ export function RoomInviteClient({
       if (roomId !== preview.id) return;
       setStatus(nextStatus);
       if (nextStatus === "approved") {
+        toast(notificationMessages.accessApproved(preview.name, preview.slug));
         router.push(`/rooms/${preview.slug}`);
+      }
+      if (nextStatus === "rejected") {
+        toast(notificationMessages.accessRejected(preview.name));
       }
     };
 
@@ -63,9 +70,11 @@ export function RoomInviteClient({
       const result = await requestRoomAccess(preview.slug, inviteToken);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       setStatus("pending");
+      toast(notificationMessages.accessRequested(preview.name));
       if (result.request) {
         socket?.emit("access:request-created", {
           roomId: preview.id,

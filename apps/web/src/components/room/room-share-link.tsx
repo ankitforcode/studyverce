@@ -3,7 +3,9 @@
 import { useState, useTransition } from "react";
 import { Check, Link2, Share2 } from "lucide-react";
 import { getRoomShareLink } from "@/app/rooms/access-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { buildRoomShareUrl } from "@/lib/room-share";
 import { Button } from "@/components/ui/button";
 import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
@@ -24,6 +26,7 @@ export function RoomShareLink({
   inviteToken,
   className,
 }: RoomShareLinkProps) {
+  const { toast } = useNotifications();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -37,15 +40,18 @@ export function RoomShareLink({
 
       if (result.error && !result.url) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
 
       try {
         await navigator.clipboard.writeText(url);
         setCopied(true);
+        toast(notificationMessages.shareLinkCopied());
         window.setTimeout(() => setCopied(false), 2000);
       } catch {
         setError("Could not copy link. Try again.");
+        toast(notificationMessages.actionError("Could not copy link. Try again."));
       }
     });
   }

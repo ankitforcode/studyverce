@@ -101,9 +101,41 @@ html.light [data-room-shell] {
   animation: participant-row-in 0.28s ease-out both;
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.22s ease-out both;
+}
+
+.toast-exit {
+  animation: toast-out 0.18s ease-in both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .participant-panel-enter,
-  .participant-row-enter {
+  .participant-row-enter,
+  .toast-enter,
+  .toast-exit {
     animation: none;
   }
 }

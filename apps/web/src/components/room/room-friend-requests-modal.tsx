@@ -7,7 +7,9 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
 } from "@/app/friends/actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import type { AppSocket } from "@/hooks/use-socket";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Modal } from "@/components/ui/modal";
 import { Avatar, Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,7 @@ export function RoomFriendRequestsModal({
   socket,
   onRequestsChange,
 }: RoomFriendRequestsModalProps) {
+  const { toast } = useNotifications();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const count = requests.length;
@@ -45,9 +48,11 @@ export function RoomFriendRequestsModal({
       const result = await acceptFriendRequest(request.userId);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       onRequestsChange(requests.filter((entry) => entry.userId !== request.userId));
+      toast(notificationMessages.friendRequestAccepted(request.displayName));
       emitReview(request.userId, "accepted");
     });
   }
@@ -58,9 +63,11 @@ export function RoomFriendRequestsModal({
       const result = await declineFriendRequest(request.userId);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       onRequestsChange(requests.filter((entry) => entry.userId !== request.userId));
+      toast(notificationMessages.friendRequestDeclined(request.displayName));
       emitReview(request.userId, "declined");
     });
   }

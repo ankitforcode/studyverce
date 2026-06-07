@@ -17,7 +17,9 @@ import {
   type FriendshipUiStatus,
 } from "@/app/friends/actions";
 import { kickRoomMember } from "@/app/rooms/member-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -203,6 +205,7 @@ function ParticipantRow({
   actionTooltipSide?: "top" | "bottom";
   onFriendshipChange: (userId: string, status: FriendshipUiStatus) => void;
 }) {
+  const { toast } = useNotifications();
   const [friendPending, startFriendTransition] = useTransition();
   const [kickPending, startKickTransition] = useTransition();
   const isYou = participant.userId === currentUserId;
@@ -219,8 +222,13 @@ function ParticipantRow({
     if (friendshipStatus === "pending_received") {
       startFriendTransition(async () => {
         const result = await acceptFriendRequest(participant.userId);
+        if (result.error) {
+          toast(notificationMessages.actionError(result.error));
+          return;
+        }
         if (result.status) {
           onFriendshipChange(participant.userId, result.status);
+          toast(notificationMessages.friendRequestAccepted(participant.displayName));
           if (roomId) {
             socket?.emit("friend:reviewed", {
               roomId,
@@ -237,6 +245,13 @@ function ParticipantRow({
 
     startFriendTransition(async () => {
       const result = await sendFriendRequest(participant.userId);
+      if (result.error) {
+        toast(notificationMessages.actionError(result.error));
+        return;
+      }
+      if (result.status === "pending_sent") {
+        toast(notificationMessages.friendRequestSent(participant.displayName));
+      }
       if (result.status === "pending_sent" && roomId && currentUser) {
         socket?.emit("friend:request-created", {
           roomId,
@@ -261,7 +276,11 @@ function ParticipantRow({
     if (!canKick || !roomId || kickPending) return;
     startKickTransition(async () => {
       const result = await kickRoomMember(roomId, participant.userId);
-      if (result.error) return;
+      if (result.error) {
+        toast(notificationMessages.actionError(result.error));
+        return;
+      }
+      toast(notificationMessages.memberKicked(participant.displayName));
       socket?.emit("room:member:kick", { roomId, userId: participant.userId });
     });
   }

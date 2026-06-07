@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppProviders } from "@/components/layout/app-providers";
 import { Navbar } from "@/components/layout/navbar";
 import { PostHogProvider } from "@/lib/analytics";
 import { createSiteMetadata } from "@/lib/site-metadata";
@@ -25,8 +26,10 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
         <PostHogProvider>
-          <Navbar />
-          {children}
+          <AppProviders>
+            <Navbar />
+            {children}
+          </AppProviders>
         </PostHogProvider>
       </body>
     </html>

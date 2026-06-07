@@ -3,7 +3,9 @@
 import { useState, useTransition } from "react";
 import { Globe, Lock } from "lucide-react";
 import { setRoomVisibility } from "@/app/rooms/access-actions";
+import { useNotifications } from "@/components/notifications/notification-provider";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
+import { notificationMessages } from "@/lib/notifications/messages";
 import { Button } from "@/components/ui/button";
 import type { AppSocket } from "@/hooks/use-socket";
 import { ROOM_HEADER_ICON_BUTTON } from "@/lib/room-ui";
@@ -24,6 +26,7 @@ export function RoomVisibilityToggle({
   onVisibilityChange,
   className,
 }: RoomVisibilityToggleProps) {
+  const { toast } = useNotifications();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -34,10 +37,12 @@ export function RoomVisibilityToggle({
       const result = await setRoomVisibility(roomId, nextPublic);
       if (result.error) {
         setError(result.error);
+        toast(notificationMessages.actionError(result.error));
         return;
       }
       const inviteToken = result.inviteToken ?? null;
       onVisibilityChange(nextPublic, inviteToken);
+      toast(notificationMessages.roomVisibilityChanged(nextPublic));
       socket?.emit("room:visibility:set", {
         roomId,
         isPublic: nextPublic,

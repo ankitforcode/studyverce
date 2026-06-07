@@ -26,6 +26,7 @@ export const appNavSections: AppNavSection[] = [
       { href: "/rooms", label: "Stream", icon: Video },
       { href: "/rooms", label: "My Room", icon: DoorOpen },
       { href: "/friends", label: "Friends", icon: Users },
+      { href: "/notifications", label: "Notifications", icon: Bell },
     ],
   },
   {

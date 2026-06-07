@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen, LayoutDashboard, Shield, Users, Trophy } from "lucide-react";
 import { getPendingFriendRequestCount } from "@/app/friends/actions";
 import { createClient } from "@/lib/supabase/server";
+import { NavbarNotificationsButton } from "@/components/layout/navbar-notifications-button";
 import { NavbarProfileMenu } from "@/components/layout/navbar-profile-menu";
 import { NavLink } from "@/components/layout/nav-link";
 import { Avatar } from "@/components/ui/badge";
@@ -80,6 +81,7 @@ export async function Navbar() {
                   size="sm"
                 />
               </Link>
+              <NavbarNotificationsButton />
               <NavbarProfileMenu
                 username={profile?.username ?? "me"}
                 displayName={profile?.display_name ?? "Profile"}
