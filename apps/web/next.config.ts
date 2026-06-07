@@ -33,6 +33,9 @@ const socketUpstream =
   "http://127.0.0.1:3002";
 
 const nextConfig: NextConfig = {
+  // Bundle traced runtime deps for Amplify Hosting Compute (pnpm monorepo).
+  output: "standalone",
+  outputFileTracingRoot: monorepoRoot,
   turbopack: {
     root: monorepoRoot,
   },

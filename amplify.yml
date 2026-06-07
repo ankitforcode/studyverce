@@ -3,6 +3,7 @@
 # Platform must be "Web" (WEB_COMPUTE), not static — or you get S3 404 on custom domain.
 #
 # StudyVerce uses server actions, API routes, and Supabase SSR — do not use output: "export".
+# next.config uses output: "standalone" so Amplify gets node_modules/next in the artifact.
 #
 # Diff deploy: skip build + deploy when the latest commit has no changes under apps/web.
 # See https://docs.aws.amazon.com/amplify/latest/userguide/build-settings.html#enable-diff-deploy
@@ -28,6 +29,18 @@ applications:
             - env | grep -e '^REDIS_URL=' >> apps/web/.env.production || true
             - pnpm --filter web build
             - test -f apps/web/.next/required-server-files.json || (echo "SSR artifact missing — Amplify needs apps/web/.next/required-server-files.json" && exit 1)
+            # Monorepo standalone nests under apps/web — flatten + copy static/public for Amplify Compute.
+            - |
+              STANDALONE=apps/web/.next/standalone
+              if [ -d "$STANDALONE/apps/web" ]; then
+                cp -r apps/web/.next/static "$STANDALONE/apps/web/.next/static"
+                cp -r apps/web/public "$STANDALONE/apps/web/public"
+                (cd "$STANDALONE" && shopt -s dotglob && mv apps/web/* . && rmdir apps/web)
+              else
+                cp -r apps/web/.next/static "$STANDALONE/.next/static"
+                cp -r apps/web/public "$STANDALONE/public"
+              fi
+            - test -f apps/web/.next/standalone/node_modules/next/package.json || (echo "standalone missing next — check output: standalone and node-linker=hoisted" && exit 1)
       artifacts:
         baseDirectory: apps/web/.next
         files:
