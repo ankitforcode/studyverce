@@ -3,6 +3,8 @@
 #
 # StudyVerce uses server actions, API routes, and Supabase SSR — do not use output: "export".
 # Set env vars in Amplify Console (Environment variables) before the first deploy.
+#
+# Do not use `corepack enable` on Amplify — CodeBuild often hits EACCES on corepack temp/cache dirs.
 version: 1
 applications:
   - appRoot: apps/web
@@ -10,7 +12,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - corepack enable
+            - npm install -g pnpm@9.12.3
+            - cd ../.. && pnpm config set store-dir .pnpm-store
             - cd ../.. && pnpm install --frozen-lockfile
         build:
           commands:
@@ -21,5 +24,6 @@ applications:
           - "**/*"
       cache:
         paths:
+          - ../../.pnpm-store/**/*
           - ../../node_modules/**/*
           - node_modules/**/*
