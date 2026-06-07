@@ -21,6 +21,7 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Post-it data | `apps/web/src/app/dashboard/task-actions.ts`, `lib/post-it-{client,mapper,utils}.ts` |
 | Room page | `apps/web/src/components/room/room-client.tsx` |
 | Participant menu | `apps/web/src/components/room/participant-list.tsx` |
+| Friends list | `apps/web/src/app/friends/page.tsx`, `components/friends/friends-directory.tsx` |
 | Friends / kick | `apps/web/src/app/friends/actions.ts`, `apps/web/src/app/rooms/member-actions.ts` |
 | Favorites / share | `apps/web/src/app/rooms/favorite-actions.ts`, `room/room-favorite-button.tsx`, `room/room-share-link.tsx` |
 | Room listing | `apps/web/src/components/rooms/rooms-directory.tsx`, `app/rooms/listing.ts` |

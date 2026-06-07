@@ -25,6 +25,7 @@ import { RoomFavoriteButton } from "@/components/room/room-favorite-button";
 import { RoomShareLink } from "@/components/room/room-share-link";
 import { RoomVisibilityToggle } from "@/components/room/room-visibility-toggle";
 import { RoomAccessBanner } from "@/components/room/room-access-banner";
+import { RoomFriendRequestsBanner } from "@/components/room/room-friend-requests-banner";
 import { RoomMusicRequestsBanner } from "@/components/room/room-music-requests-banner";
 import { Badge } from "@/components/ui/badge";
 import { Wifi, WifiOff } from "lucide-react";
@@ -339,6 +340,13 @@ export function RoomClient({
             <RoomAccessBanner
               roomId={roomId}
               isOwner={isOwner}
+              socket={socket}
+              connected={connected}
+            />
+            <RoomFriendRequestsBanner
+              roomId={roomId}
+              currentUserId={currentUserId}
+              participants={participants}
               socket={socket}
               connected={connected}
             />

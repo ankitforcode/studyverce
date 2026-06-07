@@ -257,18 +257,23 @@ function RoomCard({
     room.inviteToken && !room.isPublic
       ? `/rooms/${room.slug}/invite?token=${encodeURIComponent(room.inviteToken)}`
       : `/rooms/${room.slug}/invite`;
+  const needsInviteFlow =
+    room.joinState === "pending" || room.joinState === "removed";
   const joinHref = isLoggedIn
-    ? room.joinState === "pending"
+    ? needsInviteFlow
       ? invitePath
       : roomPath
     : loginPath(roomPath);
   const isPending = room.joinState === "pending";
+  const isRemoved = room.joinState === "removed";
   const roleLabel =
     tab === "private" && room.listingRole === "owned"
       ? "Your room"
       : tab === "private" && room.listingRole === "pending"
         ? "Invite pending"
-        : null;
+        : tab === "private" && room.listingRole === "removed"
+          ? "Access removed"
+          : null;
   const ModeIcon =
     room.mode.type === "camera" ? Video : room.mode.type === "study" ? BookOpen : Timer;
 
@@ -349,7 +354,9 @@ function RoomCard({
                 "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
                 room.listingRole === "owned"
                   ? "bg-primary/15 text-primary"
-                  : "bg-amber-500/15 text-amber-200"
+                  : room.listingRole === "removed"
+                    ? "bg-destructive/15 text-destructive"
+                    : "bg-amber-500/15 text-amber-200"
               )}
             >
               {roleLabel}
@@ -366,7 +373,14 @@ function RoomCard({
             <ModeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">{room.mode.label}</span>
           </div>
-          {isPending ? (
+          {isRemoved ? (
+            <Link
+              href={joinHref}
+              className="shrink-0 rounded-full border border-destructive/40 bg-destructive/10 px-5 py-2 text-sm font-semibold text-destructive hover:bg-destructive/20 transition-colors"
+            >
+              Request access
+            </Link>
+          ) : isPending ? (
             <Link
               href={joinHref}
               className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 transition-colors"

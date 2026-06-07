@@ -34,5 +34,21 @@ export async function kickRoomMember(
 
   if (error) return { error: error.message };
 
+  const reviewedAt = new Date().toISOString();
+  const { error: accessError } = await supabase
+    .from("room_access_requests")
+    .update({
+      status: "revoked",
+      reviewed_by: user.id,
+      reviewed_at: reviewedAt,
+    })
+    .eq("room_id", roomId)
+    .eq("user_id", userId)
+    .in("status", ["pending", "approved"]);
+
+  if (accessError) {
+    console.error("kickRoomMember: revoke access", accessError.message);
+  }
+
   return { error: null };
 }

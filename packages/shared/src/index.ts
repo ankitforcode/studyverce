@@ -223,7 +223,11 @@ export interface RoomTrackRequest {
   requesterUsername?: string;
 }
 
-export type RoomAccessRequestStatus = "pending" | "approved" | "rejected";
+export type RoomAccessRequestStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "revoked";
 
 export interface RoomSharePreview {
   id: string;
@@ -247,6 +251,16 @@ export interface RoomAccessRequest {
   createdAt: string;
   requesterName?: string;
   requesterUsername?: string;
+}
+
+/** Incoming friend request from someone currently in the study room. */
+export interface RoomFriendRequest {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  roomId: string;
+  createdAt: string;
 }
 
 export interface RoomMusicState {
@@ -396,6 +410,16 @@ export interface ClientToServerEvents {
     userId: string;
     status: TrackRequestStatus;
   }) => void;
+  "friend:request-created": (payload: {
+    roomId: string;
+    toUserId: string;
+    request: RoomFriendRequest;
+  }) => void;
+  "friend:reviewed": (payload: {
+    roomId: string;
+    requesterId: string;
+    status: "accepted" | "declined";
+  }) => void;
   "room:visibility:set": (payload: {
     roomId: string;
     isPublic: boolean;
@@ -440,6 +464,8 @@ export interface ServerToClientEvents {
     requestId: string;
     status: TrackRequestStatus;
   }) => void;
+  "room:friend-request:new": (payload: { request: RoomFriendRequest }) => void;
+  "room:friend-request:removed": (payload: { requesterId: string }) => void;
   "session:started": (payload: { sessionId: string }) => void;
   "session:ended": (payload: { sessionId: string }) => void;
   error: (payload: { message: string }) => void;

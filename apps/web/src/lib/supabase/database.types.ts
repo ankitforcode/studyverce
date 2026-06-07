@@ -233,7 +233,7 @@ export type Database = {
           id: string;
           room_id: string;
           user_id: string;
-          status: "pending" | "approved" | "rejected";
+          status: "pending" | "approved" | "rejected" | "revoked";
           reviewed_by: string | null;
           reviewed_at: string | null;
           created_at: string;
@@ -242,7 +242,7 @@ export type Database = {
           id?: string;
           room_id: string;
           user_id: string;
-          status?: "pending" | "approved" | "rejected";
+          status?: "pending" | "approved" | "rejected" | "revoked";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           created_at?: string;
@@ -251,7 +251,7 @@ export type Database = {
           id?: string;
           room_id?: string;
           user_id?: string;
-          status?: "pending" | "approved" | "rejected";
+          status?: "pending" | "approved" | "rejected" | "revoked";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           created_at?: string;

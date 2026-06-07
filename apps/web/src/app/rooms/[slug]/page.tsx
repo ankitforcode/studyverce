@@ -4,6 +4,7 @@ import { joinRoom } from "@/app/rooms/actions";
 import { getRoomAccessStateForUser } from "@/app/rooms/access-actions";
 import { isRoomFavorited } from "@/app/rooms/favorite-actions";
 import { RoomAccessPending } from "@/components/room/room-access-pending";
+import { RoomAccessRemoved } from "@/components/room/room-access-removed";
 import { getRoomWallpaper } from "@/app/rooms/wallpaper-actions";
 import { getRoomTrack } from "@/app/rooms/music-actions";
 import { getPostItForRoom, hasPostItForRoom } from "@/app/dashboard/task-actions";
@@ -39,7 +40,17 @@ export default async function RoomPage({
     if (accessState.accessStatus === "pending") {
       return <RoomAccessPending roomName={accessState.roomName} />;
     }
-    notFound();
+    if (accessState.accessStatus === "revoked") {
+      return <RoomAccessRemoved roomName={accessState.roomName} />;
+    }
+    if (accessState.accessStatus === "approved") {
+      const joinResult = await joinRoom(accessState.roomId);
+      if (joinResult.error) {
+        notFound();
+      }
+    } else {
+      notFound();
+    }
   }
 
   const { data: room } = await supabase

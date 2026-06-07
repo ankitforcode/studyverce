@@ -55,7 +55,7 @@ Wired in `room-client.tsx` header row:
 | Visibility | `room-visibility-toggle.tsx` | Owner only; emits `room:visibility:set` |
 | Favorite | `room-favorite-button.tsx` | `toggleRoomFavorite`; also on listing cards |
 | Share | `room-share-link.tsx` | `Share2` icon; copies invite/public URL |
-| Access / music requests | `room-access-banner.tsx`, `room-music-requests-banner.tsx` | `variant="outline"` + primary tint |
+| Access / music / friend requests | `room-access-banner.tsx`, `room-music-requests-banner.tsx`, `room-friend-requests-banner.tsx` | Outline + primary tint; access/music = owner; friend = recipient |
 
 **Hover:** header square icons must use `ROOM_HEADER_ICON_BUTTON` (not subtle `hover:bg-card/35`).
 
@@ -101,7 +101,8 @@ Current-user card has **Active / Away / Invisible** toggles:
 
 | Action | Who | Server | Socket |
 |--------|-----|--------|--------|
-| Friend request (`UserPlus`) | Everyone except self | `friends/actions.ts` → `sendFriendRequest` | — |
+| Friend request (`UserPlus`) | Everyone except self | `friends/actions.ts` → `sendFriendRequest` | `friend:request-created` → recipient `room:friend-request:new` |
+| Accept friend (`UserCheck`) | When `pending_received` | `acceptFriendRequest` | `friend:reviewed` |
 | Kick (`UserX`) | Room owner only; not self or owner | `member-actions.ts` → `kickRoomMember` | `room:member:kick` |
 
 On panel open, batch-load friendship status via `getFriendshipStatuses` for other users.
@@ -140,6 +141,7 @@ Kicked users see banner on `rooms-directory.tsx` (`?removed=kicked`).
 ## Room listing (`/rooms`)
 
 - `rooms-directory.tsx` — tabs: trending, private, friends, favorites.
+- Private tab RPC `get_user_private_rooms`: owned, member, pending invite, or approved-without-membership (inactive leave — can rejoin). **Kicked** users get `revoked` access and are **not listed**.
 - Live presence badge on cards: `use-room-listing-presence.ts` + `/presence` rewrite in `next.config.ts`.
 - Favorites: `favorite-actions.ts`, migration `20250606000005_user_favorite_rooms.sql`.
 - **Do not** call `revalidatePath` from favorite toggle (caused client fetch errors).
@@ -148,8 +150,11 @@ Kicked users see banner on `rooms-directory.tsx` (`?removed=kicked`).
 ## Friends (room context)
 
 - `friendships` table RLS: migration `20250606000006_friendships_rls.sql`.
-- `app/friends/actions.ts` — `sendFriendRequest`, `getFriendshipStatuses`.
-- Friends tab listing RPC: `get_user_friend_rooms()` (may return empty until accept flow exists).
+- `app/friends/actions.ts` — `sendFriendRequest`, `acceptFriendRequest`, `getFriendshipStatuses`, `getPendingFriendRequestsInRoom`.
+- **Friends list page**: `/friends` (side menu → Chill → Friends); shows accepted friends + pending requests.
+- **In-room banner** (`room-friend-requests-banner.tsx` + modal): pending received from users **currently in the room**; same header pattern as access/music approvals. Realtime via `friend:request-created` / `room:friend-request:new`.
+- Participant menu: `pending_received` shows accept (`UserCheck`); accepted users appear on `/friends`.
+- Rooms tab “Friends” (`/rooms?tab=friends`) is still **friend rooms** listing, not the people list.
 
 ## Navbar
 

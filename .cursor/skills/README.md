@@ -7,6 +7,7 @@ Deep workflows for agents. **Read the matching skill before editing; update it w
 | Skill | Path | Use when |
 |-------|------|----------|
 | Rooms | `studyverce-rooms/SKILL.md` | Room page, header, participant menu, music/wallpaper, listing, favorites, friends/kick, socket realtime |
+| Friends | `app/friends/page.tsx` + `friends/actions.ts` | Friends list (`/friends`), accept/decline requests; linked from profile side menu |
 | Post-it notes | `studyverce-post-it-notes/SKILL.md` | Room post-its, `task-actions`, schema, todo panel sync |
 | Dashboard | `studyverce-dashboard/SKILL.md` | Dashboard shell, stats, calendar, charts (no post-it canvas) |
 

@@ -644,6 +644,31 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("friend:request-created", async ({ roomId, toUserId, request }) => {
+    if (!pgPool) return;
+    try {
+      const result = await pgPool.query(
+        `SELECT 1 FROM friendships
+         WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'
+         LIMIT 1`,
+        [user.id, toUserId]
+      );
+      if (result.rows.length === 0) {
+        socket.emit("error", { message: "Invalid friend request" });
+        return;
+      }
+      io.to(userChannel(toUserId)).emit("room:friend-request:new", { request });
+    } catch (err) {
+      console.error("friend:request-created error", err);
+      socket.emit("error", { message: "Failed to notify friend request recipient" });
+    }
+  });
+
+  socket.on("friend:reviewed", ({ requesterId }) => {
+    io.to(userChannel(user.id)).emit("room:friend-request:removed", { requesterId });
+    io.to(userChannel(requesterId)).emit("room:friend-request:removed", { requesterId });
+  });
+
   socket.on("rooms:presence:subscribe", async ({ roomIds }) => {
     const uniqueIds = [...new Set(roomIds.filter(Boolean))];
     if (uniqueIds.length === 0) return;

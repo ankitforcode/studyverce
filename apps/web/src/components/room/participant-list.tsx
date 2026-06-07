@@ -11,6 +11,7 @@ import {
   type RoomPresenceMode,
 } from "@studyverce/shared";
 import {
+  acceptFriendRequest,
   getFriendshipStatuses,
   sendFriendRequest,
   type FriendshipUiStatus,
@@ -28,6 +29,7 @@ import {
   Moon,
   Radio,
   Search,
+  UserCheck,
   UserPlus,
   UserX,
   Users,
@@ -178,6 +180,7 @@ function CurrentUserSection({
 
 function ParticipantRow({
   participant,
+  currentUser,
   currentUserId,
   roomId,
   roomOwnerId,
@@ -189,6 +192,7 @@ function ParticipantRow({
   onFriendshipChange,
 }: {
   participant: RoomParticipant;
+  currentUser?: RoomParticipant;
   currentUserId: string;
   roomId?: string;
   roomOwnerId?: string;
@@ -210,9 +214,43 @@ function ParticipantRow({
   const canFriend = !isYou;
 
   function handleFriendRequest() {
-    if (!canFriend || friendPending || friendshipStatus !== "none") return;
+    if (!canFriend || friendPending) return;
+
+    if (friendshipStatus === "pending_received") {
+      startFriendTransition(async () => {
+        const result = await acceptFriendRequest(participant.userId);
+        if (result.status) {
+          onFriendshipChange(participant.userId, result.status);
+          if (roomId) {
+            socket?.emit("friend:reviewed", {
+              roomId,
+              requesterId: participant.userId,
+              status: "accepted",
+            });
+          }
+        }
+      });
+      return;
+    }
+
+    if (friendshipStatus !== "none") return;
+
     startFriendTransition(async () => {
       const result = await sendFriendRequest(participant.userId);
+      if (result.status === "pending_sent" && roomId && currentUser) {
+        socket?.emit("friend:request-created", {
+          roomId,
+          toUserId: participant.userId,
+          request: {
+            userId: currentUser.userId,
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            avatarUrl: currentUser.avatarUrl,
+            roomId,
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
       if (result.status) {
         onFriendshipChange(participant.userId, result.status);
       }
@@ -234,10 +272,13 @@ function ParticipantRow({
       : friendshipStatus === "pending_sent"
         ? "Request sent"
         : friendshipStatus === "pending_received"
-          ? "Request received"
+          ? "Accept friend request"
           : friendshipStatus === "blocked"
             ? "Blocked"
             : "Send friend request";
+
+  const FriendActionIcon =
+    friendshipStatus === "pending_received" ? UserCheck : UserPlus;
 
   return (
     <li
@@ -273,7 +314,7 @@ function ParticipantRow({
               onClick={handleFriendRequest}
               className="h-7 w-7 p-0 text-muted-foreground hover:text-primary disabled:opacity-50"
             >
-              <UserPlus className="h-3.5 w-3.5" />
+              <FriendActionIcon className="h-3.5 w-3.5" />
             </Button>
           </PostItIconTooltip>
         )}
@@ -423,19 +464,28 @@ function CompactParticipantList({
 
   useEffect(() => {
     if (!open) return;
-    const ids = sortedOthers.map((p) => p.userId);
-    if (ids.length === 0) {
-      setFriendshipStatuses({});
-      return;
-    }
 
     let cancelled = false;
-    void getFriendshipStatuses(ids).then((statuses) => {
-      if (!cancelled) setFriendshipStatuses(statuses);
-    });
+
+    async function loadFriendshipData() {
+      const ids = sortedOthers.map((p) => p.userId);
+      if (ids.length === 0) {
+        setFriendshipStatuses({});
+        return;
+      }
+      const statuses = await getFriendshipStatuses(ids);
+      if (cancelled) return;
+      setFriendshipStatuses(statuses);
+    }
+
+    void loadFriendshipData();
+    const intervalId = window.setInterval(() => {
+      void loadFriendshipData();
+    }, 8_000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [open, sortedOthers, currentUserId]);
 
@@ -518,6 +568,7 @@ function CompactParticipantList({
                       <ParticipantRow
                         key={p.userId}
                         participant={p}
+                        currentUser={currentUser}
                         currentUserId={currentUserId}
                         roomId={roomId}
                         roomOwnerId={roomOwnerId}

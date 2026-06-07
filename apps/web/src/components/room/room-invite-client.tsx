@@ -118,17 +118,13 @@ export function RoomInviteClient({
                 Enter room
               </Link>
             </div>
-          ) : status === "approved" ? (
-            <div className="space-y-3 border-t border-border pt-4">
+          ) : status === "revoked" ? (
+            <div className="space-y-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <p className="text-sm font-medium text-destructive">Access revoked</p>
               <p className="text-sm text-muted-foreground">
-                Your access was approved. You can enter the room now.
+                The room owner removed you from this room. You cannot request access
+                again from this link.
               </p>
-              <Link
-                href={`/rooms/${preview.slug}`}
-                className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Enter room
-              </Link>
             </div>
           ) : status === "pending" ? (
             <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
@@ -145,9 +141,25 @@ export function RoomInviteClient({
             <div className="space-y-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
               <p className="text-sm font-medium text-destructive">Access declined</p>
               <p className="text-sm text-muted-foreground">
-                The room owner declined your request. Contact them if you still need
-                access.
+                The room owner declined your request. You can submit a new request below
+                if you still need access.
               </p>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button
+                type="button"
+                className="w-full"
+                disabled={pending || !inviteToken}
+                onClick={handleRequestAccess}
+              >
+                {pending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Requesting…
+                  </>
+                ) : (
+                  "Request access again"
+                )}
+              </Button>
             </div>
           ) : (
             <div className="space-y-3 border-t border-border pt-4">

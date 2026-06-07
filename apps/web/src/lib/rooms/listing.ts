@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { StudyRoomSettings } from "@studyverce/shared";
 import { mergeRoomSettings } from "@studyverce/db";
 
-export type RoomJoinState = "join" | "pending";
-export type RoomListingRole = "owned" | "member" | "pending";
+export type RoomJoinState = "join" | "pending" | "removed";
+export type RoomListingRole = "owned" | "member" | "pending" | "removed";
 
 export type RoomListingItem = {
   id: string;
@@ -177,7 +177,12 @@ function mapAccessRoomRow(room: AccessRoomRow): RoomListingItem {
     createdAt: room.createdAt,
     thumbnailUrl: pickThumbnail(room.id, room.wallpaperUrl),
     inviteToken: room.inviteToken,
-    joinState: room.listingRole === "pending" ? "pending" : "join",
+    joinState:
+      room.listingRole === "pending"
+        ? "pending"
+        : room.listingRole === "removed"
+          ? "removed"
+          : "join",
     listingRole: room.listingRole,
     owner: {
       username: room.ownerUsername,

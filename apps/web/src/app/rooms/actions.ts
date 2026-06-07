@@ -129,6 +129,31 @@ export async function joinRoom(roomId: string) {
     redirect("/auth/login");
   }
 
+  const { data: room } = await supabase
+    .from("study_rooms")
+    .select("is_public, owner_id")
+    .eq("id", roomId)
+    .single();
+
+  if (!room) {
+    return { error: "Room not found" };
+  }
+
+  if (!room.is_public && room.owner_id !== user.id) {
+    const { data: access } = await supabase
+      .from("room_access_requests")
+      .select("status")
+      .eq("room_id", roomId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (access?.status !== "approved") {
+      return { error: "You do not have access to this private room." };
+    }
+  }
+
   const { data: existing } = await supabase
     .from("room_members")
     .select("room_id")
@@ -137,11 +162,14 @@ export async function joinRoom(roomId: string) {
     .maybeSingle();
 
   if (!existing) {
-    await supabase.from("room_members").insert({
+    const { error } = await supabase.from("room_members").insert({
       room_id: roomId,
       user_id: user.id,
       role: "member",
     });
+    if (error) {
+      return { error: error.message };
+    }
   }
 
   return { success: true };

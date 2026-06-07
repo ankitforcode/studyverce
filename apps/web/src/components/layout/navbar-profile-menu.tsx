@@ -21,6 +21,7 @@ interface NavbarProfileMenuProps {
   displayName: string;
   avatarUrl: string | null;
   isAdmin?: boolean;
+  pendingFriendRequests?: number;
 }
 
 const menuLinkClass =
@@ -31,6 +32,7 @@ export function NavbarProfileMenu({
   displayName,
   avatarUrl,
   isAdmin = false,
+  pendingFriendRequests = 0,
 }: NavbarProfileMenuProps) {
   const pathname = usePathname();
   const profileHref = `/profile/${username}`;
@@ -106,7 +108,12 @@ export function NavbarProfileMenu({
                   <li key={`${section.label}-${item.label}`}>
                     <Link href={item.href} className={menuLinkClass} role="menuitem">
                       <item.icon className="h-4 w-4 shrink-0" />
-                      {item.label}
+                      <span className="min-w-0 flex-1">{item.label}</span>
+                      {item.href === "/friends" && pendingFriendRequests > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+                          {pendingFriendRequests > 9 ? "9+" : pendingFriendRequests}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 ))}

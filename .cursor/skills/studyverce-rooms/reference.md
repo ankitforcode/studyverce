@@ -22,8 +22,11 @@
 | `room-fullscreen-toggle.tsx` | Fullscreen room shell |
 | `room-appearance-toggle.tsx` | Room light/dark appearance |
 | `room-background-picker.tsx` | Wallpapers |
-| `room-access-banner.tsx` | Pending access requests (owner) |
+| `room-access-pending.tsx` | Waiting for owner approval |
+| `room-access-removed.tsx` | Kicked user — request access again |
 | `room-music-requests-banner.tsx` | Pending music requests (owner) |
+| `room-friend-requests-banner.tsx` | Pending friend requests from in-room users (recipient) |
+| `room-friend-requests-modal.tsx` | Accept/decline in-room friend requests |
 | `room-post-it-stack.tsx` | Post-it fetch + canvas overlay |
 | `room-todo-panel.tsx` | Collapsible open/completed task list |
 | `room-post-it-toolbar.tsx` | Add post-it + color picker |
@@ -40,7 +43,7 @@
 | `app/rooms/favorite-actions.ts` | `toggleRoomFavorite`, `getFavoriteRooms` |
 | `app/rooms/member-actions.ts` | `kickRoomMember` |
 | `app/rooms/access-actions.ts` | `setRoomVisibility`, `getRoomShareLink`, access requests |
-| `app/friends/actions.ts` | `sendFriendRequest`, `getFriendshipStatuses` |
+| `app/friends/actions.ts` | `sendFriendRequest`, `acceptFriendRequest`, `getFriendshipStatuses`, `getPendingFriendRequestsInRoom` |
 | `app/rooms/music-actions.ts` | Track requests, playback |
 | `app/rooms/listing.ts` | Room listing RPCs per tab |
 
@@ -60,6 +63,7 @@
 | Migration | Purpose |
 |-----------|---------|
 | `20250606000004_private_rooms_listing.sql` | Private tab RPC |
+| `20250606000007_private_rooms_after_kick.sql` | Keep kicked users on private tab (`listingRole: removed`) |
 | `20250606000002_user_friend_rooms_listing.sql` | Friends tab RPC |
 | `20250606000005_user_favorite_rooms.sql` | `user_favorite_rooms` + favorites tab |
 | `20250606000006_friendships_rls.sql` | RLS on `friendships` |

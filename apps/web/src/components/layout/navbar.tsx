@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen, LayoutDashboard, Shield, Users, Trophy } from "lucide-react";
+import { getPendingFriendRequestCount } from "@/app/friends/actions";
 import { createClient } from "@/lib/supabase/server";
 import { NavbarProfileMenu } from "@/components/layout/navbar-profile-menu";
 import { NavLink } from "@/components/layout/nav-link";
@@ -17,6 +18,7 @@ export async function Navbar() {
   } = await supabase.auth.getUser();
 
   let profile = null;
+  let pendingFriendRequests = 0;
   if (user) {
     const { data } = await supabase
       .from("profiles")
@@ -24,6 +26,7 @@ export async function Navbar() {
       .eq("id", user.id)
       .single();
     profile = data;
+    pendingFriendRequests = await getPendingFriendRequestCount();
   }
 
   return (
@@ -82,6 +85,7 @@ export async function Navbar() {
                 displayName={profile?.display_name ?? "Profile"}
                 avatarUrl={profile?.avatar_url ?? null}
                 isAdmin={profile?.is_admin ?? false}
+                pendingFriendRequests={pendingFriendRequests}
               />
             </>
           ) : (

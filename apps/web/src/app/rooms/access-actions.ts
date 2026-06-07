@@ -251,6 +251,23 @@ export async function requestRoomAccess(
 
   if (member) return { error: "You are already a member of this room." };
 
+  const { data: latestAccess } = await supabase
+    .from("room_access_requests")
+    .select("status")
+    .eq("room_id", roomId)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestAccess?.status === "revoked") {
+    return { error: "The room owner removed you. You cannot request access again." };
+  }
+
+  if (latestAccess?.status === "approved") {
+    return { error: "You already have access. Open the room to rejoin." };
+  }
+
   const { count } = await supabase
     .from("room_members")
     .select("room_id", { count: "exact", head: true })

@@ -53,6 +53,10 @@ export default async function RoomInvitePage({
 
   const accessStatus = await getMyRoomAccessStatus(preview.id);
 
+  if (accessStatus === "approved") {
+    redirect(`/rooms/${slug}`);
+  }
+
   return (
     <RoomInviteClient
       preview={preview}
