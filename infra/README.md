@@ -6,7 +6,7 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 
 | Resource | Purpose |
 |----------|---------|
-| Existing VPC (`vpc-0cd78532e2b1cacf1` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
+| Existing VPC (`vpc-0d80eb44a8a5aaa25` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
 | Subnets | **Public only** — ALB, ECS Fargate Spot (`assignPublicIp`), and ElastiCache |
 | ElastiCache Redis (`cache.t4g.micro`) | Single-node Redis instance |
 | ECR `studyverce-socket` | Created by CI if missing; CDK imports by name |
@@ -29,13 +29,13 @@ CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separ
 
 ### 1. Bootstrap CDK (once per AWS account + region)
 
-CDK must be bootstrapped before the first `cdk deploy`. Your workflow uses **`eu-north-1`** — bootstrap that region explicitly:
+CDK must be bootstrapped before the first `cdk deploy`. Your workflow uses **`eu-west-1`** — bootstrap that region explicitly:
 
 ```bash
 aws sso login   # or ensure AWS credentials are active
 cd infra
 npm install
-npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/eu-north-1
+npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/eu-west-1
 ```
 
 This creates the CDK toolkit stack (S3 asset bucket, IAM roles, SSM version parameter). Safe to re-run; idempotent.
@@ -106,7 +106,7 @@ Then redeploy. Monorepo apps created without “My app is a monorepo” often st
 
 ```bash
 cd infra
-npx cdk deploy -c corsOrigin=https://www.studyverce.com -c vpcId=vpc-0cd78532e2b1cacf1
+npx cdk deploy -c corsOrigin=https://www.studyverce.com -c vpcId=vpc-0d80eb44a8a5aaa25
 ```
 
 ### 6. Configure socket secrets (SSM Parameter Store)
@@ -136,8 +136,8 @@ Run the **Deploy AWS** GitHub Action on `main` (builds image, creates ECR if nee
 
 ```bash
 # From repo root (replace region/account/tag)
-aws ecr describe-repositories --repository-names studyverce-socket --region eu-north-1 \
-  || aws ecr create-repository --repository-name studyverce-socket --region eu-north-1
+aws ecr describe-repositories --repository-names studyverce-socket --region eu-west-1 \
+  || aws ecr create-repository --repository-name studyverce-socket --region eu-west-1
 TAG=$(git rev-parse HEAD)
 docker build -f apps/socket-server/Dockerfile -t studyverce-socket:$TAG .
 # login, tag, push to ECR, then:

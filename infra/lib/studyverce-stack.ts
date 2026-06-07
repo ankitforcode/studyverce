@@ -18,7 +18,7 @@ export interface StudyverceStackProps extends cdk.StackProps {
    */
   readonly corsOrigin?: string;
   /**
-   * Existing VPC to use (default VPC in eu-north-1).
+   * Existing VPC to use (default VPC in eu-west-1).
    * Override: cdk deploy -c vpcId=vpc-xxxxxxxx
    */
   readonly vpcId?: string;
@@ -90,7 +90,7 @@ export class StudyverceStack extends cdk.Stack {
     const vpcId =
       props?.vpcId ??
       (this.node.tryGetContext("vpcId") as string | undefined) ??
-      "vpc-0cd78532e2b1cacf1";
+      "vpc-0d80eb44a8a5aaa25";
 
     const vpc = ec2.Vpc.fromLookup(this, "Vpc", { vpcId });
 
