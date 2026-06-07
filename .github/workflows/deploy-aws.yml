@@ -26,7 +26,6 @@ jobs:
     outputs:
       infra: ${{ steps.filter.outputs.infra }}
       socket: ${{ steps.filter.outputs.socket }}
-      web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -40,11 +39,6 @@ jobs:
               - 'packages/shared/**'
               - 'packages/rate-limit/**'
               - 'apps/socket-server/Dockerfile'
-              - 'pnpm-lock.yaml'
-            web:
-              - 'apps/web/**'
-              - 'packages/**'
-              - 'amplify.yml'
               - 'pnpm-lock.yaml'
 
   deploy-infrastructure:
@@ -119,27 +113,3 @@ jobs:
           aws ecs wait services-stable \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.ECS_SERVICE }}"
-
-  deploy-amplify:
-    needs: changes
-    if: needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Start Amplify deployment
-        env:
-          AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
-        run: |
-          if [ -z "$AMPLIFY_APP_ID" ]; then
-            echo "AMPLIFY_APP_ID not set — skip (Amplify Console Git auto-deploy may still run)."
-            exit 0
-          fi
-          aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$AMPLIFY_BRANCH" \
-            --job-type RELEASE

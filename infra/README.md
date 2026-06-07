@@ -44,7 +44,6 @@ Attach policies (tighten for production):
 - `AmazonECS_FullAccess`
 - `CloudFormationFullAccess` (or scoped CDK deploy policy)
 - `SecretsManagerReadWrite` (socket secret updates)
-- `AmplifyFullAccess` (if using workflow Amplify job)
 
 Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 
@@ -53,10 +52,8 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 | Type | Name | Example |
 |------|------|---------|
 | Secret | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::123456789012:role/GitHubActionsStudyverceDeploy` |
-| Secret | `AMPLIFY_APP_ID` | From Amplify Console (optional if using Console auto-deploy) |
 | Variable | `AWS_REGION` | `us-east-1` |
 | Variable | `AMPLIFY_APP_URL` | `https://main.d1234.amplifyapp.com` (socket `CORS_ORIGIN`) |
-| Variable | `AMPLIFY_BRANCH` | `main` |
 
 ### 4. Amplify Hosting (web)
 
@@ -75,7 +72,11 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 | `REDIS_URL` | Optional — use Upstash or ElastiCache endpoint if web needs Redis |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Optional |
 
-5. Supabase **Authentication → URL configuration**: add Amplify URL + `/auth/callback`.
+5. Supabase **Authentication → URL configuration**: add your production URL + `/auth/callback` (e.g. `https://www.studyverce.com/auth/callback`).
+6. **Hosting → General**: confirm **Platform** is **Web** (Next.js SSR / `WEB_COMPUTE`), not a static site. A static deploy serves from S3 and returns **404** on `/` even when the build succeeds.
+7. Set `NEXT_PUBLIC_APP_URL` to your canonical origin (e.g. `https://www.studyverce.com`).
+
+**404 on custom domain (`server: AmazonS3` in response headers)?** The monorepo artifact path was wrong or Amplify is not in Web Compute mode. Root `amplify.yml` must use `buildPath: /` and `baseDirectory: apps/web/.next`, plus repo-root `.npmrc` with `node-linker=hoisted`.
 
 ### 5. Deploy infrastructure
 
@@ -115,9 +116,8 @@ Or run the **Deploy AWS** GitHub Action on `main`.
 |-------------|-----|
 | `infra/**` | `cdk deploy` |
 | `apps/socket-server/**`, shared packages | Build → ECR → ECS rolling deploy |
-| `apps/web/**` | `aws amplify start-job` (if `AMPLIFY_APP_ID` set) |
 
-Amplify also auto-deploys when the repo is connected in the Console.
+The Next.js web app deploys via **Amplify Console Git integration** on branch push (not GitHub Actions).
 
 ## Outputs
 

@@ -1,54 +1,31 @@
-# AWS Amplify Hosting — monorepo Next.js app (apps/web).
-# In Amplify Console: set AMPLIFY_MONOREPO_APP_ROOT=apps/web when connecting the repo.
+# AWS Amplify Hosting — monorepo Next.js SSR (apps/web).
+# Console: enable monorepo + AMPLIFY_MONOREPO_APP_ROOT=apps/web
+# Platform must be "Web" (WEB_COMPUTE), not static — or you get S3 404 on custom domain.
 #
 # StudyVerce uses server actions, API routes, and Supabase SSR — do not use output: "export".
-# Set env vars in Amplify Console (Environment variables) before the first deploy.
-#
-# Do not use `corepack enable` on Amplify — CodeBuild often hits EACCES on corepack temp/cache dirs.
 version: 1
 applications:
   - appRoot: apps/web
     frontend:
+      buildPath: /
       phases:
         preBuild:
           commands:
             - npm install -g pnpm@9.12.3
-            - |
-              if [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -f "$CODEBUILD_SRC_DIR/pnpm-workspace.yaml" ]; then
-                REPO_ROOT="$CODEBUILD_SRC_DIR"
-              else
-                REPO_ROOT="$PWD"
-                while [ ! -f "$REPO_ROOT/pnpm-workspace.yaml" ] && [ "$REPO_ROOT" != "/" ]; do
-                  REPO_ROOT="$(dirname "$REPO_ROOT")"
-                done
-              fi
-              if [ ! -f "$REPO_ROOT/pnpm-workspace.yaml" ]; then
-                echo "Monorepo root not found. PWD=$PWD CODEBUILD_SRC_DIR=${CODEBUILD_SRC_DIR:-}" >&2
-                exit 1
-              fi
-              echo "Monorepo root: $REPO_ROOT"
-              cd "$REPO_ROOT"
-              pnpm config set store-dir .pnpm-store
-              pnpm install --frozen-lockfile
+            - pnpm config set store-dir .pnpm-store
+            - pnpm install --frozen-lockfile
         build:
           commands:
-            - |
-              if [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -f "$CODEBUILD_SRC_DIR/pnpm-workspace.yaml" ]; then
-                REPO_ROOT="$CODEBUILD_SRC_DIR"
-              else
-                REPO_ROOT="$PWD"
-                while [ ! -f "$REPO_ROOT/pnpm-workspace.yaml" ] && [ "$REPO_ROOT" != "/" ]; do
-                  REPO_ROOT="$(dirname "$REPO_ROOT")"
-                done
-              fi
-              cd "$REPO_ROOT"
-              pnpm --filter web build
+            - env | grep -e '^NEXT_PUBLIC_' >> apps/web/.env.production || true
+            - env | grep -e '^SUPABASE_SERVICE_ROLE_KEY=' >> apps/web/.env.production || true
+            - env | grep -e '^REDIS_URL=' >> apps/web/.env.production || true
+            - pnpm --filter web build
       artifacts:
-        baseDirectory: .next
+        baseDirectory: apps/web/.next
         files:
           - "**/*"
       cache:
         paths:
-          - ../../.pnpm-store/**/*
-          - ../../node_modules/**/*
+          - .pnpm-store/**/*
           - node_modules/**/*
+          - apps/web/.next/cache/**/*
