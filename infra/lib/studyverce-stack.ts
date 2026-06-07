@@ -3,7 +3,6 @@ import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as elasticache from "aws-cdk-lib/aws-elasticache";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
@@ -23,10 +22,10 @@ export interface StudyverceStackProps extends cdk.StackProps {
    */
   readonly vpcId?: string;
   /**
-   * ElastiCache Redis node size (smallest: cache.t4g.micro).
-   * Override: cdk deploy -c cacheNodeType=cache.t4g.small
+   * SSM Parameter Store path for Redis URL (Upstash or other hosted Redis).
+   * Override: cdk deploy -c redisUrlParamPath=/socket/production/redis_url
    */
-  readonly cacheNodeType?: string;
+  readonly redisUrlParamPath?: string;
   /**
    * ECR image tag for the socket container (CI passes git SHA).
    * Override: cdk deploy -c socketImageTag=abc1234
@@ -62,19 +61,9 @@ export interface StudyverceStackProps extends cdk.StackProps {
 const DEFAULT_DATABASE_URL_PARAM = "/socket/production/database_url";
 const DEFAULT_SUPABASE_URL_PARAM = "/socket/production/supabase_url";
 const DEFAULT_SUPABASE_JWT_SECRET_PARAM = "/socket/production/supabase_jwt_secret";
+const DEFAULT_REDIS_URL_PARAM = "/socket/production/redis_url";
 
 const ECR_REPOSITORY_NAME = "studyverce-socket";
-
-/** Public subnets only — no NAT gateway; tasks reach the internet via public IPs. */
-function publicSubnetIds(vpc: ec2.IVpc): string[] {
-  const ids = vpc.publicSubnets.map((subnet) => subnet.subnetId);
-  if (ids.length === 0) {
-    throw new Error(
-      "VPC has no public subnets. This stack does not create NAT gateways or private subnets."
-    );
-  }
-  return ids;
-}
 
 const PUBLIC_SUBNETS: ec2.SubnetSelection = { subnetType: ec2.SubnetType.PUBLIC };
 
@@ -121,38 +110,6 @@ export class StudyverceStack extends cdk.Stack {
       "Socket traffic from ALB"
     );
 
-    const redisSecurityGroup = new ec2.SecurityGroup(this, "RedisSecurityGroup", {
-      vpc,
-      description: "StudyVerce ElastiCache Redis",
-      allowAllOutbound: false,
-    });
-    redisSecurityGroup.addIngressRule(
-      socketSecurityGroup,
-      ec2.Port.tcp(6379),
-      "Redis from socket tasks"
-    );
-
-    const cacheNodeType =
-      props?.cacheNodeType ??
-      (this.node.tryGetContext("cacheNodeType") as string | undefined) ??
-      "cache.t4g.micro";
-
-    const redisSubnetGroup = new elasticache.CfnSubnetGroup(this, "RedisSubnetGroup", {
-      description: "StudyVerce Redis public subnets",
-      subnetIds: publicSubnetIds(vpc),
-      cacheSubnetGroupName: "studyverce-redis",
-    });
-
-    const redis = new elasticache.CfnCacheCluster(this, "Redis", {
-      engine: "redis",
-      cacheNodeType,
-      numCacheNodes: 1,
-      clusterName: "studyverce-redis",
-      cacheSubnetGroupName: redisSubnetGroup.ref,
-      vpcSecurityGroupIds: [redisSecurityGroup.securityGroupId],
-    });
-    redis.addDependency(redisSubnetGroup);
-
     const databaseUrlParamPath =
       props?.databaseUrlParamPath ??
       (this.node.tryGetContext("databaseUrlParamPath") as string | undefined) ??
@@ -165,6 +122,10 @@ export class StudyverceStack extends cdk.Stack {
       props?.supabaseJwtSecretParamPath ??
       (this.node.tryGetContext("supabaseJwtSecretParamPath") as string | undefined) ??
       DEFAULT_SUPABASE_JWT_SECRET_PARAM;
+    const redisUrlParamPath =
+      props?.redisUrlParamPath ??
+      (this.node.tryGetContext("redisUrlParamPath") as string | undefined) ??
+      DEFAULT_REDIS_URL_PARAM;
 
     const databaseUrlParam = ssm.StringParameter.fromStringParameterName(
       this,
@@ -180,6 +141,11 @@ export class StudyverceStack extends cdk.Stack {
       this,
       "SupabaseJwtSecretParam",
       supabaseJwtSecretParamPath
+    );
+    const redisUrlParam = ssm.StringParameter.fromStringParameterName(
+      this,
+      "RedisUrlParam",
+      redisUrlParamPath
     );
 
     const socketImageTag =
@@ -229,6 +195,7 @@ export class StudyverceStack extends cdk.Stack {
     databaseUrlParam.grantRead(taskExecutionRole);
     supabaseUrlParam.grantRead(taskExecutionRole);
     supabaseJwtSecretParam.grantRead(taskExecutionRole);
+    redisUrlParam.grantRead(taskExecutionRole);
     repository.grantPull(taskExecutionRole);
 
     const taskDefinition = new ecs.FargateTaskDefinition(this, "SocketTaskDefinition", {
@@ -237,9 +204,6 @@ export class StudyverceStack extends cdk.Stack {
       memoryLimitMiB: 512,
       executionRole: taskExecutionRole,
     });
-
-    const redisHost = redis.attrRedisEndpointAddress;
-    const redisPort = redis.attrRedisEndpointPort;
 
     const container = taskDefinition.addContainer("socket-server", {
       image: ecs.ContainerImage.fromEcrRepository(repository, socketImageTag),
@@ -251,14 +215,12 @@ export class StudyverceStack extends cdk.Stack {
         NODE_ENV: "production",
         PORT: "3002",
         CORS_ORIGIN: corsOrigin,
-        // Pass host/port separately — Fn::Join URL strings can resolve to redis://: before Redis exists.
-        REDIS_HOST: redisHost,
-        REDIS_PORT: redisPort,
       },
       secrets: {
         SUPABASE_URL: ecs.Secret.fromSsmParameter(supabaseUrlParam),
         SUPABASE_JWT_SECRET: ecs.Secret.fromSsmParameter(supabaseJwtSecretParam),
         DATABASE_URL: ecs.Secret.fromSsmParameter(databaseUrlParam),
+        REDIS_URL: ecs.Secret.fromSsmParameter(redisUrlParam),
       },
       healthCheck: {
         command: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3002/health || exit 1"],
@@ -269,7 +231,6 @@ export class StudyverceStack extends cdk.Stack {
       },
     });
     container.addPortMappings({ containerPort: 3002, protocol: ecs.Protocol.TCP });
-    taskDefinition.node.addDependency(redis);
 
     const service = new ecs.FargateService(this, "SocketService", {
       cluster,
@@ -288,7 +249,6 @@ export class StudyverceStack extends cdk.Stack {
       circuitBreaker: { rollback: true },
       healthCheckGracePeriod: cdk.Duration.seconds(60),
     });
-    service.node.addDependency(redis);
     service.node.addDependency(clusterCapacityProviders);
 
     const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "SocketAlb", {
@@ -384,14 +344,9 @@ export class StudyverceStack extends cdk.Stack {
       description: "ACM certificate for the socket ALB (DNS-validated via Route 53)",
     });
 
-    new cdk.CfnOutput(this, "RedisEndpoint", {
-      value: `${redisHost}:${redisPort}`,
-      description: "ElastiCache Redis endpoint (injected into ECS as REDIS_URL)",
-    });
-
-    new cdk.CfnOutput(this, "RedisNodeType", {
-      value: cacheNodeType,
-      description: "ElastiCache Redis node class",
+    new cdk.CfnOutput(this, "RedisUrlParamPath", {
+      value: redisUrlParamPath,
+      description: "SSM Parameter Store path injected into ECS as REDIS_URL",
     });
 
     new cdk.CfnOutput(this, "DatabaseUrlParamPath", {

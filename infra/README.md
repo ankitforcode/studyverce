@@ -1,21 +1,20 @@
 # StudyVerce AWS infrastructure
 
-CDK stack for **socket server + Redis + ALB**. The Next.js web app deploys separately via **AWS Amplify** (`amplify.yml` at repo root).
+CDK stack for **socket server + ALB**. The Next.js web app deploys separately via **AWS Amplify** (`amplify.yml` at repo root). Redis is **Upstash** (or other hosted Redis) — URL stored in SSM, shared with Amplify via `REDIS_URL`.
 
 ## What this stack creates
 
 | Resource | Purpose |
 |----------|---------|
 | Existing VPC (`vpc-0d80eb44a8a5aaa25` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
-| Subnets | **Public only** — ALB, ECS Fargate Spot (`assignPublicIp`), and ElastiCache |
-| ElastiCache Redis (`cache.t4g.micro`) | Single-node Redis instance |
+| Subnets | **Public only** — ALB and ECS Fargate Spot (`assignPublicIp`) |
 | ECR `studyverce-socket` | Created by CI if missing; CDK imports by name |
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket on :443 (`websocket.studyverce.com`) |
 | ACM + Route 53 | DNS-validated cert; CNAME `websocket` → ALB |
-| SSM `/socket/production/*` | Socket secrets → ECS env (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`) |
+| SSM `/socket/production/*` | Socket secrets → ECS env (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `REDIS_URL`) |
 
-**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Override Redis node size: `cdk deploy -c cacheNodeType=cache.t4g.small`.
+**Cost notes:** Fargate Spot tasks can be interrupted (~2 min notice); ECS restarts them automatically. Redis is billed by Upstash (not this stack).
 
 ## Prerequisites
 
@@ -82,7 +81,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only |
 | `NEXT_PUBLIC_APP_URL` | Amplify app URL |
 | `NEXT_PUBLIC_SOCKET_URL` | `https://websocket.studyverce.com` (CDK output **SocketDomainName**) |
-| `REDIS_URL` | Optional — use Upstash or ElastiCache endpoint if web needs Redis |
+| `REDIS_URL` | Same Upstash URL as socket server (Amplify env var) |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Optional |
 
 5. Supabase **Authentication → URL configuration**: add your production URL + `/auth/callback` (e.g. `https://www.studyverce.com/auth/callback`).
@@ -120,6 +119,7 @@ Create or update these parameters before the first healthy ECS deploy:
 | `/socket/production/database_url` | `DATABASE_URL` | String | Supabase **pooler** URL (port `6543`) |
 | `/socket/production/supabase_url` | `SUPABASE_URL` | String | `https://<ref>.supabase.co` — **required** for ES256 tokens (JWKS verification) |
 | `/socket/production/supabase_jwt_secret` | `SUPABASE_JWT_SECRET` | SecureString | Legacy HS256 JWT secret (fallback; optional if project uses ES256 signing keys) |
+| `/socket/production/redis_url` | `REDIS_URL` | SecureString | Upstash Redis URL, e.g. `rediss://default:TOKEN@HOST.upstash.io:6379` |
 
 ```bash
 aws ssm put-parameter --name /socket/production/database_url --type String \
@@ -130,6 +130,9 @@ aws ssm put-parameter --name /socket/production/supabase_url --type String \
 
 aws ssm put-parameter --name /socket/production/supabase_jwt_secret --type SecureString \
   --value 'YOUR_JWT_SECRET' --overwrite
+
+aws ssm put-parameter --name /socket/production/redis_url --type SecureString \
+  --value 'rediss://default:YOUR_TOKEN@YOUR_HOST.upstash.io:6379' --overwrite
 ```
 
 ### 7. First socket image
@@ -167,7 +170,7 @@ After `cdk deploy`:
 - **SocketDomainName** → set `NEXT_PUBLIC_SOCKET_URL=https://<value>` in Amplify
 - **SocketAlbDnsName** → ALB hostname (CNAME target)
 - **EcrRepositoryUri** → CI pushes here
-- **RedisEndpoint** → injected into socket task as `REDIS_HOST` + `REDIS_PORT`
+- **RedisUrlParamPath** → SSM path for Upstash `REDIS_URL` (also set same URL in Amplify)
 
 ## Production hardening (later)
 

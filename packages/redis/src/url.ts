@@ -24,7 +24,7 @@ export function resolveRedisUrl(options: ResolveRedisUrlOptions = {}): string {
 
   if (options.requiredInProduction && process.env.NODE_ENV === "production") {
     throw new Error(
-      "Redis is not configured. Set REDIS_HOST and REDIS_PORT (ECS/CDK) or REDIS_URL (local)."
+      "Redis is not configured. Set REDIS_URL (Upstash/SSM or local env)."
     );
   }
 
