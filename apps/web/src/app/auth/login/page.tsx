@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthDivider } from "@/components/auth/auth-divider";
@@ -21,7 +21,6 @@ import {
 } from "@/lib/auth/paths";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/dashboard";
   const authError = searchParams.get("error");
@@ -41,7 +40,7 @@ function LoginForm() {
 
     try {
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -52,24 +51,30 @@ function LoginForm() {
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
       let onboardingCompleted = false;
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", user.id)
-          .maybeSingle();
-        onboardingCompleted = profile?.onboarding_completed ?? false;
+      const userId = signInData.user?.id;
+      if (userId) {
+        try {
+          const profileResult = await Promise.race([
+            supabase
+              .from("profiles")
+              .select("onboarding_completed")
+              .eq("id", userId)
+              .maybeSingle(),
+            new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 2000)),
+          ]);
+          if (profileResult && "data" in profileResult) {
+            onboardingCompleted = profileResult.data?.onboarding_completed ?? false;
+          }
+        } catch {
+          // Server routes (/onboarding, invite) still enforce profile setup when needed.
+        }
       }
 
       trackEvent("login_completed", { method: "email" });
       const destination = resolvePostAuthDestination(redirect, onboardingCompleted);
-      router.replace(destination);
-      router.refresh();
+      // Full navigation so session cookies and middleware stay in sync (client router.replace can stall here).
+      window.location.assign(destination);
     } catch {
       setError("Sign in failed. Please try again.");
       setLoading(false);
