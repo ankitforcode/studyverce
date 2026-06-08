@@ -7,7 +7,7 @@ import {
   formatPlanPriceEur,
   PREMIUM_MONTHLY_PRICE_EUR,
   PREMIUM_YEARLY_PRICE_EUR,
-} from "@/lib/plans/content";
+} from "@/lib/plans/pricing";
 
 export const HOME_FAQ = [
   {
