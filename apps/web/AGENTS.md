@@ -11,9 +11,9 @@ Monorepo root guide: [`../../AGENTS.md`](../../AGENTS.md)
 ## Cursor memory (repo root)
 
 - **Rules**: `../../.cursor/rules/` — post-its, rooms, Supabase, overview
-- **Skills**: `../../.cursor/skills/` — `studyverce-post-it-notes`, `studyverce-rooms`, `studyverce-dashboard`
+- **Skills**: `../../.cursor/skills/` — `studyverce-post-it-notes`, `studyverce-rooms`, `studyverce-dashboard`, `studyverce-auth`, `studyverce-redis`
 
-Load the skill that matches your task before editing related files. When you add or change a feature, update that skill and `reference.md` in the same task (see `../../.cursor/rules/skills-maintenance.mdc`).
+Load the skill that matches your task **before** editing related files. When you add or change a feature, update that skill and `reference.md` in the same task and complete the checklist in `../../.cursor/rules/skills-maintenance.mdc`.
 
 ## App specifics
 

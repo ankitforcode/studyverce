@@ -11,3 +11,22 @@ alwaysApply: false
 - Supabase: `createClient()` from `@/lib/supabase/server` in actions/RSC; `@/lib/supabase/client` in client components.
 - Prefer existing UI in `components/ui/` before adding dependencies.
 - Analytics: `trackEvent` from `@/lib/analytics` for user actions in rooms.
+
+## Middleware (`src/middleware.ts`)
+
+- **`config.matcher` must be a static literal array of strings** — Next.js/Turbopack cannot parse imported or spread matchers. Build fails on Amplify if violated.
+- Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-routes.ts` (comment both files when editing).
+- Public routes (`/`, `/rooms`, `/leaderboard`) stay **out** of matcher to avoid blocking TTFB on `getUser()`.
+- Skill: `.cursor/skills/studyverce-auth/SKILL.md`
+
+## Navbar & TTFB
+
+- `navbar.tsx` — static shell only (no async server `getUser()`).
+- `navbar-interactive.tsx` — client auth hydration via `getNavbarAuthState()`.
+- Do not reintroduce server-side profile/friend fetches in the root layout.
+
+## Auth pages
+
+- Use `components/auth/password-input.tsx` for password fields.
+- Password reset success: toast via `notificationMessages.passwordResetSuccess()` before redirect.
+- Skill: `.cursor/skills/studyverce-auth/SKILL.md`

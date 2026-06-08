@@ -5,16 +5,28 @@ alwaysApply: true
 
 # Skills maintenance
 
-When you **add or materially change** a product feature, update agent memory in the **same task** (or PR) — do not leave skills stale.
+When you **add or materially change** product behavior, update agent memory in the **same task** (or PR) — do not leave skills stale.
 
-## When this applies
+## Agent workflow (every task)
 
-- New UI surface, server action, socket event, migration, or route
-- Changed data model, RLS, or shared types for a feature area
-- New conventions (tokens, hooks, file locations) others will copy
-- Removed or renamed behavior that skills still document
+1. **Before coding** — identify affected areas from the trigger table below; read the matching skill(s) and scoped rules.
+2. **While coding** — follow documented pitfalls (middleware static matcher, Redis command budget, auth redirect allowlists, etc.).
+3. **Before finishing** — complete the checklist below; do not mark work done with stale docs.
 
-Skip for typo fixes, pure refactors with no behavior change, or one-off scripts.
+Skip doc updates only for typo fixes, pure refactors with **no** behavior change, or one-off scripts.
+
+## Trigger table — what to read & update
+
+| If you changed… | Read first | Update after |
+|-----------------|------------|--------------|
+| Auth pages, callback, middleware, navbar, password UX | `studyverce-auth` | skill + `nextjs-web.mdc` if middleware |
+| Supabase email templates / `config.toml` auth email | `studyverce-auth` | skill `reference.md`, root `README.md` email section |
+| `packages/redis`, `packages/rate-limit`, socket redis-cache, `/presence` | `studyverce-redis` | skill + root `README.md` budget table |
+| Room UI, listing, socket events, presence | `studyverce-rooms` | skill + `room-features.mdc` |
+| Post-its, tasks, todo panel | `studyverce-post-it-notes` | skill + `post-it-notes.mdc` |
+| Dashboard shell / stats | `studyverce-dashboard` | skill |
+| Schema, RLS, migrations | `supabase-migrations.mdc` + affected feature skill | migration + types + mapper |
+| Cross-cutting layout, commands, new primary files | root `AGENTS.md`, `studyverce-overview.mdc` | index row in `.cursor/skills/README.md` |
 
 ## What to update
 
@@ -22,16 +34,18 @@ Skip for typo fixes, pure refactors with no behavior change, or one-off scripts.
 |-------------|--------|
 | Any feature | Matching skill `SKILL.md` + `reference.md` if present |
 | Room / listing / social | `studyverce-rooms` |
+| Auth / session / email | `studyverce-auth` |
+| Redis / rate limits / presence cache | `studyverce-redis` |
 | Post-its / tasks | `studyverce-post-it-notes` |
 | Dashboard | `studyverce-dashboard` |
 | Cross-cutting layout or commands | `studyverce-overview.mdc`, root `AGENTS.md` |
-| File-specific patterns | Relevant `.cursor/rules/*.mdc` (e.g. `room-features.mdc`) |
+| File-specific patterns | Relevant `.cursor/rules/*.mdc` |
 | New feature domain | New skill under `.cursor/skills/<name>/` + row in `.cursor/skills/README.md` |
 
 ## Minimum doc updates per feature change
 
 1. **SKILL.md** — workflow steps, pitfalls, and “where to look” for the new/changed behavior.
-2. **reference.md** — tables (routes, components, actions, migrations, socket events).
+2. **reference.md** — tables (routes, components, actions, migrations, socket events, keys).
 3. **AGENTS.md** — “Where to look” row if a new primary file or feature name.
 4. **Rule `.mdc`** — short bullet if the change affects globs that rule covers.
 
@@ -39,11 +53,15 @@ Skip for typo fixes, pure refactors with no behavior change, or one-off scripts.
 
 Refresh the skill `description` in YAML when scope grows (so auto-routing still picks the right skill).
 
-## Checklist before finishing
+## Checklist before finishing (required)
 
-- [ ] Read the relevant skill **before** coding; update it **after** if behavior or files changed.
-- [ ] `reference.md` lists new files, actions, migrations, or events.
-- [ ] `AGENTS.md` / `studyverce-overview.mdc` updated if the feature is user-visible or cross-cutting.
-- [ ] No documented steps contradict the current code.
+- [ ] Read the relevant skill(s) **before** coding (per trigger table).
+- [ ] Updated matching `SKILL.md` + `reference.md` if behavior or files changed.
+- [ ] `AGENTS.md` / `studyverce-overview.mdc` updated if user-visible or cross-cutting.
+- [ ] Scoped `.mdc` rule updated when globs cover edited files.
+- [ ] **Middleware:** if `apps/web/src/middleware.ts` changed, `config.matcher` is a **static string array** (not imported/spread).
+- [ ] **Middleware:** matcher paths still align with `isProtectedAppPath()` in `lib/auth/middleware-routes.ts`.
+- [ ] **Redis:** hot paths avoid redundant EVAL/TTL; `/presence` not rate-limited; batch reads use `MGET` where applicable.
+- [ ] No documented steps contradict current code.
 
 See `.cursor/skills/README.md` for the skill index.

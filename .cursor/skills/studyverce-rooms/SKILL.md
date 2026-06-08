@@ -145,6 +145,7 @@ Kicked users see banner on `rooms-directory.tsx` (`?removed=kicked`).
 - `rooms-directory.tsx` — tabs: trending, private, friends, favorites.
 - Private tab RPC `get_user_private_rooms`: owned, member, pending invite, or approved-without-membership (inactive leave — can rejoin). **Kicked** users get `revoked` access and are **not listed**.
 - Live presence badge on cards: `use-room-listing-presence.ts` + `/presence` rewrite in `next.config.ts`.
+- `/presence` batch reads: `getCachedActiveCountsBatch()` in socket `redis-cache.ts` (one `MGET` per poll, not N GETs). **Not** rate-limited — see `studyverce-redis`.
 - Listing tabs cache in Redis (120s TTL) when `REDIS_URL` is set — `lib/cache/listing.ts`; presence counts cached 15s on socket-server; sweep every 60s.
 - Favorites: `favorite-actions.ts`, migration `20250606000005_user_favorite_rooms.sql`.
 - **Do not** call `revalidatePath` from favorite toggle (caused client fetch errors).

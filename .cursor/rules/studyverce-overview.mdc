@@ -9,6 +9,7 @@ alwaysApply: true
 - **Shared types**: `packages/shared/src/index.ts` — import `@studyverce/shared`.
 - **Server actions**: `apps/web/src/app/**/actions.ts` or `task-actions.ts`; use `createClient()` from `@/lib/supabase/server`.
 - **Client Supabase**: `@/lib/supabase/client` for browser fetches (post-its in rooms).
+- **Agent checklist**: rule `skills-maintenance.mdc` — read matching skill before coding; update docs + run platform checks before finishing.
 
 ## Conventions
 
@@ -17,6 +18,8 @@ alwaysApply: true
 - Do not commit `.env.local` or secrets.
 - Run `pnpm --filter web exec tsc --noEmit` after TypeScript changes.
 - **Skills**: read `.cursor/skills/` before feature work; update skills + `AGENTS.md` when behavior changes (rule `skills-maintenance.mdc`).
+- **Middleware**: `config.matcher` in `middleware.ts` must be a static string array (see skill `studyverce-auth`).
+- **Redis budget**: avoid rate-limiting `/presence`; batch active counts with `MGET` (see skill `studyverce-redis`).
 
 ## Feature boundaries
 

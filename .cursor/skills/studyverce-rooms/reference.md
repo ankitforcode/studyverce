@@ -46,7 +46,8 @@
 | `app/friends/actions.ts` | `sendFriendRequest`, `acceptFriendRequest`, `getFriendshipStatuses`, `getPendingFriendRequestsInRoom` |
 | `app/rooms/music-actions.ts` | Track requests, playback |
 | `lib/rooms/listing.ts` | Room listing loaders per tab (Redis-cached when `REDIS_URL` set) |
-| `lib/cache/listing.ts` | Listing tab cache (45s TTL) |
+| `lib/cache/listing.ts` | Listing tab cache (120s TTL) |
+| `getCachedActiveCountsBatch` | `/presence` MGET batch (socket `redis-cache.ts`) |
 
 ## Hooks & infra
 

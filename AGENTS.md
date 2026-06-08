@@ -26,11 +26,13 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Friends / kick | `apps/web/src/app/friends/actions.ts`, `apps/web/src/app/rooms/member-actions.ts` |
 | Favorites / share | `apps/web/src/app/rooms/favorite-actions.ts`, `room/room-favorite-button.tsx`, `room/room-share-link.tsx` |
 | Room listing | `apps/web/src/components/rooms/rooms-directory.tsx`, `lib/rooms/listing.ts`, `lib/cache/listing.ts` |
-| Redis caching | `packages/redis/`, `apps/socket-server/src/redis-cache.ts`, `apps/web/src/lib/redis.ts` |
+| Redis caching | `packages/redis/`, `packages/rate-limit/`, `apps/socket-server/src/redis-cache.ts`, `apps/web/src/lib/redis.ts` |
+| Auth & session | `apps/web/src/app/auth/`, `lib/auth/`, `middleware.ts`, `components/layout/navbar*.tsx`, `supabase/templates/` |
+| Rate limits | `packages/rate-limit/src/limiter.ts`, `shouldRateLimitRequest()` in `config.ts` |
 | Room UI tokens | `apps/web/src/lib/room-ui.ts` |
 | Todo sidebar | `apps/web/src/components/room/room-todo-panel.tsx` |
 | Dashboard shell | `apps/web/src/components/dashboard/dashboard-*.tsx` |
-| Navbar | `apps/web/src/components/layout/navbar.tsx` |
+| Navbar | `apps/web/src/components/layout/navbar.tsx`, `navbar-interactive.tsx` |
 
 ## Cursor memory
 
@@ -38,7 +40,7 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 - **Skills**: `.cursor/skills/*/SKILL.md` — deep workflows (index: `.cursor/skills/README.md`)
 - **Maintenance**: rule `skills-maintenance.mdc` — update skills/rules/AGENTS when features change
 
-Read the relevant skill **before** changing post-its, room UI, or migrations. Update that skill **in the same task** when you add or materially change a feature.
+Read the relevant skill **before** changing post-its, room UI, auth/middleware, Redis, or migrations. Update that skill **in the same task** when you add or materially change a feature (see rule `skills-maintenance.mdc` — checklist required before finishing).
 
 ## Non-negotiables
 

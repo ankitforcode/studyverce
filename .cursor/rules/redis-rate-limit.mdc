@@ -1,0 +1,21 @@
+---
+description: Redis keys, rate limits, and Upstash command budget
+globs: packages/redis/**,packages/rate-limit/**,apps/socket-server/src/redis-cache.ts,apps/socket-server/src/index.ts,apps/web/src/lib/redis.ts,apps/web/src/lib/cache/**,apps/web/src/lib/post-it-cache/**
+alwaysApply: false
+---
+
+# Redis & rate limits
+
+Read `.cursor/skills/studyverce-redis/SKILL.md` before editing these files.
+
+## Non-negotiables
+
+1. **Do not rate-limit `/presence`** — high-frequency read-only polls; use `shouldRateLimitRequest()`.
+2. **Rate limit Lua** — one EVAL, dual INCR, EXPIRE on first hit only; no TTL inside script.
+3. **Batch presence reads** — use `getCachedActiveCountsBatch` (`MGET`), not N separate GETs.
+4. **Budget** — defaults target 500k commands/month; document TTL/knob changes in root `README.md`.
+
+## After changes
+
+- Estimate impact on Upstash command mix (EVAL, INCR, GET, MGET).
+- Update `studyverce-redis` skill if keys, TTLs, or patterns change.
