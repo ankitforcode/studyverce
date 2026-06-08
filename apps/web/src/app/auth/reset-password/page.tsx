@@ -2,19 +2,16 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { useNotifications } from "@/components/notifications/notification-provider";
 import { PasswordInput } from "@/components/auth/password-input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/input";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { queuePendingToast } from "@/lib/notifications/pending-toast";
 import { loginPath } from "@/lib/auth/paths";
 
 function ResetPasswordForm() {
-  const router = useRouter();
-  const { toast } = useNotifications();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -59,9 +56,9 @@ function ResetPasswordForm() {
       return;
     }
 
-    toast(notificationMessages.passwordResetSuccess());
-    router.push("/dashboard");
-    router.refresh();
+    queuePendingToast(notificationMessages.passwordResetSuccess());
+    // Full navigation so session cookies and middleware stay in sync (client router can stall here).
+    window.location.assign("/dashboard");
   }
 
   if (checkingSession) {

@@ -28,5 +28,5 @@ alwaysApply: false
 ## Auth pages
 
 - Use `components/auth/password-input.tsx` for password fields.
-- Password reset success: toast via `notificationMessages.passwordResetSuccess()` before redirect.
+- Password reset success: `queuePendingToast(notificationMessages.passwordResetSuccess())` then `window.location.assign("/dashboard")` (not `router.push`).
 - Skill: `.cursor/skills/studyverce-auth/SKILL.md`

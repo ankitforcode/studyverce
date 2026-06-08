@@ -47,3 +47,4 @@
 | Message | File |
 |---------|------|
 | `passwordResetSuccess()` | `lib/notifications/messages.ts` |
+| `queuePendingToast` / `consumePendingToast` | `lib/notifications/pending-toast.ts` — survives full-page redirect after reset |

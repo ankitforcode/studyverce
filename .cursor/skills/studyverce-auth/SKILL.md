@@ -55,7 +55,7 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 - Signup stores `data: { post_auth_redirect: redirect }` — callback reads this when Supabase drops the `next` query param.
 - **Login + onboarding**: email login (`auth/login`) and `/auth/callback` both call `resolvePostAuthDestination()` after reading `profiles.onboarding_completed`. `/onboarding` is a server page that redirects completed profiles to `redirect` or `/dashboard`.
 - **Seed admin** (`supabase/seed.sql`): `on_auth_user_created` inserts a default profile; seed **UPDATE**s that row so `admin@studyverce.local` has `onboarding_completed = true` (do not rely on `INSERT … ON CONFLICT` alone).
-- Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; toast on success via `notificationMessages.passwordResetSuccess()`.
+- Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; on success queue toast via `queuePendingToast()` + `window.location.assign("/dashboard")` (same cookie-sync pattern as email login — avoid `router.push` here).
 - Password fields: use `components/auth/password-input.tsx` (animated eye toggle).
 
 ## Hosted Supabase URL config
