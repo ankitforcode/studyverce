@@ -8,6 +8,8 @@ import {
   ArrowRight,
   BookOpen,
 } from "lucide-react";
+import { HomeHero } from "@/components/home/home-hero";
+import { ScrollReveal } from "@/components/home/scroll-reveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SITE_NAME } from "@/lib/site-metadata";
@@ -48,93 +50,92 @@ const features = [
 export default function HomePage() {
   return (
     <>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5 pointer-events-none" />
-        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 text-center relative">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary mb-6">
-            <BookOpen className="h-4 w-4" aria-hidden />
-            {SITE_NAME}
-          </div>
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6">
-            {SITE_NAME}
-          </h1>
-          <p className="text-lg sm:text-xl text-foreground max-w-3xl mx-auto mb-4 font-medium">
-            {SITE_NAME} is a virtual study platform that helps students join live focus
-            rooms, sync Pomodoro timers with others, chat while they study, and track focus
-            over time.
-          </p>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
-            Study together. Stay accountable. Focus better — so you never have to study
-            alone again.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
-              <Button size="lg" className="gap-2 w-full sm:w-auto">
-                Get started free
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/rooms">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Browse study rooms
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <HomeHero />
 
       <section
         id="about"
         aria-labelledby="about-heading"
-        className="mx-auto max-w-3xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20"
       >
-        <h2 id="about-heading" className="text-2xl font-bold text-center mb-4">
-          About {SITE_NAME}
-        </h2>
-        <div className="space-y-4 text-center text-muted-foreground leading-relaxed">
-          <p>
-            {SITE_NAME} gives students a shared online space to study with accountability
-            partners. Create or join study rooms, run synchronized focus sessions, keep
-            personal task notes, and see how your study habits improve over time.
-          </p>
-          <p>
-            Sign in with Google or email to create your {SITE_NAME} account, save your
-            profile and progress, and access private rooms, friends, and focus analytics.
-            We only use your Google account to authenticate you — not to access unrelated
-            data.
-          </p>
-        </div>
+        <ScrollReveal>
+          <h2 id="about-heading" className="text-center text-2xl font-bold sm:text-3xl">
+            About {SITE_NAME}
+          </h2>
+          <div className="mt-6 space-y-4 text-center leading-relaxed text-muted-foreground">
+            <p>
+              {SITE_NAME} gives students a shared online space to study with accountability
+              partners. Create or join study rooms, run synchronized focus sessions, keep
+              personal task notes, and see how your study habits improve over time.
+            </p>
+            <p>
+              Sign in with Google or email to create your {SITE_NAME} account, save your
+              profile and progress, and access private rooms, friends, and focus analytics.
+              We only use your Google account to authenticate you — not to access unrelated
+              data.
+            </p>
+          </div>
+        </ScrollReveal>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <h2 className="text-2xl font-bold text-center mb-10">Everything you need to focus</h2>
+      <section
+        id="features"
+        aria-labelledby="features-heading"
+        className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20"
+      >
+        <ScrollReveal>
+          <h2
+            id="features-heading"
+            className="mb-4 text-center text-2xl font-bold sm:text-3xl"
+          >
+            Everything you need to focus
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
+            From synchronized timers to personal analytics — built for students who want
+            structure without studying in isolation.
+          </p>
+        </ScrollReveal>
+
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <Card key={feature.title} className="border-border/50">
-              <CardHeader>
-                <feature.icon className="h-8 w-8 text-primary mb-2" />
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{feature.description}</p>
-              </CardContent>
-            </Card>
+          {features.map((feature, index) => (
+            <ScrollReveal key={feature.title} delayMs={index * 80}>
+              <Card className="h-full border-border/50 transition-colors duration-300 hover:border-primary/30 hover:bg-card/90">
+                <CardHeader>
+                  <feature.icon className="mb-2 h-8 w-8 text-primary" />
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-          <CardContent className="py-12 text-center">
-            <h2 className="text-2xl font-bold mb-3">Ready to study together?</h2>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Join thousands of students who study smarter with real-time accountability.
-            </p>
-            <Link href="/auth/signup">
-              <Button size="lg">Create your free account</Button>
-            </Link>
-          </CardContent>
-        </Card>
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+        <ScrollReveal>
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-transparent to-accent/10">
+            <CardContent className="relative py-14 text-center sm:py-16">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent"
+                aria-hidden
+              />
+              <h2 className="relative text-2xl font-bold sm:text-3xl">
+                Ready to study together?
+              </h2>
+              <p className="relative mx-auto mt-3 max-w-md text-muted-foreground">
+                Join students who study smarter with real-time accountability and shared
+                focus sessions.
+              </p>
+              <Link href="/auth/signup" className="relative mt-8 inline-block">
+                <Button size="lg" className="gap-2">
+                  Create your free account
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
       </section>
     </>
   );
