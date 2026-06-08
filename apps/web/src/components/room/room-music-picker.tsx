@@ -18,15 +18,19 @@ import {
   Clock,
   User,
   Pencil,
+  ClipboardPaste,
+  CheckCircle2,
+  AlertCircle,
+  ChevronDown,
 } from "lucide-react";
-import type { RoomTrack } from "@studyverce/shared";
+import type { MusicProvider, RoomTrack } from "@studyverce/shared";
 import { TRACK_CATEGORIES, PROVIDER_LINK_EXAMPLES } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getRoomPortalTarget, lockRoomScroll } from "@/lib/room-ui";
+import { getRoomPortalTarget, lockRoomScroll, ROOM_FIELD, ROOM_INNER_SURFACE } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
-import { PROVIDER_LABELS } from "@/lib/music/providers";
+import { parseMusicProviderUrl, PROVIDER_LABELS } from "@/lib/music/providers";
 import { usePathname } from "next/navigation";
 import type { AppSocket } from "@/hooks/use-socket";
 import { useNotifications } from "@/components/notifications/notification-provider";
@@ -330,60 +334,11 @@ export function RoomMusicPicker({
           )}
 
           {tab === "add-link" && (
-            <form onSubmit={handleAddLink} className="max-w-md space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="track-source-url">
-                  SoundCloud, YouTube, Spotify, or Apple Music URL
-                </Label>
-                <Input
-                  id="track-source-url"
-                  name="source_url"
-                  type="url"
-                  placeholder="https://open.spotify.com/track/..."
-                  required
-                />
-                <ul className="text-xs text-muted-foreground space-y-1 pt-1">
-                  {PROVIDER_LINK_EXAMPLES.map((example) => (
-                    <li key={example} className="font-mono truncate">
-                      {example}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="track-name">Display name (optional)</Label>
-                <Input id="track-name" name="name" placeholder="Lo-fi focus playlist" maxLength={80} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="track-artist">Artist (optional)</Label>
-                <Input id="track-artist" name="artist" placeholder="Artist or channel" maxLength={80} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="track-category">Category</Label>
-                <select
-                  id="track-category"
-                  name="category"
-                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                  defaultValue="ambient"
-                >
-                  {TRACK_CATEGORIES.filter((c) => c !== "all").map((cat) => (
-                    <option key={cat} value={cat} className="capitalize">
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="is_public" className="rounded" />
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                Share publicly so others can use this track
-              </label>
-              {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
-              <Button type="submit" className="w-full gap-2" disabled={pending}>
-                <Link2 className="h-4 w-4" />
-                {pending ? "Adding..." : "Add from provider"}
-              </Button>
-            </form>
+            <PasteLinkForm
+              pending={pending}
+              uploadError={uploadError}
+              onSubmit={handleAddLink}
+            />
           )}
 
         </div>
@@ -410,6 +365,252 @@ export function RoomMusicPicker({
       </div>
     </div>,
     getRoomPortalTarget(portalContainerRef)
+  );
+}
+
+const PASTE_LINK_PROVIDERS: {
+  id: MusicProvider;
+  label: string;
+  iconSrc?: string;
+  accent: string;
+}[] = [
+  {
+    id: "spotify",
+    label: "Spotify",
+    iconSrc: "/streaming/spotify-icon.png",
+    accent: "border-[#1DB954]/40 bg-[#1DB954]/10 text-[#1DB954]",
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    iconSrc: "/streaming/youtube-music-icon.png",
+    accent: "border-[#FF0000]/40 bg-[#FF0000]/10 text-[#FF0000]",
+  },
+  {
+    id: "soundcloud",
+    label: "SoundCloud",
+    accent: "border-[#FF5500]/40 bg-[#FF5500]/10 text-[#FF5500]",
+  },
+  {
+    id: "apple_music",
+    label: "Apple Music",
+    iconSrc: "/streaming/apple-music-icon.png",
+    accent: "border-[#FA243C]/40 bg-[#FA243C]/10 text-[#FA243C]",
+  },
+];
+
+function PasteLinkForm({
+  pending,
+  uploadError,
+  onSubmit,
+}: {
+  pending: boolean;
+  uploadError: string | null;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+
+  const parsed = sourceUrl.trim() ? parseMusicProviderUrl(sourceUrl) : null;
+  const showInvalid = touched && sourceUrl.trim().length > 0 && !parsed;
+
+  async function handlePaste() {
+    setPasteError(null);
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setPasteError("Clipboard is empty.");
+        return;
+      }
+      setSourceUrl(text.trim());
+      setTouched(true);
+    } catch {
+      setPasteError("Couldn't read clipboard — paste manually with ⌘V.");
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-5">
+      <div className="flex flex-wrap gap-2">
+        {PASTE_LINK_PROVIDERS.map((provider) => (
+          <span
+            key={provider.id}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+              provider.accent
+            )}
+          >
+            {provider.iconSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={provider.iconSrc} alt="" className="h-3.5 w-3.5 rounded-sm" />
+            ) : (
+              <Music2 className="h-3.5 w-3.5" />
+            )}
+            {provider.label}
+          </span>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="track-source-url" className="text-sm font-medium">
+            Track or playlist URL
+          </Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
+            onClick={() => void handlePaste()}
+          >
+            <ClipboardPaste className="h-3.5 w-3.5" />
+            Paste
+          </Button>
+        </div>
+        <div className="relative">
+          <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="track-source-url"
+            name="source_url"
+            type="url"
+            value={sourceUrl}
+            onChange={(e) => {
+              setSourceUrl(e.target.value);
+              setPasteError(null);
+            }}
+            onBlur={() => setTouched(true)}
+            placeholder="https://open.spotify.com/track/..."
+            className={cn("pl-9 pr-10", ROOM_FIELD)}
+            required
+          />
+          {parsed && (
+            <CheckCircle2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+          )}
+          {showInvalid && (
+            <AlertCircle className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-destructive" />
+          )}
+        </div>
+        {parsed && (
+          <p className="flex items-center gap-1.5 text-xs text-primary">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            {PROVIDER_LABELS[parsed.provider]} link detected
+          </p>
+        )}
+        {showInvalid && (
+          <p className="flex items-center gap-1.5 text-xs text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            Unsupported link — use SoundCloud, YouTube, Spotify, or Apple Music
+          </p>
+        )}
+        {pasteError && <p className="text-xs text-destructive">{pasteError}</p>}
+      </div>
+
+      <div className={cn("space-y-4 rounded-xl border border-border/60 p-4", ROOM_INNER_SURFACE)}>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Optional details
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="track-name">Display name</Label>
+            <Input
+              id="track-name"
+              name="name"
+              placeholder="Lo-fi focus playlist"
+              maxLength={80}
+              className={ROOM_FIELD}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="track-artist">Artist</Label>
+            <Input
+              id="track-artist"
+              name="artist"
+              placeholder="Artist or channel"
+              maxLength={80}
+              className={ROOM_FIELD}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="track-category">Category</Label>
+            <select
+              id="track-category"
+              name="category"
+              className={cn(
+                "flex h-10 w-full rounded-lg border border-input px-3 text-sm capitalize",
+                ROOM_FIELD
+              )}
+              defaultValue="ambient"
+            >
+              {TRACK_CATEGORIES.filter((c) => c !== "all").map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label
+            htmlFor="track-is-public"
+            className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/50 bg-background/40 p-3 transition-colors hover:border-primary/30 hover:bg-primary/5"
+          >
+            <input
+              id="track-is-public"
+              type="checkbox"
+              name="is_public"
+              className="mt-0.5 rounded border-input"
+            />
+            <span className="space-y-0.5">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                Share publicly
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Others can find this in the community library
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <details className="group rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-sm text-muted-foreground marker:content-none">
+          <span>Example URL formats</span>
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <ul className="mt-3 space-y-1.5 border-t border-border/40 pt-3 text-xs text-muted-foreground">
+          {PROVIDER_LINK_EXAMPLES.map((example) => (
+            <li key={example}>
+              <button
+                type="button"
+                className="w-full truncate rounded px-1 py-0.5 text-left font-mono hover:bg-muted/60 hover:text-foreground"
+                onClick={() => {
+                  setSourceUrl(example);
+                  setTouched(true);
+                  setPasteError(null);
+                }}
+              >
+                {example}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      {uploadError && (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {uploadError}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        className="w-full gap-2"
+        disabled={pending || (touched && !parsed && sourceUrl.trim().length > 0)}
+      >
+        <Link2 className="h-4 w-4" />
+        {pending ? "Adding..." : "Add to library"}
+      </Button>
+    </form>
   );
 }
 

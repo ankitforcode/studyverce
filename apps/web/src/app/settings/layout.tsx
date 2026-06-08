@@ -1,6 +1,12 @@
 import { redirect } from "next/navigation";
 import { SettingsNav } from "@/components/settings/settings-nav";
 import { createClient } from "@/lib/supabase/server";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  path: "/settings",
+  robots: NOINDEX_ROBOTS,
+});
 
 export default async function SettingsLayout({
   children,

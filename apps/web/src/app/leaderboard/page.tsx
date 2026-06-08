@@ -19,7 +19,15 @@ import {
   parseLeaderboardTab,
 } from "@/lib/leaderboard/data";
 import { formatFocusTime } from "@/lib/utils";
+import { createSiteMetadata } from "@/lib/site-metadata";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata = createSiteMetadata({
+  path: "/leaderboard",
+  title: "Study Focus Leaderboard",
+  description:
+    "See top study streaks and weekly focus hours on the StudyVerce leaderboard. Compare progress with students in virtual study rooms.",
+});
 
 export const dynamic = "force-dynamic";
 

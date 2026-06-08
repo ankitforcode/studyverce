@@ -1,5 +1,11 @@
 import { requireAdminSession } from "@/lib/admin/auth";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  path: "/admin",
+  robots: NOINDEX_ROBOTS,
+});
 
 export default async function AdminLayout({
   children,

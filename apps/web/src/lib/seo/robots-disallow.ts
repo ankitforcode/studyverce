@@ -10,6 +10,7 @@ export const ROBOTS_DISALLOW_PATHS = [
   "/onboarding",
   "/friends",
   "/notifications",
+  "/profile/",
   "/rooms/new",
   "/rooms/",
 ] as const;

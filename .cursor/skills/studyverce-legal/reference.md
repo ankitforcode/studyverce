@@ -14,7 +14,13 @@
 | `app/auth/signup/page.tsx` | “By creating an account…” terms/privacy links |
 | `app/robots.ts` | `/robots.txt` generation |
 | `app/sitemap.ts` | `/sitemap.xml` public URLs |
+| `app/manifest.ts` | Web app manifest |
+| `app/opengraph-image.tsx` | Default social share image (1200×630) |
 | `lib/seo/robots-disallow.ts` | Crawler disallow paths |
+| `lib/seo/constants.ts` | SEO keywords + homepage FAQ copy |
+| `lib/seo/structured-data.ts` | JSON-LD builders (Organization, FAQ, etc.) |
+| `lib/site-metadata.ts` | `createSiteMetadata()`, canonical URLs, robots helpers |
+| `components/seo/json-ld.tsx` | Renders `<script type="application/ld+json">` |
 
 ## Public URLs
 
@@ -93,6 +99,7 @@ Aligned with `isProtectedAppPath()` plus auth flows:
 - `/onboarding`
 - `/friends`
 - `/notifications`
+- `/profile/`
 - `/rooms/new`
 - `/rooms/` (room slugs; `/rooms` listing remains allowed)
 

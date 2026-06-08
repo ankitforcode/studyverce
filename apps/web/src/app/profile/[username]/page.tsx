@@ -1,11 +1,27 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Flame, Clock, Award } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/badge";
 import { formatFocusTime } from "@/lib/utils";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
+  const { username } = await params;
+  return createSiteMetadata({
+    path: `/profile/${username}`,
+    title: `${username} on StudyVerce`,
+    robots: NOINDEX_ROBOTS,
+  });
+}
+
 export default async function ProfilePage({
   params,
 }: {

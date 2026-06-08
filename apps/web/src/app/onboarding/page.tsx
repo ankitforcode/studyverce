@@ -3,8 +3,15 @@ import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 import { safeRedirectPath } from "@/lib/auth/paths";
 import { createClient } from "@/lib/supabase/server";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = createSiteMetadata({
+  path: "/onboarding",
+  title: "Complete your profile",
+  robots: NOINDEX_ROBOTS,
+});
 
 export default async function OnboardingPage({
   searchParams,

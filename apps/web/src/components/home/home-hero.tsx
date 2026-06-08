@@ -45,15 +45,15 @@ export function HomeHero() {
             </div>
 
             <h1 className="hero-fade-in hero-delay-2 mt-5 text-4xl font-bold tracking-tight sm:text-5xl xl:text-[3.25rem] xl:leading-[1.1]">
-              Study together.
+              <span className="block text-foreground">Virtual study rooms</span>
               <span className="mt-1 block bg-gradient-to-r from-primary via-emerald-300 to-primary bg-clip-text text-transparent">
-                Focus better.
+                Study together. Focus better.
               </span>
             </h1>
 
             <p className="hero-fade-in hero-delay-3 mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Join live focus rooms, sync Pomodoro timers with others, and track your
-              progress — so you never have to study alone.
+              Join live online study rooms, sync Pomodoro timers with others, and track your
+              progress — free accountability for students who don&apos;t want to study alone.
             </p>
 
             <div className="hero-fade-in hero-delay-4 mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">

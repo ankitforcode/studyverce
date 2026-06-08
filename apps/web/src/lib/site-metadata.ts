@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import { SEO_KEYWORDS } from "@/lib/seo/constants";
 
 const DEFAULT_SITE_URL = "http://localhost:3001";
 
 export const SITE_NAME = "StudyVerce";
 
 export const SITE_TITLE =
-  "StudyVerce — Virtual Study Rooms with Pomodoro Timer";
+  "Free Virtual Study Rooms — Pomodoro Timer & Study Together Online";
 
 export const SITE_DESCRIPTION =
-  "Join virtual study rooms with shared Pomodoro timers, lo-fi music, chat, and real-time accountability. Study together online — built for focus, like Discord for studying.";
+  "Join free virtual study rooms with shared Pomodoro timers, lo-fi music, and live chat. Study together online with accountability — built for focused students.";
+
+export const OG_IMAGE_PATH = "/opengraph-image";
 
 export function getSiteUrl(): string {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
@@ -43,46 +46,129 @@ export function resolveAuthRedirectOrigin(request: Request): string {
   return origin;
 }
 
-export function createSiteMetadata(overrides?: Metadata): Metadata {
+export const NOINDEX_ROBOTS: NonNullable<Metadata["robots"]> = {
+  index: false,
+  follow: false,
+  googleBot: {
+    index: false,
+    follow: false,
+  },
+};
+
+export const INDEX_ROBOTS: NonNullable<Metadata["robots"]> = {
+  index: true,
+  follow: true,
+  googleBot: {
+    index: true,
+    follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
+  },
+};
+
+export type SiteMetadataOptions = Metadata & {
+  /** App path for canonical + Open Graph URL, e.g. `/rooms`. Omit for site root. */
+  path?: string;
+};
+
+function resolveTitle(title: Metadata["title"], fallback: string): string {
+  if (!title) return fallback;
+  if (typeof title === "string") return title;
+  if ("absolute" in title && title.absolute) return title.absolute;
+  if ("default" in title && title.default) return title.default;
+  return fallback;
+}
+
+function resolveDescription(
+  description: Metadata["description"],
+  fallback: string
+): string {
+  return typeof description === "string" && description.length > 0
+    ? description
+    : fallback;
+}
+
+export function createSiteMetadata(overrides?: SiteMetadataOptions): Metadata {
   const siteUrl = getSiteUrl();
+  const path = overrides?.path ?? "";
+  const canonicalUrl = `${siteUrl}${path}`;
+
+  const {
+    path: _path,
+    openGraph: openGraphOverrides,
+    twitter: twitterOverrides,
+    alternates: alternatesOverrides,
+    robots: robotsOverrides,
+    title: titleOverride,
+    description: descriptionOverride,
+    ...restOverrides
+  } = overrides ?? {};
+
+  const title = resolveTitle(titleOverride, SITE_TITLE);
+  const description = resolveDescription(descriptionOverride, SITE_DESCRIPTION);
+
+  const openGraph: NonNullable<Metadata["openGraph"]> = {
+    type: "website",
+    locale: "en_US",
+    url: canonicalUrl,
+    siteName: SITE_NAME,
+    title,
+    description,
+    images: [
+      {
+        url: OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: SITE_TITLE,
+      },
+    ],
+    ...openGraphOverrides,
+  };
+
+  const twitter: NonNullable<Metadata["twitter"]> = {
+    card: "summary_large_image",
+    title,
+    description,
+    images: [OG_IMAGE_PATH],
+    ...twitterOverrides,
+  };
 
   return {
     metadataBase: new URL(siteUrl),
-    title: {
+    title: titleOverride ?? {
       default: SITE_TITLE,
       template: `%s | ${SITE_NAME}`,
     },
-    description: SITE_DESCRIPTION,
+    description,
     applicationName: SITE_NAME,
-    keywords: [
-      "StudyVerce",
-      "virtual study room",
-      "study together online",
-      "pomodoro timer",
-      "focus room",
-      "study accountability",
-      "group study",
-      "lo-fi study music",
-    ],
-    authors: [{ name: SITE_NAME }],
+    category: "education",
+    keywords: [...SEO_KEYWORDS],
+    authors: [{ name: SITE_NAME, url: siteUrl }],
     creator: SITE_NAME,
-    openGraph: {
-      type: "website",
-      locale: "en_US",
-      url: siteUrl,
-      siteName: SITE_NAME,
-      title: SITE_TITLE,
-      description: SITE_DESCRIPTION,
+    publisher: SITE_NAME,
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
     },
-    twitter: {
-      card: "summary",
-      title: SITE_TITLE,
-      description: SITE_DESCRIPTION,
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+      ? {
+          verification: {
+            google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+          },
+        }
+      : {}),
+    openGraph,
+    twitter,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        "en-US": canonicalUrl,
+      },
+      ...alternatesOverrides,
     },
-    robots: {
-      index: true,
-      follow: true,
-    },
-    ...overrides,
+    robots: robotsOverrides ?? INDEX_ROBOTS,
+    ...restOverrides,
   };
 }

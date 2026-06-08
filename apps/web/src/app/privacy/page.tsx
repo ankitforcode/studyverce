@@ -9,9 +9,10 @@ import {
 import { createSiteMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = createSiteMetadata({
+  path: "/privacy",
   title: "Privacy Policy",
   description:
-    "How StudyVerce collects, uses, and protects your information when you use virtual study rooms, focus tracking, and related features.",
+    "How StudyVerce collects, uses, and protects your information when you use virtual study rooms, Pomodoro timers, focus tracking, and related features.",
 });
 
 export default function PrivacyPage() {

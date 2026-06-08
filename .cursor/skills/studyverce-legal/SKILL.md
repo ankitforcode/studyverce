@@ -52,8 +52,13 @@ Paths are defined once in `lib/legal/urls.ts`. If paths change, update Google OA
 
 - `app/robots.ts` → `/robots.txt` (Next.js `MetadataRoute.Robots`)
 - `app/sitemap.ts` → `/sitemap.xml`
+- `app/manifest.ts` → web manifest; `app/opengraph-image.tsx` → default OG image
+- Metadata: `lib/site-metadata.ts` (`createSiteMetadata`, `NOINDEX_ROBOTS`, canonical via `path`)
+- Structured data: `lib/seo/structured-data.ts` + `components/seo/json-ld.tsx`
+- Keywords + homepage FAQ: `lib/seo/constants.ts`
 - Disallow list: `lib/seo/robots-disallow.ts` — keep aligned with `isProtectedAppPath()` plus `/auth/` and `/onboarding`
 - Public indexable pages: `/`, `/rooms`, `/leaderboard`, `/privacy`, `/terms`
+- Private routes: set `robots: NOINDEX_ROBOTS` in layout/page metadata (auth, dashboard, settings, admin, friends, notifications, profiles, onboarding)
 
 Do **not** add authenticated room URLs (`/rooms/:slug`) to the sitemap.
 

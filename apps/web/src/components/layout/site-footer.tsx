@@ -17,6 +17,7 @@ const productLinks = [
 const exploreLinks = [
   { href: "/#features", label: "Features" },
   { href: "/#about", label: "About" },
+  { href: "/#faq", label: "FAQ" },
   { href: "/rooms", label: "Browse rooms" },
 ] as const;
 
@@ -44,8 +45,8 @@ export function SiteFooter({ className }: { className?: string }) {
               {SITE_NAME}
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Virtual study rooms with shared Pomodoro timers, chat, and focus
-              analytics — study together, stay accountable.
+              Free virtual study rooms with shared Pomodoro timers, study music, and focus
+              analytics — study together online and stay accountable.
             </p>
           </div>
 

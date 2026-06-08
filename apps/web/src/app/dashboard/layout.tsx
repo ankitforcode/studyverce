@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  path: "/dashboard",
+  robots: NOINDEX_ROBOTS,
+});
 
 export default async function DashboardLayout({
   children,

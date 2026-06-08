@@ -10,46 +10,68 @@ import {
 } from "lucide-react";
 import { HomeHero } from "@/components/home/home-hero";
 import { ScrollReveal } from "@/components/home/scroll-reveal";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SITE_NAME } from "@/lib/site-metadata";
+import { HOME_FAQ } from "@/lib/seo/constants";
+import { HOME_JSON_LD } from "@/lib/seo/structured-data";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  createSiteMetadata,
+} from "@/lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  path: "/",
+  title: { absolute: SITE_TITLE },
+  description: SITE_DESCRIPTION,
+});
 
 const features = [
   {
     icon: Users,
     title: "Virtual Study Rooms",
-    description: "Join public or private rooms and study alongside others in real time.",
+    description:
+      "Join public or private online study rooms and focus alongside other students in real time.",
   },
   {
     icon: Timer,
     title: "Shared Pomodoro Timer",
-    description: "Stay in sync with room members using a server-authoritative focus timer.",
+    description:
+      "Stay in sync with your study group using a server-authoritative Pomodoro focus timer.",
   },
   {
     icon: MessageSquare,
     title: "Room Chat",
-    description: "Chat with study partners, share progress, and stay accountable.",
+    description:
+      "Chat with study partners, share progress, and stay accountable during focus sessions.",
   },
   {
     icon: BarChart3,
     title: "Focus Analytics",
-    description: "Track daily streaks, weekly focus hours, and study calendar heatmaps.",
+    description:
+      "Track daily streaks, weekly focus hours, and study calendar heatmaps to build better habits.",
   },
   {
     icon: Sparkles,
     title: "AI Study Coach",
-    description: "AI planners, flashcards, and personalized study schedules.",
+    description:
+      "AI planners, flashcards, and personalized study schedules to help you prepare smarter.",
   },
   {
     icon: BookOpen,
     title: "Achievement Badges",
-    description: "Earn badges for streaks, focus milestones, and community participation.",
+    description:
+      "Earn badges for streaks, focus milestones, and community participation as you study.",
   },
 ];
 
 export default function HomePage() {
   return (
     <>
+      <JsonLd data={[...HOME_JSON_LD]} />
+
       <HomeHero />
 
       <section
@@ -59,19 +81,18 @@ export default function HomePage() {
       >
         <ScrollReveal>
           <h2 id="about-heading" className="text-center text-2xl font-bold sm:text-3xl">
-            About {SITE_NAME}
+            Online study rooms built for focus
           </h2>
           <div className="mt-6 space-y-4 text-center leading-relaxed text-muted-foreground">
             <p>
               {SITE_NAME} gives students a shared online space to study with accountability
-              partners. Create or join study rooms, run synchronized focus sessions, keep
-              personal task notes, and see how your study habits improve over time.
+              partners. Create or join virtual study rooms, run synchronized Pomodoro sessions,
+              keep personal task notes, and see how your study habits improve over time.
             </p>
             <p>
-              Sign in with Google or email to create your {SITE_NAME} account, save your
-              profile and progress, and access private rooms, friends, and focus analytics.
-              We only use your Google account to authenticate you — not to access unrelated
-              data.
+              Sign in with Google or email to create your free account, save your profile and
+              progress, and access private rooms, friends, and focus analytics. We only use your
+              Google account to authenticate you — not to access unrelated data.
             </p>
           </div>
         </ScrollReveal>
@@ -87,10 +108,10 @@ export default function HomePage() {
             id="features-heading"
             className="mb-4 text-center text-2xl font-bold sm:text-3xl"
           >
-            Everything you need to focus
+            Everything you need to study together online
           </h2>
           <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
-            From synchronized timers to personal analytics — built for students who want
+            From synchronized Pomodoro timers to personal analytics — built for students who want
             structure without studying in isolation.
           </p>
         </ScrollReveal>
@@ -112,6 +133,34 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section
+        id="faq"
+        aria-labelledby="faq-heading"
+        className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20"
+      >
+        <ScrollReveal>
+          <h2 id="faq-heading" className="text-center text-2xl font-bold sm:text-3xl">
+            Frequently asked questions
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
+            Quick answers about virtual study rooms, Pomodoro sessions, and how {SITE_NAME} works.
+          </p>
+          <dl className="mt-10 space-y-6">
+            {HOME_FAQ.map((item) => (
+              <div
+                key={item.question}
+                className="rounded-xl border border-border/60 bg-card/40 p-5"
+              >
+                <dt className="text-base font-semibold text-foreground">{item.question}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {item.answer}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </ScrollReveal>
+      </section>
+
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
         <ScrollReveal>
           <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-transparent to-accent/10">
@@ -121,18 +170,25 @@ export default function HomePage() {
                 aria-hidden
               />
               <h2 className="relative text-2xl font-bold sm:text-3xl">
-                Ready to study together?
+                Ready to join a virtual study room?
               </h2>
               <p className="relative mx-auto mt-3 max-w-md text-muted-foreground">
-                Join students who study smarter with real-time accountability and shared
-                focus sessions.
+                Join students who study smarter with real-time accountability, shared focus
+                timers, and live study rooms.
               </p>
-              <Link href="/auth/signup" className="relative mt-8 inline-block">
-                <Button size="lg" className="gap-2">
-                  Create your free account
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+              <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link href="/auth/signup">
+                  <Button size="lg" className="gap-2">
+                    Create your free account
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/rooms">
+                  <Button variant="outline" size="lg">
+                    Browse study rooms
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </ScrollReveal>

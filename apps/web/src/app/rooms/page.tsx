@@ -10,14 +10,10 @@ import { getFavoriteRoomIds } from "@/app/rooms/favorite-actions";
 import { RoomsDirectory } from "@/components/rooms/rooms-directory";
 
 export const metadata = createSiteMetadata({
-  title: "Study Rooms",
+  path: "/rooms",
+  title: "Browse Virtual Study Rooms",
   description:
-    "Browse public and private virtual study rooms. Join live sessions with Pomodoro timers, music, and study partners.",
-  openGraph: {
-    title: "Study Rooms | StudyVerce",
-    description:
-      "Browse public and private virtual study rooms. Join live sessions with Pomodoro timers, music, and study partners.",
-  },
+    "Browse public and private virtual study rooms. Join live online focus sessions with shared Pomodoro timers, study music, and accountability partners.",
 });
 
 export default async function RoomsPage({

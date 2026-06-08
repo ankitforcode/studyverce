@@ -2,7 +2,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/layout/app-providers";
 import { Navbar } from "@/components/layout/navbar";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { JsonLd } from "@/components/seo/json-ld";
 import { PostHogProvider } from "@/lib/analytics";
+import { DEFAULT_JSON_LD } from "@/lib/seo/structured-data";
 import { createSiteMetadata } from "@/lib/site-metadata";
 import "./globals.css";
 
@@ -16,7 +18,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = createSiteMetadata();
+export const metadata = createSiteMetadata({
+  path: "/",
+});
 
 export default function RootLayout({
   children,
@@ -28,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
       >
+        <JsonLd data={[...DEFAULT_JSON_LD]} />
         <PostHogProvider>
           <AppProviders>
             <Navbar />

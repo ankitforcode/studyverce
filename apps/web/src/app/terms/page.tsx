@@ -9,9 +9,10 @@ import {
 import { createSiteMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = createSiteMetadata({
+  path: "/terms",
   title: "Terms of Service",
   description:
-    "Terms governing your use of StudyVerce virtual study rooms, focus tracking, chat, and related features.",
+    "Terms governing your use of StudyVerce virtual study rooms, Pomodoro timers, focus tracking, chat, and related features.",
 });
 
 export default function TermsPage() {
