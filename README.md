@@ -136,14 +136,14 @@ Deploy the updated PNG with the web app so the hosted URL matches.
 
 For hosted Supabase, paste the HTML into **Authentication → Email Templates** (**Confirm signup** / **Reset password**) in the dashboard.
 
-**Redirect URL configuration (required)** — if confirmation sends you to `https://localhost:3000/...`, Supabase **Site URL** is still the project default. Fix it in **Authentication → URL Configuration**:
+**Redirect URL configuration (required)** — see [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls). If confirmation sends you to `https://localhost:3000/...`, Supabase **Site URL** is still the project default. Fix it in **Authentication → URL Configuration**:
 
 | Setting | Local dev | Production |
 |---------|-----------|------------|
-| **Site URL** | `http://localhost:3001` | `https://www.studyverce.com` (your Amplify URL) |
-| **Redirect URLs** | `http://localhost:3001/**` | `https://www.studyverce.com/**` |
+| **Site URL** | `http://localhost:3001` | `https://www.studyverce.com` |
+| **Redirect URLs** | `http://localhost:3001/**` | `https://www.studyverce.com/auth/callback`, `https://www.studyverce.com/**`, `https://studyverce.com/auth/callback`, `https://studyverce.com/**` |
 
-Also set `NEXT_PUBLIC_APP_URL` in `apps/web/.env.local` to the same origin (one line only — duplicate keys make the last value win). The app uses that for `emailRedirectTo` / OAuth callbacks via `authCallbackUrl()`.
+Also set `NEXT_PUBLIC_APP_URL` in Amplify (and `apps/web/.env.local` locally) to the same canonical origin (`https://www.studyverce.com`). The app uses that for `emailRedirectTo` / OAuth callbacks via `authCallbackUrl()`.
 
 After email confirm, `/auth/callback` falls back to `user_metadata.post_auth_redirect` when Supabase drops the `next` query param.
 

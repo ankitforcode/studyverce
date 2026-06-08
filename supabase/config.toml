@@ -31,8 +31,13 @@ enabled = true
 [auth]
 enabled = true
 site_url = "http://localhost:3001"
+# Hosted project (Dashboard / Management API): site_url = https://www.studyverce.com
 additional_redirect_urls = [
   "http://localhost:3001/**",
+  "https://www.studyverce.com/auth/callback",
+  "https://www.studyverce.com/**",
+  "https://studyverce.com/auth/callback",
+  "https://studyverce.com/**",
   "https://patient-pika-evident.ngrok-free.app/**",
 ]
 jwt_expiry = 3600

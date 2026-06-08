@@ -58,14 +58,27 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 
 ## Hosted Supabase URL config
 
-Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard → Authentication → URL Configuration** still has the default Site URL. Set Site URL + Redirect URLs to match `NEXT_PUBLIC_APP_URL` (see root `README.md` auth templates section).
+Per [Supabase redirect URL docs](https://supabase.com/docs/guides/auth/redirect-urls):
+
+| Setting | Local dev | Production (hosted) |
+|---------|-----------|---------------------|
+| **Site URL** | `http://localhost:3001` | `https://www.studyverce.com` |
+| **Redirect URLs** | `http://localhost:3001/**` | `https://www.studyverce.com/auth/callback`, `https://www.studyverce.com/**`, apex variants |
+
+- Set **Site URL** to the canonical origin (`www`); apex redirects to `www` but auth defaults use Site URL when `redirectTo` is missing.
+- Include explicit `/auth/callback` plus `/**` wildcards for query strings (`?next=...`).
+- Match `NEXT_PUBLIC_APP_URL` in Amplify to the same canonical origin.
+- `/auth/callback` uses `NextResponse.redirect` (not `redirect()`) so session cookies survive the exchange; origin resolves via `x-forwarded-host` or `NEXT_PUBLIC_APP_URL`.
+
+Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard → Authentication → URL Configuration** still has the default Site URL.
 
 ## Pitfalls
 
 1. Adding `/auth/*` paths to `safeRedirectPath` blocklist without allowlisting recovery breaks reset flow.
 2. Middleware redirect for logged-in users on `/auth/*` must exempt `/auth/reset-password`.
 3. Duplicating matcher in a shared export breaks production build.
-4. After changing the logo SVG, run `./scripts/sync-email-logo.sh` and deploy `apps/web/public/logo-email.png` so the hosted URL stays in sync with templates.
+4. `/auth/callback` must return `NextResponse.redirect` after `exchangeCodeForSession` — `redirect()` from `next/navigation` can drop auth cookies in route handlers.
+5. After changing the logo SVG, run `./scripts/sync-email-logo.sh` and deploy `apps/web/public/logo-email.png` so the hosted URL stays in sync with templates.
 
 ## After changes — verify
 

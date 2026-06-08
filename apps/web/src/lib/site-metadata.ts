@@ -23,6 +23,26 @@ export function getAppOrigin(): string {
   return DEFAULT_SITE_URL;
 }
 
+/** Origin for post-auth redirects from `/auth/callback` (Amplify / load-balancer aware). */
+export function resolveAuthRedirectOrigin(request: Request): string {
+  const { origin } = new URL(request.url);
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+
+  if (process.env.NODE_ENV === "development") {
+    return origin;
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  if (forwardedHost) {
+    const forwardedProto =
+      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "https";
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  if (configured) return configured;
+  return origin;
+}
+
 export function createSiteMetadata(overrides?: Metadata): Metadata {
   const siteUrl = getSiteUrl();
 

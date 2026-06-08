@@ -84,7 +84,7 @@ Save the role ARN as GitHub secret `AWS_DEPLOY_ROLE_ARN`.
 | `REDIS_URL` | Same Upstash URL as socket server (Amplify env var) |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Optional |
 
-5. Supabase **Authentication → URL configuration**: add your production URL + `/auth/callback` (e.g. `https://www.studyverce.com/auth/callback`).
+5. Supabase **Authentication → URL configuration** ([redirect URL guide](https://supabase.com/docs/guides/auth/redirect-urls)): Site URL `https://www.studyverce.com`; allow `https://www.studyverce.com/auth/callback`, `https://www.studyverce.com/**`, and apex equivalents.
 6. **Hosting → General**: confirm **Platform** is **Web** (Next.js SSR / `WEB_COMPUTE`), not a static site. A static deploy serves from S3 and returns **404** on `/` even when the build succeeds.
 7. Set `NEXT_PUBLIC_APP_URL` to your canonical origin (e.g. `https://www.studyverce.com`).
 

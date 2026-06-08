@@ -15,6 +15,7 @@
 | File | Role |
 |------|------|
 | `lib/auth/paths.ts` | `safeRedirectPath`, `authCallbackUrl`, `loginPath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password` |
+| `lib/site-metadata.ts` | `getAppOrigin`, `resolveAuthRedirectOrigin` (callback / Amplify) |
 | `lib/auth/middleware-routes.ts` | `isProtectedAppPath()` — keep aligned with `middleware.ts` matcher |
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
 | `app/auth/navbar-actions.ts` | `getNavbarAuthState()` — profile + friend count (client-deferred) |

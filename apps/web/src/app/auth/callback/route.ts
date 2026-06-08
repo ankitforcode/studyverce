@@ -1,7 +1,8 @@
-import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { resolvePostAuthDestination, safeRedirectPath } from "@/lib/auth/paths";
-import { createClient } from "@/lib/supabase/server";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
+import { createClient } from "@/lib/supabase/server";
+import { resolveAuthRedirectOrigin } from "@/lib/site-metadata";
 
 const POST_AUTH_REDIRECT_METADATA_KEY = "post_auth_redirect";
 
@@ -16,7 +17,8 @@ export async function GET(request: Request) {
   const limited = await rateLimitOrNull(request);
   if (limited) return limited;
 
-  const { searchParams, origin } = new URL(request.url);
+  const redirectOrigin = resolveAuthRedirectOrigin(request);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const nextFromQuery = safeRedirectPath(searchParams.get("next"));
 
@@ -42,9 +44,9 @@ export async function GET(request: Request) {
       }
 
       const destination = resolvePostAuthDestination(next, onboardingCompleted);
-      redirect(`${origin}${destination}`);
+      return NextResponse.redirect(`${redirectOrigin}${destination}`);
     }
   }
 
-  redirect("/auth/login?error=auth");
+  return NextResponse.redirect(`${redirectOrigin}/auth/login?error=auth`);
 }
