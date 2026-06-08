@@ -120,15 +120,15 @@ The user has `profiles.is_admin = true`, `plan_tier = institution`, and onboardi
 | Confirm signup | `supabase/templates/confirm-signup.html` | `[auth.email.template.confirmation]` | Sign up at `/auth/signup` |
 | Reset password | `supabase/templates/reset-password.html` | `[auth.email.template.recovery]` | Request reset at `/auth/forgot-password` |
 
-Both templates share the inline book logo (generated from `apps/web/public/logo-email.svg`).
+Both templates use the hosted book logo at `https://www.studyverce.com/logo-email.png` (served from `apps/web/public/logo-email.png`).
 
-Regenerate the PNG after editing the SVG:
+Regenerate the PNG after editing `apps/web/public/logo-email.svg`:
 
 ```bash
 ./scripts/sync-email-logo.sh
 ```
 
-Then update the inline `data:image/png;base64,...` in both HTML templates if the icon changed.
+Deploy the updated PNG with the web app so the hosted URL matches.
 
 1. Restart Supabase after editing a template: `supabase stop --no-backup && supabase start`
 2. Trigger the flow above with a test email

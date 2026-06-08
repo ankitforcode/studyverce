@@ -12,7 +12,7 @@ Read `.cursor/skills/studyverce-auth/SKILL.md` before editing these files.
 
 1. **`middleware.ts` `config.matcher`** — static string array only; never import/spread from `middleware-routes.ts`.
 2. **`/auth/reset-password`** — allowlisted in `safeRedirectPath` and exempt from logged-in auth redirect in middleware.
-3. **Email templates** — inline base64 logo; regenerate via `./scripts/sync-email-logo.sh`; wire in `supabase/config.toml`.
+3. **Email templates** — hosted logo URL `https://www.studyverce.com/logo-email.png`; regenerate asset via `./scripts/sync-email-logo.sh`; wire in `supabase/config.toml`.
 4. **Navbar** — no blocking server auth in layout; use `navbar-interactive.tsx`.
 
 ## When changing matcher paths

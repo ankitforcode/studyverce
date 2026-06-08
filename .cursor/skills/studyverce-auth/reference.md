@@ -36,7 +36,8 @@
 | `supabase/templates/confirm-signup.html` | Confirm your email — StudyVerce |
 | `supabase/templates/reset-password.html` | Reset your password — StudyVerce |
 | `supabase/config.toml` | `[auth.email.template.confirmation]`, `[auth.email.template.recovery]` |
-| `apps/web/public/logo-email.svg` | Source for inline email logo |
+| `apps/web/public/logo-email.png` | Email logo asset (hosted at `https://www.studyverce.com/logo-email.png`) |
+| `apps/web/public/logo-email.svg` | SVG source for PNG |
 | `scripts/sync-email-logo.sh` | Regenerate PNG from SVG |
 
 ## Notifications

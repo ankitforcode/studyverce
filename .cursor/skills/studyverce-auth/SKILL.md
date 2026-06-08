@@ -44,7 +44,7 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 | Confirm signup | `supabase/templates/confirm-signup.html` | `[auth.email.template.confirmation]` |
 | Reset password | `supabase/templates/reset-password.html` | `[auth.email.template.recovery]` |
 
-- Logo: inline base64 in HTML (from `apps/web/public/logo-email.svg` via `./scripts/sync-email-logo.sh`).
+- Logo: hosted PNG at `https://www.studyverce.com/logo-email.png` (source asset: `apps/web/public/logo-email.png`, regenerate from SVG via `./scripts/sync-email-logo.sh`).
 - Plain-text fallbacks: matching `.txt` files for dashboard paste.
 - Local preview: Inbucket `:54324`; restart Supabase after template edits.
 
@@ -65,7 +65,7 @@ Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard →
 1. Adding `/auth/*` paths to `safeRedirectPath` blocklist without allowlisting recovery breaks reset flow.
 2. Middleware redirect for logged-in users on `/auth/*` must exempt `/auth/reset-password`.
 3. Duplicating matcher in a shared export breaks production build.
-4. External logo URL in email (`{{ .SiteURL }}/logo-email.png`) fails in Inbucket without web app running — prefer inline base64.
+4. After changing the logo SVG, run `./scripts/sync-email-logo.sh` and deploy `apps/web/public/logo-email.png` so the hosted URL stays in sync with templates.
 
 ## After changes — verify
 
