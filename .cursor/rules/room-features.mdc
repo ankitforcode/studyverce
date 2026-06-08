@@ -12,6 +12,7 @@ alwaysApply: false
 - Root element: `data-room-shell` for light-mode CSS variable overrides.
 - **Main section**: post-it overlay (`RoomPostItStack`, z-20) + pomodoro center (z-10).
 - **Aside**: `RoomTodoPanel` (collapsible) above `RoomChat`.
+- **Share**: `room-share-link.tsx` modal — copy link or email invite (`invite-actions.ts` → `signInWithOtp`).
 - Background image with gradient overlay; header has participants, appearance, wallpaper, fullscreen, visibility (owner), favorite, share, music player.
 
 ## Header icon buttons

@@ -7,15 +7,17 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/input";
-import { loginPath } from "@/lib/auth/paths";
+import { loginPath, onboardingPath, safeRedirectPath } from "@/lib/auth/paths";
+import { POST_AUTH_REDIRECT_METADATA_KEY } from "@/lib/auth/room-invite";
 
-function ResetPasswordForm() {
+function AcceptInviteForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [roomName, setRoomName] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -24,6 +26,15 @@ function ResetPasswordForm() {
         data: { session },
       } = await supabase.auth.getSession();
       setReady(!!session);
+
+      if (session) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const name = user?.user_metadata?.room_name;
+        setRoomName(typeof name === "string" ? name : null);
+      }
+
       setCheckingSession(false);
     })();
   }, []);
@@ -47,20 +58,42 @@ function ResetPasswordForm() {
     const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
 
-    setLoading(false);
-
     if (updateError) {
+      setLoading(false);
       setError(updateError.message);
       return;
     }
 
-    // Full navigation so session cookies and middleware stay in sync (client router can stall here).
-    window.location.assign("/dashboard?password_reset=success");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const redirectFromMetadata = user?.user_metadata?.[POST_AUTH_REDIRECT_METADATA_KEY];
+    const redirect = safeRedirectPath(
+      typeof redirectFromMetadata === "string" ? redirectFromMetadata : null
+    );
+
+    let onboardingCompleted = false;
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .maybeSingle();
+      onboardingCompleted = profile?.onboarding_completed ?? false;
+    }
+
+    const destination =
+      !onboardingCompleted && redirect
+        ? onboardingPath(redirect)
+        : redirect ?? "/onboarding";
+
+    window.location.assign(destination);
   }
 
   if (checkingSession) {
     return (
-      <AuthPageShell title="Set a new password" description="Loading your reset session...">
+      <AuthPageShell title="Accept your invitation" description="Loading your invite session...">
         <p className="text-center text-sm text-muted-foreground">Please wait.</p>
       </AuthPageShell>
     );
@@ -69,14 +102,14 @@ function ResetPasswordForm() {
   if (!ready) {
     return (
       <AuthPageShell
-        title="Reset link expired"
-        description="This password reset link is invalid or has already been used."
+        title="Invitation link expired"
+        description="This invite link is invalid or has already been used."
       >
         <div className="space-y-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Request a new reset link from the sign-in page.
+            Ask the room host to send you a new invite.
           </p>
-          <Link href={loginPath("/dashboard")}>
+          <Link href={loginPath("/rooms")}>
             <Button className="w-full">Back to sign in</Button>
           </Link>
         </div>
@@ -86,12 +119,16 @@ function ResetPasswordForm() {
 
   return (
     <AuthPageShell
-      title="Set a new password"
-      description="Choose a strong password for your StudyVerce account."
+      title="Create your password"
+      description={
+        roomName
+          ? `Finish setting up your account to join ${roomName} on StudyVerce.`
+          : "Finish setting up your StudyVerce account to accept your invitation."
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="password">New password</Label>
+          <Label htmlFor="password">Password</Label>
           <PasswordInput
             id="password"
             autoComplete="new-password"
@@ -123,17 +160,17 @@ function ResetPasswordForm() {
         )}
 
         <Button type="submit" className="w-full shadow-md shadow-primary/20" disabled={loading}>
-          {loading ? "Updating password..." : "Update password"}
+          {loading ? "Creating account..." : "Continue to room"}
         </Button>
       </form>
     </AuthPageShell>
   );
 }
 
-export default function ResetPasswordPage() {
+export default function AcceptInvitePage() {
   return (
     <Suspense>
-      <ResetPasswordForm />
+      <AcceptInviteForm />
     </Suspense>
   );
 }

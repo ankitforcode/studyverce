@@ -4,18 +4,25 @@
 
 | Route | File | Notes |
 |-------|------|-------|
-| `/auth/login` | `app/auth/login/page.tsx` | `resolvePostAuthDestination` after password sign-in |
+| `/auth/login` | `app/auth/login/page.tsx` | Password or magic link (`signInWithOtp`); `resolvePostAuthDestination` after password sign-in |
+| `/auth/reauthenticate` | `app/auth/reauthenticate/page.tsx` | `reauthenticate()` email; exempt from logged-in `/auth/*` redirect |
+| `/settings/account` | `app/settings/account/page.tsx` + `components/settings/account-settings-form.tsx` | Email change, password, inline reauth |
+| `/settings/profile` | `app/settings/profile/page.tsx` | Profile fields; shell in `app/settings/layout.tsx` |
 | `/onboarding` | `app/onboarding/page.tsx` | Server redirect when `onboarding_completed`; form in `components/onboarding/onboarding-form.tsx` |
 | `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
 | `/auth/reset-password` | `app/auth/reset-password/page.tsx` | Session required; toast on success |
+| `/auth/accept-invite` | `app/auth/accept-invite/page.tsx` | New room invitees set password, then `post_auth_redirect` |
 | `/auth/callback` | `app/auth/callback/route.ts` | OAuth + email verify; `next` query or `user_metadata.post_auth_redirect`; rate limited |
 
 ## Auth helpers
 
 | File | Role |
 |------|------|
-| `lib/auth/paths.ts` | `safeRedirectPath`, `authCallbackUrl`, `loginPath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password` |
+| `lib/auth/paths.ts` | `safeRedirectPath`, `authCallbackUrl`, `accountSettingsPath`, `reauthenticatePath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password`, `/auth/accept-invite` |
+| `lib/auth/room-invite.ts` | `buildRoomInviteRedirectPath` for room email invites |
+| `lib/supabase/anon.ts` | Server anon client for OTP/magic-link sends |
+| `app/rooms/invite-actions.ts` | `sendRoomEmailInvite` — `inviteUserByEmail` (new) or `signInWithOtp` (existing) |
 | `lib/site-metadata.ts` | `getAppOrigin`, `resolveAuthRedirectOrigin` (callback / Amplify) |
 | `lib/auth/middleware-routes.ts` | `isProtectedAppPath()` — keep aligned with `middleware.ts` matcher |
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
@@ -37,7 +44,11 @@
 |------|---------|
 | `supabase/templates/confirm-signup.html` | Confirm your email — StudyVerce |
 | `supabase/templates/reset-password.html` | Reset your password — StudyVerce |
-| `supabase/config.toml` | `[auth.email.template.confirmation]`, `[auth.email.template.recovery]` |
+| `supabase/templates/magic-link.html` | Sign in to StudyVerce |
+| `supabase/templates/invite.html` | You're invited — StudyVerce |
+| `supabase/templates/email-change.html` | Confirm your new email — StudyVerce |
+| `supabase/templates/reauthentication.html` | Confirm it's you — StudyVerce |
+| `supabase/config.toml` | `[auth.email.template.*]` keys for all six templates above |
 | `apps/web/public/logo-email.png` | Email logo asset (hosted at `https://www.studyverce.com/logo-email.png`) |
 | `apps/web/public/logo-email.svg` | SVG source for PNG |
 | `scripts/sync-email-logo.sh` | Regenerate PNG from SVG |
@@ -47,4 +58,4 @@
 | Message | File |
 |---------|------|
 | `passwordResetSuccess()` | `lib/notifications/messages.ts` |
-| `queuePendingToast` / `consumePendingToast` | `lib/notifications/pending-toast.ts` — survives full-page redirect after reset |
+| `QueryToastHandler` | `components/notifications/query-toast-handler.tsx` — `?password_reset=success`, `?reauth=success`, `?email_change=pending` |

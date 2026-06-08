@@ -57,6 +57,22 @@ content_path = "./supabase/templates/confirm-signup.html"
 subject = "Reset your password — StudyVerce"
 content_path = "./supabase/templates/reset-password.html"
 
+[auth.email.template.magic_link]
+subject = "Sign in to StudyVerce"
+content_path = "./supabase/templates/magic-link.html"
+
+[auth.email.template.invite]
+subject = "You're invited — StudyVerce"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email — StudyVerce"
+content_path = "./supabase/templates/email-change.html"
+
+[auth.email.template.reauthentication]
+subject = "Confirm it's you — StudyVerce"
+content_path = "./supabase/templates/reauthentication.html"
+
 [auth.external.google]
 enabled = true
 client_id = "env(GOOGLE_CLIENT_ID)"

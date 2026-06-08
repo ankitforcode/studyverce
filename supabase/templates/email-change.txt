@@ -1,0 +1,11 @@
+Confirm your new email — StudyVerce
+
+You requested to change the email on your StudyVerce account. Confirm this address to complete the update.
+
+Confirm new email:
+{{ .ConfirmationURL }}
+
+If you didn't request this change, contact support if you did not authorize it.
+
+— StudyVerce
+{{ .SiteURL }}

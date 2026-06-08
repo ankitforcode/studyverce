@@ -1,0 +1,15 @@
+You're invited to a study room — StudyVerce
+
+{{ if .Data.room_name }}
+Someone invited you to join {{ .Data.room_name }} on StudyVerce. Create your account to accept and enter the room.
+{{ else }}
+You've been invited to join a study room on StudyVerce. Create your account to accept the invitation.
+{{ end }}
+
+Join study room:
+{{ .ConfirmationURL }}
+
+If you didn't expect this invitation, you can safely ignore this email.
+
+— StudyVerce
+{{ .SiteURL }}

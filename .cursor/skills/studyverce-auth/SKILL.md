@@ -43,6 +43,10 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 |----------|------|------------|
 | Confirm signup | `supabase/templates/confirm-signup.html` | `[auth.email.template.confirmation]` |
 | Reset password | `supabase/templates/reset-password.html` | `[auth.email.template.recovery]` |
+| Magic link | `supabase/templates/magic-link.html` | `[auth.email.template.magic_link]` |
+| Invite user | `supabase/templates/invite.html` | `[auth.email.template.invite]` |
+| Change email | `supabase/templates/email-change.html` | `[auth.email.template.email_change]` |
+| Reauthentication | `supabase/templates/reauthentication.html` | `[auth.email.template.reauthentication]` |
 
 - Logo: hosted PNG at `https://www.studyverce.com/logo-email.png` (source asset: `apps/web/public/logo-email.png`, regenerate from SVG via `./scripts/sync-email-logo.sh`).
 - Plain-text fallbacks: matching `.txt` files for dashboard paste.
@@ -55,7 +59,10 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 - Signup stores `data: { post_auth_redirect: redirect }` — callback reads this when Supabase drops the `next` query param.
 - **Login + onboarding**: email login (`auth/login`) and `/auth/callback` both call `resolvePostAuthDestination()` after reading `profiles.onboarding_completed`. `/onboarding` is a server page that redirects completed profiles to `redirect` or `/dashboard`.
 - **Seed admin** (`supabase/seed.sql`): `on_auth_user_created` inserts a default profile; seed **UPDATE**s that row so `admin@studyverce.local` has `onboarding_completed = true` (do not rely on `INSERT … ON CONFLICT` alone).
-- Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; on success queue toast via `queuePendingToast()` + `window.location.assign("/dashboard")` (same cookie-sync pattern as email login — avoid `router.push` here).
+- Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; on success `window.location.assign("/dashboard?password_reset=success")` — `QueryToastHandler` shows the success toast (avoid `router.push`; sessionStorage pending toasts break under React Strict Mode).
+- **Magic link login**: `/auth/login` tab → `signInWithOtp` with `shouldCreateUser: false` + `authCallbackUrl(redirect)`.
+- **Room email invite**: new users → `inviteUserByEmail` (invite template) → `/auth/accept-invite` (set password) → room join path; existing users → `signInWithOtp` (`shouldCreateUser: false`, magic-link template with `room_name`) → `/rooms/.../invite` approval screen. Requires valid `SUPABASE_SERVICE_ROLE_KEY` for new-user invites (from `supabase status`).
+- **Account settings** (`/settings/account`): `updateUser({ email })`, password change, `reauthenticate()` — middleware exempts `/auth/reauthenticate` while signed in.
 - Password fields: use `components/auth/password-input.tsx` (animated eye toggle).
 
 ## Hosted Supabase URL config
@@ -77,7 +84,7 @@ Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard →
 ## Pitfalls
 
 1. Adding `/auth/*` paths to `safeRedirectPath` blocklist without allowlisting recovery breaks reset flow.
-2. Middleware redirect for logged-in users on `/auth/*` must exempt `/auth/reset-password`.
+2. Middleware redirect for logged-in users on `/auth/*` must exempt `/auth/reset-password`, `/auth/accept-invite`, and `/auth/reauthenticate`.
 3. Duplicating matcher in a shared export breaks production build.
 4. `/auth/callback` must return `NextResponse.redirect` after `exchangeCodeForSession` — `redirect()` from `next/navigation` can drop auth cookies in route handlers.
 5. After changing the logo SVG, run `./scripts/sync-email-logo.sh` and deploy `apps/web/public/logo-email.png` so the hosted URL stays in sync with templates.

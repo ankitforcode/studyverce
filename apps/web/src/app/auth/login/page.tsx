@@ -19,21 +19,26 @@ import {
   safeRedirectPath,
   signupPath,
 } from "@/lib/auth/paths";
+import { formatMagicLinkLoginError } from "@/lib/auth/errors";
+
+type LoginMode = "password" | "magic_link";
 
 function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/dashboard";
   const authError = searchParams.get("error");
+  const [mode, setMode] = useState<LoginMode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
     authError === "auth" ? "Sign in failed. Please try again." : null
   );
   const [loading, setLoading] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const isRoomRedirect = redirect.startsWith("/rooms/") && redirect !== "/rooms/new";
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -73,12 +78,37 @@ function LoginForm() {
 
       trackEvent("login_completed", { method: "email" });
       const destination = resolvePostAuthDestination(redirect, onboardingCompleted);
-      // Full navigation so session cookies and middleware stay in sync (client router.replace can stall here).
       window.location.assign(destination);
     } catch {
       setError("Sign in failed. Please try again.");
       setLoading(false);
     }
+  }
+
+  async function handleMagicLinkLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: authCallbackUrl(redirect),
+        shouldCreateUser: false,
+        data: { post_auth_redirect: redirect },
+      },
+    });
+
+    setLoading(false);
+
+    if (otpError) {
+      setError(formatMagicLinkLoginError(otpError.message));
+      return;
+    }
+
+    trackEvent("login_magic_link_sent", { redirect });
+    setMagicLinkSent(true);
   }
 
   async function handleGoogleLogin() {
@@ -91,6 +121,50 @@ function LoginForm() {
     });
   }
 
+  if (magicLinkSent) {
+    return (
+      <AuthPageShell
+        title="Check your email"
+        description="We sent you a secure sign-in link."
+      >
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+            <Mail className="h-5 w-5 text-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Open the link sent to{" "}
+            <span className="font-medium text-foreground">{email}</span> to sign in.
+          </p>
+          {process.env.NODE_ENV === "development" && (
+            <p className="text-xs text-muted-foreground">
+              Local dev: preview in{" "}
+              <a
+                href="http://localhost:54324"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                Inbucket
+              </a>
+              .
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setMagicLinkSent(false);
+              setMode("password");
+            }}
+          >
+            Back to sign in
+          </Button>
+        </div>
+      </AuthPageShell>
+    );
+  }
+
   return (
     <AuthPageShell
       title="Welcome back"
@@ -100,7 +174,41 @@ function LoginForm() {
           : "Sign in to continue studying together"
       }
     >
-      <form onSubmit={handleLogin} className="space-y-4">
+      <div className="mb-4 flex rounded-lg border border-border/60 bg-muted/30 p-1">
+        <button
+          type="button"
+          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            mode === "password"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => {
+            setMode("password");
+            setError(null);
+          }}
+        >
+          Password
+        </button>
+        <button
+          type="button"
+          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            mode === "magic_link"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => {
+            setMode("magic_link");
+            setError(null);
+          }}
+        >
+          Magic link
+        </button>
+      </div>
+
+      <form
+        onSubmit={mode === "password" ? handlePasswordLogin : handleMagicLinkLogin}
+        className="space-y-4"
+      >
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">
@@ -118,25 +226,33 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="password">Password</Label>
-            <Link
-              href={forgotPasswordPath(redirect)}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
+        {mode === "password" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href={forgotPasswordPath(redirect)}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <PasswordInput
+              id="password"
+              autoComplete="current-password"
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
-          <PasswordInput
-            id="password"
-            autoComplete="current-password"
-            placeholder="Your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        )}
+
+        {mode === "magic_link" && (
+          <p className="text-sm text-muted-foreground">
+            We&apos;ll email you a one-time link — no password needed.
+          </p>
+        )}
 
         {error && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -145,7 +261,13 @@ function LoginForm() {
         )}
 
         <Button type="submit" className="w-full shadow-md shadow-primary/20" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+          {loading
+            ? mode === "password"
+              ? "Signing in..."
+              : "Sending link..."
+            : mode === "password"
+              ? "Sign in"
+              : "Email me a sign-in link"}
         </Button>
       </form>
 

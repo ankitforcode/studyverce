@@ -1,0 +1,17 @@
+{{ if .Data.room_invite }}You're invited to a study room — StudyVerce{{ else }}Sign in to StudyVerce{{ end }}
+
+{{ if .Data.room_name }}
+Someone invited you to join {{ .Data.room_name }} on StudyVerce. Sign in to request access and enter the room.
+{{ else if .Data.room_invite }}
+You've been invited to join a study room on StudyVerce. Sign in to continue to the room join screen.
+{{ else }}
+Tap the link below to sign in to your account. It expires after a short time.
+{{ end }}
+
+{{ if .Data.room_invite }}Continue to room{{ else }}Sign in{{ end }}:
+{{ .ConfirmationURL }}
+
+If you didn't request this, you can safely ignore this email.
+
+— StudyVerce
+{{ .SiteURL }}

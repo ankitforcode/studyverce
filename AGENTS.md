@@ -27,7 +27,8 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Favorites / share | `apps/web/src/app/rooms/favorite-actions.ts`, `room/room-favorite-button.tsx`, `room/room-share-link.tsx` |
 | Room listing | `apps/web/src/components/rooms/rooms-directory.tsx`, `lib/rooms/listing.ts`, `lib/cache/listing.ts` |
 | Redis caching | `packages/redis/`, `packages/rate-limit/`, `apps/socket-server/src/redis-cache.ts`, `apps/web/src/lib/redis.ts` |
-| Auth & session | `apps/web/src/app/auth/`, `lib/auth/`, `middleware.ts`, `components/layout/navbar*.tsx`, `supabase/templates/` |
+| Auth & session | `apps/web/src/app/auth/`, `app/settings/account/`, `lib/auth/`, `middleware.ts`, `components/layout/navbar*.tsx`, `supabase/templates/` |
+| Room email invite | `apps/web/src/app/rooms/invite-actions.ts`, `components/room/room-share-link.tsx` |
 | Rate limits | `packages/rate-limit/src/limiter.ts`, `shouldRateLimitRequest()` in `config.ts` |
 | Room UI tokens | `apps/web/src/lib/room-ui.ts` |
 | Todo sidebar | `apps/web/src/components/room/room-todo-panel.tsx` |

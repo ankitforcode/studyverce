@@ -52,6 +52,14 @@ cp apps/web/.env.example apps/web/.env.local
 cp apps/socket-server/.env.example apps/socket-server/.env
 ```
 
+**Local Supabase:** after `supabase start`, sync keys into the web app (avoids `invalid JWT` on room email invites):
+
+```bash
+./scripts/sync-supabase-env.sh
+```
+
+Then restart `pnpm dev`. Re-run the script whenever you reset local Supabase (`supabase stop --no-backup && supabase start`).
+
 **apps/web/.env.local**
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -119,8 +127,12 @@ The user has `profiles.is_admin = true`, `plan_tier = institution`, and onboardi
 |----------|------|---------------------|--------------|
 | Confirm signup | `supabase/templates/confirm-signup.html` | `[auth.email.template.confirmation]` | Sign up at `/auth/signup` |
 | Reset password | `supabase/templates/reset-password.html` | `[auth.email.template.recovery]` | Request reset at `/auth/forgot-password` |
+| Magic link | `supabase/templates/magic-link.html` | `[auth.email.template.magic_link]` | Passwordless sign-in (if enabled) |
+| Invite user | `supabase/templates/invite.html` | `[auth.email.template.invite]` | Supabase admin invite |
+| Change email | `supabase/templates/email-change.html` | `[auth.email.template.email_change]` | Profile email change |
+| Reauthentication | `supabase/templates/reauthentication.html` | `[auth.email.template.reauthentication]` | Sensitive account actions |
 
-Both templates use the hosted book logo at `https://www.studyverce.com/logo-email.png` (served from `apps/web/public/logo-email.png`).
+All templates use the hosted book logo at `https://www.studyverce.com/logo-email.png` (served from `apps/web/public/logo-email.png`). Matching plain-text fallbacks live alongside each `.html` file.
 
 Regenerate the PNG after editing `apps/web/public/logo-email.svg`:
 
@@ -134,7 +146,7 @@ Deploy the updated PNG with the web app so the hosted URL matches.
 2. Trigger the flow above with a test email
 3. Open **Inbucket** at [http://localhost:54324](http://localhost:54324) to preview the message
 
-For hosted Supabase, paste the HTML into **Authentication → Email Templates** (**Confirm signup** / **Reset password**) in the dashboard.
+For hosted Supabase, paste each HTML file into **Authentication → Email Templates** (Confirm signup, Reset password, Magic link, Invite, Change email, Reauthentication).
 
 **Redirect URL configuration (required)** — see [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls). If confirmation sends you to `https://localhost:3000/...`, Supabase **Site URL** is still the project default. Fix it in **Authentication → URL Configuration**:
 

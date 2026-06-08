@@ -1,7 +1,10 @@
 import { getAppOrigin } from "@/lib/site-metadata";
 
 /** Auth routes that are valid post-login redirect targets (e.g. password recovery). */
-const ALLOWED_AUTH_REDIRECT_PATHS = new Set(["/auth/reset-password"]);
+const ALLOWED_AUTH_REDIRECT_PATHS = new Set([
+  "/auth/reset-password",
+  "/auth/accept-invite",
+]);
 
 export function authCallbackUrl(redirectTo: string): string {
   const safe = safeRedirectPath(redirectTo) ?? "/onboarding";
@@ -19,6 +22,16 @@ export function signupPath(redirectTo: string): string {
 export function forgotPasswordPath(redirectTo?: string): string {
   if (!redirectTo) return "/auth/forgot-password";
   return `/auth/forgot-password?redirect=${encodeURIComponent(redirectTo)}`;
+}
+
+export function accountSettingsPath(notice?: string): string {
+  if (!notice) return "/settings/account";
+  return `/settings/account?${notice}`;
+}
+
+export function reauthenticatePath(redirectTo?: string): string {
+  const safe = safeRedirectPath(redirectTo) ?? "/settings/account";
+  return `/auth/reauthenticate?redirect=${encodeURIComponent(safe)}`;
 }
 
 /** Internal app paths only — blocks open redirects and auth loops. */
@@ -54,7 +67,7 @@ export function resolvePostAuthDestination(
 ): string {
   const safe = safeRedirectPath(redirectTo);
 
-  if (safe === "/auth/reset-password") {
+  if (safe === "/auth/reset-password" || safe === "/auth/accept-invite") {
     return safe;
   }
 

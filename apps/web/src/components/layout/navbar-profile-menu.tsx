@@ -143,7 +143,7 @@ export function NavbarProfileMenu({
               </Link>
             )}
             <Link
-              href="/settings/profile"
+              href="/settings/account"
               className={menuLinkClass}
               role="menuitem"
             >

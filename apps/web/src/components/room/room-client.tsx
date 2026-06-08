@@ -332,6 +332,7 @@ export function RoomClient({
             {canShareRoom && (
               <RoomShareLink
                 roomId={roomId}
+                roomName={roomName}
                 slug={roomSlug}
                 isPublic={roomIsPublic}
                 inviteToken={roomInviteToken}

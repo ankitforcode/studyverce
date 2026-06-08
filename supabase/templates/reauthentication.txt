@@ -1,0 +1,11 @@
+Confirm it's you — StudyVerce
+
+For your security, confirm your identity to continue with this sensitive change on your StudyVerce account.
+
+Continue:
+{{ .ConfirmationURL }}
+
+If you didn't start this action, you can safely ignore this email.
+
+— StudyVerce
+{{ .SiteURL }}

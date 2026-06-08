@@ -17,7 +17,7 @@
 | `room-client.tsx` | Main layout orchestrator; `data-room-shell`, passes owner/socket to header |
 | `participant-list.tsx` | Compact participant dropdown: search, friend/kick, portaled panel |
 | `room-favorite-button.tsx` | Header + listing card favorite toggle |
-| `room-share-link.tsx` | Copy share URL (`Share2` icon) |
+| `room-share-link.tsx` | Share modal: copy link + email invite (`invite-actions.ts`) |
 | `room-visibility-toggle.tsx` | Owner public/private toggle |
 | `room-fullscreen-toggle.tsx` | Fullscreen room shell |
 | `room-appearance-toggle.tsx` | Room light/dark appearance |
@@ -43,6 +43,7 @@
 | `app/rooms/favorite-actions.ts` | `toggleRoomFavorite`, `getFavoriteRooms` |
 | `app/rooms/member-actions.ts` | `kickRoomMember` |
 | `app/rooms/access-actions.ts` | `setRoomVisibility`, `getRoomShareLink`, access requests |
+| `app/rooms/invite-actions.ts` | `sendRoomEmailInvite` (`signInWithOtp`, magic-link email) |
 | `app/friends/actions.ts` | `sendFriendRequest`, `acceptFriendRequest`, `getFriendshipStatuses`, `getPendingFriendRequestsInRoom` |
 | `app/rooms/music-actions.ts` | Track requests, playback |
 | `lib/rooms/listing.ts` | Room listing loaders per tab (Redis-cached when `REDIS_URL` set) |

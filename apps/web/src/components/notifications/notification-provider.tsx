@@ -16,7 +16,6 @@ import {
   loadNotifications,
   saveNotifications,
 } from "@/lib/notifications/storage";
-import { consumePendingToast } from "@/lib/notifications/pending-toast";
 import type {
   ActiveToast,
   AppNotification,
@@ -121,14 +120,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     toastTimers.current.set(id, timer);
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    const pending = consumePendingToast();
-    if (pending) {
-      pushToast(pending);
-    }
-  }, [ready, pushToast]);
 
   const toast = useCallback(
     (input: ToastInput) => {

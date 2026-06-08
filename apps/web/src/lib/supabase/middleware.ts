@@ -41,8 +41,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && request.nextUrl.pathname.startsWith("/auth/")) {
-    // Allow recovery flow to finish on the reset-password form.
-    if (request.nextUrl.pathname === "/auth/reset-password") {
+    // Allow recovery / reauthentication flows while signed in.
+    if (
+      request.nextUrl.pathname === "/auth/reset-password" ||
+      request.nextUrl.pathname === "/auth/accept-invite" ||
+      request.nextUrl.pathname === "/auth/reauthenticate"
+    ) {
       return supabaseResponse;
     }
 

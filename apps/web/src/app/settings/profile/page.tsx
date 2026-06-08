@@ -12,7 +12,7 @@ export default async function SettingsProfilePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/auth/login?redirect=/settings/profile");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -23,7 +23,6 @@ export default async function SettingsProfilePage() {
   if (!profile) redirect("/onboarding");
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8 sm:px-6">
       <Card>
         <CardHeader>
           <CardTitle>Edit Profile</CardTitle>
@@ -77,6 +76,5 @@ export default async function SettingsProfilePage() {
           </form>
         </CardContent>
       </Card>
-    </div>
   );
 }

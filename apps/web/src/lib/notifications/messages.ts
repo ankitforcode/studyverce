@@ -148,6 +148,40 @@ export const notificationMessages = {
     message: "Your password was reset successfully.",
     persist: false,
   }),
+  magicLinkSent: (email: string): ToastInput => ({
+    action: "generic",
+    kind: "success",
+    title: "Check your email",
+    message: `We sent a sign-in link to ${email}.`,
+    persist: false,
+  }),
+  roomInviteEmailSent: (
+    email: string,
+    roomName: string,
+    audience: "new" | "existing" = "new"
+  ): ToastInput => ({
+    action: "generic",
+    kind: "success",
+    title: "Invite sent",
+    message:
+      audience === "existing"
+        ? `We emailed ${email} a sign-in link to join ${roomName}.`
+        : `We emailed ${email} a room invite to join ${roomName}.`,
+  }),
+  emailChangePending: (): ToastInput => ({
+    action: "generic",
+    kind: "success",
+    title: "Confirm your new email",
+    message: "Check your inbox to confirm the change. Both addresses may need to verify.",
+    persist: false,
+  }),
+  reauthenticationSuccess: (): ToastInput => ({
+    action: "generic",
+    kind: "success",
+    title: "Identity confirmed",
+    message: "You can continue with sensitive account changes.",
+    persist: false,
+  }),
   actionError: (message: string): ToastInput => ({
     action: "generic",
     kind: "error",
