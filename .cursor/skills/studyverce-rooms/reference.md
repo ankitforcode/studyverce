@@ -45,7 +45,11 @@
 | `app/rooms/access-actions.ts` | `setRoomVisibility`, `getRoomShareLink`, access requests |
 | `app/rooms/invite-actions.ts` | `sendRoomEmailInvite` (`signInWithOtp`, magic-link email) |
 | `app/friends/actions.ts` | `sendFriendRequest`, `acceptFriendRequest`, `getFriendshipStatuses`, `getPendingFriendRequestsInRoom` |
-| `app/rooms/music-actions.ts` | Track requests, playback |
+| `app/rooms/music-actions.ts` | Track requests, playback, `getMyMusicLibraryLimits`, paste-link add |
+| `app/rooms/music-streaming-actions.ts` | Spotify/YouTube/Apple browse + import (Premium+) |
+| `app/rooms/voice-note-actions.ts` | Premium voice notes — upload, share, transcribe |
+| `lib/plan-limits.ts` | Participant cap, room video, voice notes plan checks |
+| `lib/music/plan-limits.ts` | Music link count + streaming integration checks |
 | `lib/rooms/listing.ts` | Room listing loaders per tab (Redis-cached when `REDIS_URL` set) |
 | `lib/cache/listing.ts` | Listing tab cache (120s TTL) |
 | `getCachedActiveCountsBatch` | `/presence` MGET batch (socket `redis-cache.ts`) |

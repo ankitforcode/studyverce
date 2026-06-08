@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Menu,
   Shield,
+  Sparkles,
   Trophy,
   Users,
   X,
@@ -111,6 +112,10 @@ export function NavbarInteractive() {
       <NavLink href="/leaderboard" match="exact" className={navLinkClass}>
         <Trophy className="h-4 w-4 shrink-0" />
         Leaderboard
+      </NavLink>
+      <NavLink href="/plans" match="exact" className={navLinkClass}>
+        <Sparkles className="h-4 w-4 shrink-0" />
+        Plans
       </NavLink>
       {profile?.isAdmin && (
         <NavLink href="/admin" match="prefix" className={navLinkClass}>
@@ -228,6 +233,15 @@ export function NavbarInteractive() {
             >
               <Trophy className="h-4 w-4 shrink-0" />
               Leaderboard
+            </NavLink>
+            <NavLink
+              href="/plans"
+              match="exact"
+              className={mobileNavLinkClass}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Sparkles className="h-4 w-4 shrink-0" />
+              Plans
             </NavLink>
             {profile?.isAdmin && (
               <NavLink

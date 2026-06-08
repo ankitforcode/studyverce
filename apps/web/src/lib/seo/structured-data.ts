@@ -56,14 +56,18 @@ export function softwareApplicationJsonLd(): JsonLd {
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "EUR",
+      description: "Free plan with optional Premium subscription at €4.99/month",
     },
     featureList: [
       "Virtual study rooms",
       "Shared Pomodoro timer",
       "Room chat",
+      "Personal post-it tasks",
       "Study music",
-      "Focus analytics",
+      "AI study coach",
+      "Focus dashboard and leaderboard",
+      "Premium voice notes and team features",
     ],
   });
 }

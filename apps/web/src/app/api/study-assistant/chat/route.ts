@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import type { PlanTier } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
+import "@/lib/redis";
 import {
   buildStudyAssistantLlmMessages,
   STUDY_ASSISTANT_MAX_CONTENT_LEN,
 } from "@/lib/study-assistant-compliance";
+import { getStudyAssistantPlanLimits } from "@/lib/study-assistant-limits";
+import { consumeStudyAssistantPrompt } from "@/lib/study-assistant-quota";
 import { stubStudyAssistantReply } from "@/lib/study-assistant";
 import {
   chunkTextForStream,
@@ -84,7 +88,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Message is too long" }, { status: 400 });
   }
 
-  const goalText = body.goalText
+  const roomId = body.roomId?.trim();
+  if (!roomId) {
+    return NextResponse.json({ error: "roomId is required" }, { status: 400 });
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan_tier")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const planTier = (profile?.plan_tier ?? "free") as PlanTier;
+  const planLimits = getStudyAssistantPlanLimits(planTier);
+  const memoryEnabled = planLimits.memoryEnabled;
+
+  if (planLimits.dailyPromptLimit !== null) {
+    const quota = await consumeStudyAssistantPrompt({
+      userId: user.id,
+      roomId,
+      dailyPromptLimit: planLimits.dailyPromptLimit,
+    });
+
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: `Free plan limit reached: ${planLimits.dailyPromptLimit} study assistant prompts per room per day. Upgrade to Premium for unlimited messages and memory.`,
+          code: "study_assistant_daily_limit",
+          dailyPromptLimit: quota.status.dailyPromptLimit,
+          dailyPromptsUsed: quota.status.dailyPromptsUsed,
+          dailyPromptsRemaining: quota.status.dailyPromptsRemaining,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
+  const goalText = memoryEnabled && body.goalText
     ? stripPostItHtml(body.goalText).trim()
     : undefined;
 
@@ -95,7 +135,7 @@ export async function POST(request: Request) {
   if (!apiKey) {
     const content = stubStudyAssistantReply(lastUser.content, {
       goalText,
-      roomName: body.roomName,
+      roomName: memoryEnabled ? body.roomName : undefined,
     });
 
     return streamResponse(async (push) => {
@@ -118,6 +158,7 @@ export async function POST(request: Request) {
     history,
     roomName: body.roomName,
     goalText,
+    memoryEnabled,
   });
 
   return streamResponse(async (push) => {

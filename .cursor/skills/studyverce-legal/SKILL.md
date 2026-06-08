@@ -58,7 +58,7 @@ Paths are defined once in `lib/legal/urls.ts`. If paths change, update Google OA
 - Google Analytics + Consent Mode v2: `components/seo/google-analytics.tsx`, `components/consent/*`, `lib/consent/*`
 - Keywords + homepage FAQ: `lib/seo/constants.ts`
 - Disallow list: `lib/seo/robots-disallow.ts` — keep aligned with `isProtectedAppPath()` plus `/auth/` and `/onboarding`
-- Public indexable pages: `/`, `/rooms`, `/leaderboard`, `/privacy`, `/terms`
+- Public indexable pages: `/`, `/rooms`, `/plans`, `/leaderboard`, `/privacy`, `/terms`
 - Private routes: set `robots: NOINDEX_ROBOTS` in layout/page metadata (auth, dashboard, settings, admin, friends, notifications, profiles, onboarding)
 
 Do **not** add authenticated room URLs (`/rooms/:slug`) to the sitemap.

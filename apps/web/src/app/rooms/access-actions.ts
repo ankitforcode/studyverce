@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import type { RoomAccessRequest, RoomSharePreview } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
 import { buildRoomShareUrl } from "@/lib/room-share";
+import {
+  getEffectiveMaxParticipants,
+  fetchRoomOwnerPlanTier,
+  roomParticipantLimitError,
+} from "@/lib/plan-limits";
 
 type SharePreviewRow = {
   id: string;
@@ -273,8 +278,11 @@ export async function requestRoomAccess(
     .select("room_id", { count: "exact", head: true })
     .eq("room_id", roomId);
 
-  if ((count ?? 0) >= preview.maxParticipants) {
-    return { error: "This room is full." };
+  const ownerPlan = await fetchRoomOwnerPlanTier(supabase, preview.ownerId);
+  const effectiveMax = getEffectiveMaxParticipants(ownerPlan, preview.maxParticipants);
+
+  if ((count ?? 0) >= effectiveMax) {
+    return { error: roomParticipantLimitError(ownerPlan) };
   }
 
   const { data: existing } = await supabase

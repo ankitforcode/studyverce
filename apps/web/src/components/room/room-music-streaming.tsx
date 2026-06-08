@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   ChevronLeft,
   Loader2,
@@ -28,6 +29,7 @@ import {
   searchStreamingYouTubeVideos,
   addStreamingItemToLibrary,
 } from "@/app/rooms/music-streaming-actions";
+import type { MusicLibraryLimits } from "@/lib/music/plan-limits";
 
 const PROVIDER_META: Record<
   StreamingMusicProvider,
@@ -100,6 +102,7 @@ interface RoomMusicStreamingProps {
   returnPath: string;
   isOwner: boolean;
   pending: boolean;
+  limits: MusicLibraryLimits | null;
   onAdded: (track: RoomTrack) => void;
   onPlay: (track: RoomTrack) => void;
   onRequest: (track: RoomTrack) => void;
@@ -109,6 +112,7 @@ export function RoomMusicStreaming({
   returnPath,
   isOwner,
   pending,
+  limits,
   onAdded,
   onPlay,
   onRequest,
@@ -153,12 +157,29 @@ export function RoomMusicStreaming({
     connections.map((c) => [c.provider, c])
   ) as Record<StreamingMusicProvider, StreamingMusicConnection>;
 
+  const streamingAllowed = limits?.streamingIntegrationEnabled ?? false;
+  const linkLimitReached =
+    limits !== null && limits.linkLimit !== null && limits.linksRemaining === 0;
+
   function handleOAuthConnect(provider: StreamingMusicProvider) {
+    if (!streamingAllowed) {
+      setError(
+        "Spotify, YouTube Music, and Apple Music integration requires Premium or Institution."
+      );
+      return;
+    }
     const params = new URLSearchParams({ returnTo: returnPath });
     window.location.href = `/api/music/${provider}/authorize?${params}`;
   }
 
   async function handleAppleConnect() {
+    if (!streamingAllowed) {
+      setError(
+        "Spotify, YouTube Music, and Apple Music integration requires Premium or Institution."
+      );
+      return;
+    }
+
     setError(null);
     setAppleConnecting(true);
     try {
@@ -461,6 +482,31 @@ export function RoomMusicStreaming({
   return (
     <div className="space-y-4">
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {!streamingAllowed && (
+        <div className="rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-muted-foreground">
+          <p>
+            Connect Spotify, YouTube Music, or Apple Music with a{" "}
+            <strong className="text-foreground">Premium</strong> or Institution plan.
+            Free accounts can still paste up to {limits?.linkLimit ?? 10} links from the
+            Paste link tab.
+          </p>
+          <Link
+            href="/plans"
+            className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            View plans
+          </Link>
+        </div>
+      )}
+
+      {linkLimitReached && (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Music link limit reached ({limits?.linksUsed}/{limits?.linkLimit}). Delete tracks in
+          My Links before adding more from streaming or paste link.
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-3">
         {(
           ["spotify", "youtube_music", "apple_music"] as StreamingMusicProvider[]
@@ -509,7 +555,7 @@ export function RoomMusicStreaming({
                   <>
                     <Button
                       className={cn("h-10 w-full font-semibold", meta.buttonClass)}
-                      disabled={busy}
+                      disabled={busy || !streamingAllowed}
                       onClick={() => openProvider(provider)}
                     >
                       <ListMusic className="h-4 w-4" />
@@ -534,6 +580,7 @@ export function RoomMusicStreaming({
                     )}
                     disabled={
                       !isConfigured ||
+                      !streamingAllowed ||
                       busy ||
                       (provider === "apple_music" && appleConnecting)
                     }

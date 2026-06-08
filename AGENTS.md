@@ -29,6 +29,7 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Redis caching | `packages/redis/`, `packages/rate-limit/`, `apps/socket-server/src/redis-cache.ts`, `apps/web/src/lib/redis.ts` |
 | Auth & session | `apps/web/src/app/auth/`, `app/settings/account/`, `lib/auth/`, `middleware.ts`, `components/layout/navbar*.tsx`, `supabase/templates/` |
 | Legal pages & SEO | `app/privacy/page.tsx`, `app/terms/page.tsx`, `lib/legal/*`, `app/robots.ts`, `app/sitemap.ts`, `site-footer.tsx` — skill `studyverce-legal` |
+| Plans & pricing | `app/plans/page.tsx`, `components/plans/plans-grid.tsx`, `lib/plans/content.ts` |
 | Room email invite | `apps/web/src/app/rooms/invite-actions.ts`, `components/room/room-share-link.tsx` |
 | Rate limits | `packages/rate-limit/src/limiter.ts`, `shouldRateLimitRequest()` in `config.ts` |
 | Room UI tokens | `apps/web/src/lib/room-ui.ts` |

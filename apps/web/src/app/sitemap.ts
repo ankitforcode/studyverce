@@ -8,6 +8,7 @@ import { getSiteUrl } from "@/lib/site-metadata";
 const PUBLIC_PATHS = [
   { path: "", changeFrequency: "weekly" as const, priority: 1 },
   { path: "/rooms", changeFrequency: "daily" as const, priority: 0.9 },
+  { path: "/plans", changeFrequency: "monthly" as const, priority: 0.85 },
   { path: "/leaderboard", changeFrequency: "daily" as const, priority: 0.8 },
   { path: PRIVACY_POLICY_PATH, changeFrequency: "monthly" as const, priority: 0.5 },
   { path: TERMS_OF_SERVICE_PATH, changeFrequency: "monthly" as const, priority: 0.5 },

@@ -9,6 +9,11 @@ import {
   type RoomTrackRequest,
 } from "@studyverce/shared";
 import { parseMusicProviderUrl } from "@/lib/music/providers";
+import {
+  assertCanAddMusicLink,
+  getMusicLibraryLimitsForUser,
+  type MusicLibraryLimits,
+} from "@/lib/music/plan-limits";
 
 function mapTrack(row: {
   id: string;
@@ -119,6 +124,17 @@ export async function getMyTracks(): Promise<RoomTrack[]> {
   return (data ?? []).map(mapTrack);
 }
 
+export async function getMyMusicLibraryLimits(): Promise<MusicLibraryLimits | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  return getMusicLibraryLimitsForUser(supabase, user.id);
+}
+
 export async function getRoomTrack(trackId: string | null): Promise<RoomTrack | null> {
   if (!trackId) return null;
 
@@ -166,6 +182,11 @@ export async function addProviderTrackLink(
         "Unsupported link. Use SoundCloud, YouTube, YouTube Music, Spotify, or Apple Music URLs.",
       success: false,
     };
+  }
+
+  const linkCheck = await assertCanAddMusicLink(supabase, user.id);
+  if (!linkCheck.ok) {
+    return { error: linkCheck.error, success: false };
   }
 
   const { data: track, error: dbError } = await supabase

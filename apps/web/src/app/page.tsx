@@ -7,6 +7,8 @@ import {
   Sparkles,
   ArrowRight,
   BookOpen,
+  StickyNote,
+  Music,
 } from "lucide-react";
 import { HomeHero } from "@/components/home/home-hero";
 import { ScrollReveal } from "@/components/home/scroll-reveal";
@@ -14,6 +16,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HOME_FAQ } from "@/lib/seo/constants";
+import { HOME_FREE_TIER_LINE } from "@/lib/plans/marketing";
 import { HOME_JSON_LD } from "@/lib/seo/structured-data";
 import {
   SITE_DESCRIPTION,
@@ -33,13 +36,13 @@ const features = [
     icon: Users,
     title: "Virtual Study Rooms",
     description:
-      "Join public or private online study rooms and focus alongside other students in real time.",
+      "Join public or private online study rooms with live presence. Free rooms support up to 20 participants; Premium supports larger groups.",
   },
   {
     icon: Timer,
     title: "Shared Pomodoro Timer",
     description:
-      "Stay in sync with your study group using a server-authoritative Pomodoro focus timer.",
+      "Stay in sync with your study group using a shared focus timer and optional break sessions.",
   },
   {
     icon: MessageSquare,
@@ -48,22 +51,34 @@ const features = [
       "Chat with study partners, share progress, and stay accountable during focus sessions.",
   },
   {
-    icon: BarChart3,
-    title: "Focus Analytics",
+    icon: StickyNote,
+    title: "Personal Post-it Tasks",
     description:
-      "Track daily streaks, weekly focus hours, and study calendar heatmaps to build better habits.",
+      "Keep your own task notes on the room desk — private to you, scoped to each study room.",
+  },
+  {
+    icon: Music,
+    title: "Study Music",
+    description:
+      "Paste provider links on Free (up to 10 saved tracks) or connect Spotify, YouTube Music, and Apple Music on Premium.",
   },
   {
     icon: Sparkles,
     title: "AI Study Coach",
     description:
-      "AI planners, flashcards, and personalized study schedules to help you prepare smarter.",
+      "In-room assistant for study planning and motivation. Free includes daily prompts; Premium adds unlimited messages and memory.",
+  },
+  {
+    icon: BarChart3,
+    title: "Focus Dashboard",
+    description:
+      "Track daily streaks, weekly focus hours, and study calendar heatmaps. Advanced analytics on Premium.",
   },
   {
     icon: BookOpen,
-    title: "Achievement Badges",
+    title: "Leaderboard & Badges",
     description:
-      "Earn badges for streaks, focus milestones, and community participation as you study.",
+      "Compare weekly focus with other students and earn achievement badges for streaks and milestones.",
   },
 ];
 
@@ -87,12 +102,13 @@ export default function HomePage() {
             <p>
               {SITE_NAME} gives students a shared online space to study with accountability
               partners. Create or join virtual study rooms, run synchronized Pomodoro sessions,
-              keep personal task notes, and see how your study habits improve over time.
+              keep personal post-it tasks, play optional study music, and see how your study
+              habits improve over time.
             </p>
             <p>
               Sign in with Google or email to create your free account, save your profile and
-              progress, and access private rooms, friends, and focus analytics. We only use your
-              Google account to authenticate you — not to access unrelated data.
+              progress, and access private rooms, friends, and focus tracking. We only use your
+              Google account to authenticate you — not to access unrelated data. {HOME_FREE_TIER_LINE}
             </p>
           </div>
         </ScrollReveal>
@@ -111,8 +127,12 @@ export default function HomePage() {
             Everything you need to study together online
           </h2>
           <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
-            From synchronized Pomodoro timers to personal analytics — built for students who want
-            structure without studying in isolation.
+            From synchronized Pomodoro timers to Premium voice notes and team rooms — built for
+            students who want structure without studying in isolation.{" "}
+            <Link href="/plans" className="text-primary underline-offset-4 hover:underline">
+              Compare plans
+            </Link>
+            .
           </p>
         </ScrollReveal>
 
@@ -181,6 +201,11 @@ export default function HomePage() {
                   <Button size="lg" className="gap-2">
                     Create your free account
                     <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/plans">
+                  <Button variant="outline" size="lg">
+                    View plans
                   </Button>
                 </Link>
                 <Link href="/rooms">

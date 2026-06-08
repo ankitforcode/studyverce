@@ -5,11 +5,13 @@ import {
   PRIVACY_POLICY_PATH,
   TERMS_OF_SERVICE_PATH,
 } from "@/lib/legal/urls";
+import { FOOTER_TAGLINE } from "@/lib/plans/marketing";
 import { SITE_NAME } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 
 const productLinks = [
   { href: "/rooms", label: "Study rooms" },
+  { href: "/plans", label: "Plans" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/auth/signup", label: "Sign up" },
   { href: "/auth/login", label: "Log in" },
@@ -19,6 +21,7 @@ const exploreLinks = [
   { href: "/#features", label: "Features" },
   { href: "/#about", label: "About" },
   { href: "/#faq", label: "FAQ" },
+  { href: "/plans", label: "Plans" },
   { href: "/rooms", label: "Browse rooms" },
 ] as const;
 
@@ -46,8 +49,7 @@ export function SiteFooter({ className }: { className?: string }) {
               {SITE_NAME}
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Free virtual study rooms with shared Pomodoro timers, study music, and focus
-              analytics — study together online and stay accountable.
+              {FOOTER_TAGLINE}
             </p>
           </div>
 

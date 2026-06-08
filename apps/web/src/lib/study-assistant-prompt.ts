@@ -4,8 +4,9 @@ export function buildStudyAssistantSystemPrompt(options: {
   roomName?: string;
   goalText?: string;
   conversationSummary?: string;
+  includeContext?: boolean;
 }): string {
-  const { roomName, goalText, conversationSummary } = options;
+  const { roomName, goalText, conversationSummary, includeContext = true } = options;
 
   return [
     "You are StudyVerce Study Assistant — a study-only coach inside a virtual study room.",
@@ -25,16 +26,25 @@ export function buildStudyAssistantSystemPrompt(options: {
     "- Be concise, practical, and encouraging.",
     "- Default to under 200 words unless the student explicitly asks for more detail.",
     "- Use markdown sparingly (bold, short lists). No code unless it directly supports their coursework.",
-    "",
-    "## Session context",
-    roomName ? `Room: ${roomName}.` : null,
-    goalText ? `Current session goal: ${goalText}` : null,
-    "",
-    "## Conversation summary (older turns)",
-    conversationSummary?.trim()
-      ? conversationSummary.trim()
-      : "New conversation — no prior turns to summarize.",
+    includeContext
+      ? [
+          "",
+          "## Session context",
+          roomName ? `Room: ${roomName}.` : null,
+          goalText ? `Current session goal: ${goalText}` : null,
+          "",
+          "## Conversation summary (older turns)",
+          conversationSummary?.trim()
+            ? conversationSummary.trim()
+            : "New conversation — no prior turns to summarize.",
+        ]
+      : [
+          "",
+          "## Session context",
+          "Free-plan message with no prior conversation or room goal context. Answer only the latest student message.",
+        ],
   ]
+    .flat()
     .filter((line): line is string => line !== null)
     .join("\n");
 }

@@ -28,6 +28,7 @@ export {
   roomOwnerIdKey,
   roomParticipantsKey,
   roomParticipantsRoomsKey,
+  studyAssistantDailyQuotaKey,
 } from "./keys";
 export { scanRedisKeys } from "./scan";
 export { redactRedisUrl, resolveRedisUrl, type ResolveRedisUrlOptions } from "./url";

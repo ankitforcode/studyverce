@@ -372,6 +372,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_voice_notes: {
+        Row: {
+          id: string;
+          room_id: string;
+          user_id: string;
+          storage_path: string;
+          duration_seconds: number | null;
+          transcript: string | null;
+          is_shared: boolean;
+          shared_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          user_id: string;
+          storage_path: string;
+          duration_seconds?: number | null;
+          transcript?: string | null;
+          is_shared?: boolean;
+          shared_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          user_id?: string;
+          storage_path?: string;
+          duration_seconds?: number | null;
+          transcript?: string | null;
+          is_shared?: boolean;
+          shared_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       achievements: {
         Row: {
           id: string;

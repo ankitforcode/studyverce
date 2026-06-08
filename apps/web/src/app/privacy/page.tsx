@@ -12,14 +12,14 @@ export const metadata: Metadata = createSiteMetadata({
   path: "/privacy",
   title: "Privacy Policy",
   description:
-    "How StudyVerce collects, uses, and protects your information when you use virtual study rooms, Pomodoro timers, focus tracking, and related features.",
+    "How StudyVerce collects, uses, and protects your information — accounts, study rooms, chat, music, voice notes, AI coach, cookies, and analytics.",
 });
 
 export default function PrivacyPage() {
   return (
     <LegalPageShell
       title="Privacy Policy"
-      description="How StudyVerce handles your information when you study together online."
+      description="How StudyVerce handles your information when you use study rooms, music, voice notes, AI, and analytics."
       lastUpdated={PRIVACY_LAST_UPDATED}
     >
       <nav

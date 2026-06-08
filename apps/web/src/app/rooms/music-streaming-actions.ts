@@ -28,6 +28,10 @@ import {
   fetchAppleMusicPlaylists,
 } from "@/lib/music/apple-music-api";
 import { isStreamingProviderConfigured } from "@/lib/music/oauth-config";
+import {
+  assertCanAddMusicLink,
+  assertStreamingIntegrationAllowed,
+} from "@/lib/music/plan-limits";
 
 function mapTrack(row: {
   id: string;
@@ -134,6 +138,11 @@ export async function fetchStreamingPlaylists(
 
   if (!user) return { error: "Not authenticated", playlists: [] };
 
+  const streamingCheck = await assertStreamingIntegrationAllowed(supabase, user.id);
+  if (!streamingCheck.ok) {
+    return { error: streamingCheck.error, playlists: [] };
+  }
+
   try {
     const conn = await loadConnectionWithFreshToken(supabase, user.id, provider);
     const playlists =
@@ -163,6 +172,11 @@ export async function fetchStreamingPlaylistItems(
 
   if (!user) return { error: "Not authenticated", items: [] };
 
+  const streamingCheck = await assertStreamingIntegrationAllowed(supabase, user.id);
+  if (!streamingCheck.ok) {
+    return { error: streamingCheck.error, items: [] };
+  }
+
   try {
     const conn = await loadConnectionWithFreshToken(supabase, user.id, provider);
     const items =
@@ -190,6 +204,11 @@ export async function searchStreamingYouTubeVideos(
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "Not authenticated", items: [] };
+
+  const streamingCheck = await assertStreamingIntegrationAllowed(supabase, user.id);
+  if (!streamingCheck.ok) {
+    return { error: streamingCheck.error, items: [] };
+  }
 
   const trimmed = query.trim();
   if (trimmed.length < 2) {
@@ -226,6 +245,16 @@ export async function addStreamingItemToLibrary(input: {
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "Not authenticated" };
+
+  const streamingCheck = await assertStreamingIntegrationAllowed(supabase, user.id);
+  if (!streamingCheck.ok) {
+    return { error: streamingCheck.error };
+  }
+
+  const linkCheck = await assertCanAddMusicLink(supabase, user.id);
+  if (!linkCheck.ok) {
+    return { error: linkCheck.error };
+  }
 
   const parsed = parseMusicProviderUrl(input.sourceUrl);
   if (!parsed) {

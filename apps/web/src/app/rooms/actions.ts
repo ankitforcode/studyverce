@@ -15,6 +15,11 @@ import {
 import { PLAN_LIMITS } from "@studyverce/shared";
 import crypto from "crypto";
 import { pickRandomBuiltinWallpaperId } from "@/app/rooms/wallpaper-actions";
+import {
+  assertRoomHasMemberCapacity,
+  capMaxParticipantsForPlan,
+  fetchUserPlanTier,
+} from "@/lib/plan-limits";
 
 export async function createRoom(input: CreateRoomInput) {
   const parsed = createRoomSchema.safeParse(input);
@@ -86,6 +91,11 @@ export async function createRoom(input: CreateRoomInput) {
   const settings = mergeRoomSettings(parsed.data.settings);
   const inviteToken = parsed.data.is_public ? null : crypto.randomBytes(16).toString("hex");
   const wallpaperId = await pickRandomBuiltinWallpaperId();
+  const ownerPlanTier = (profileAfterEnsure?.plan_tier ?? "free") as keyof typeof PLAN_LIMITS;
+  const maxParticipants = capMaxParticipantsForPlan(
+    ownerPlanTier,
+    parsed.data.max_participants
+  );
 
   const { data: room, error } = await supabase
     .from("study_rooms")
@@ -95,7 +105,7 @@ export async function createRoom(input: CreateRoomInput) {
       description: parsed.data.description ?? null,
       is_public: parsed.data.is_public,
       owner_id: user.id,
-      max_participants: parsed.data.max_participants,
+      max_participants: maxParticipants,
       wallpaper_id: wallpaperId,
       settings: settings as unknown as Database["public"]["Tables"]["study_rooms"]["Insert"]["settings"],
       invite_token: inviteToken,
@@ -164,6 +174,11 @@ export async function joinRoom(roomId: string) {
     .maybeSingle();
 
   if (!existing) {
+    const capacity = await assertRoomHasMemberCapacity(supabase, roomId);
+    if (!capacity.ok) {
+      return { error: capacity.error };
+    }
+
     const { error } = await supabase.from("room_members").insert({
       room_id: roomId,
       user_id: user.id,

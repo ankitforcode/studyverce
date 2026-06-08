@@ -18,6 +18,7 @@
 | `app/opengraph-image.tsx` | Default social share image (1200×630) |
 | `lib/seo/robots-disallow.ts` | Crawler disallow paths |
 | `lib/seo/constants.ts` | SEO keywords + homepage FAQ copy |
+| `lib/plans/marketing.ts` | Shared Free/Premium summaries for legal, signup, footer |
 | `lib/seo/structured-data.ts` | JSON-LD builders (Organization, FAQ, etc.) |
 | `lib/site-metadata.ts` | `createSiteMetadata()`, canonical URLs, robots helpers |
 | `components/seo/json-ld.tsx` | Renders `<script type="application/ld+json">` |
@@ -82,7 +83,10 @@
 | Pomodoro / focus analytics | dashboard, stats | `information-we-collect`, `how-we-use` | `service` |
 | Leaderboard | `leaderboard/*` | `information-we-collect` | `service`, `acceptable-use` |
 | Friends / notifications | `friends/*`, notifications | `information-we-collect`, `sharing` | `acceptable-use` |
-| Music OAuth (Spotify, YT, Apple) | room music | `information-we-collect`, `sharing`, `cookies` | `third-party`, `acceptable-use` |
+| Music OAuth (Spotify, YT, Apple) | room music | `information-we-collect`, `sharing`, `cookies` | `third-party`, `acceptable-use`, `billing` |
+| Voice notes | `voice-note-actions.ts`, storage | `information-we-collect`, `sharing`, `retention`, `your-choices` | `service`, `rooms-and-content`, `acceptable-use` |
+| Plan limits / pricing | `lib/plans/*`, `PLAN_LIMITS` | `overview`, `how-we-use` | `service`, `billing` |
+| Cookie consent / GA | `components/consent/*`, `google-analytics.tsx` | `cookies`, `your-choices` | — |
 | AI study coach | `study-assistant-*` | `information-we-collect`, `sharing` | `ai-coach`, `acceptable-use` |
 | PostHog analytics | `lib/analytics` | `cookies`, `how-we-use` | — |
 | Email (transactional, invites) | `supabase/templates`, Resend | `information-we-collect`, `how-we-use` | `service` |
@@ -109,7 +113,7 @@ Aligned with `isProtectedAppPath()` plus auth flows:
 
 ## Sitemap entries
 
-`/`, `/rooms`, `/leaderboard`, `/privacy`, `/terms`
+`/`, `/rooms`, `/plans`, `/leaderboard`, `/privacy`, `/terms`
 
 ## Checklist (material app change)
 

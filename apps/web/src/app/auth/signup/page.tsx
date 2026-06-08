@@ -14,6 +14,11 @@ import { cn } from "@/lib/utils";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
 import { loginPath, onboardingPath, authCallbackUrl, safeRedirectPath } from "@/lib/auth/paths";
+import { SIGNUP_FREE_DISCLOSURE } from "@/lib/plans/marketing";
+import {
+  PRIVACY_POLICY_PATH,
+  TERMS_OF_SERVICE_PATH,
+} from "@/lib/legal/urls";
 
 function SignupForm() {
   const router = useRouter();
@@ -116,7 +121,7 @@ function SignupForm() {
         <>
       <div className="mb-5 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-muted-foreground">
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <span>Free to join — virtual rooms, Pomodoro timers, and study chat included.</span>
+        <span>{SIGNUP_FREE_DISCLOSURE}</span>
       </div>
 
       <form onSubmit={handleSignup} className="space-y-4">
@@ -162,11 +167,11 @@ function SignupForm() {
 
         <p className="text-center text-xs leading-5 text-muted-foreground">
           By creating an account, you agree to our{" "}
-          <Link href="/terms" className="font-medium text-primary hover:underline">
+          <Link href={TERMS_OF_SERVICE_PATH} className="font-medium text-primary hover:underline">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link href="/privacy" className="font-medium text-primary hover:underline">
+          <Link href={PRIVACY_POLICY_PATH} className="font-medium text-primary hover:underline">
             Privacy Policy
           </Link>
           .

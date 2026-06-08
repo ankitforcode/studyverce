@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ChevronDown,
   ChevronUp,
@@ -17,6 +18,14 @@ import {
   type StudyAssistantMessage,
 } from "@/lib/study-assistant";
 import { parseStudyAssistantSseChunk } from "@/lib/study-assistant-stream";
+
+type AssistantLimits = {
+  planTier: string;
+  memoryEnabled: boolean;
+  dailyPromptLimit: number | null;
+  dailyPromptsUsed: number;
+  dailyPromptsRemaining: number | null;
+};
 
 interface RoomStudyAssistantProps {
   roomId: string;
@@ -65,6 +74,7 @@ export function RoomStudyAssistant({
     onCollapsedChange?.(next);
   }
   const [messages, setMessages] = useState<StudyAssistantMessage[]>([]);
+  const [limits, setLimits] = useState<AssistantLimits | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
@@ -75,15 +85,33 @@ export function RoomStudyAssistant({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    setMessages(loadAssistantMessages(roomId));
+  const refreshLimits = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/study-assistant/limits?roomId=${encodeURIComponent(roomId)}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as AssistantLimits;
+      setLimits(data);
+      return data;
+    } catch {
+      return null;
+    }
   }, [roomId]);
 
   useEffect(() => {
-    if (messages.length > 0) {
+    void refreshLimits().then((data) => {
+      if (data?.memoryEnabled) {
+        setMessages(loadAssistantMessages(roomId));
+      } else {
+        setMessages([]);
+      }
+    });
+  }, [roomId, refreshLimits]);
+
+  useEffect(() => {
+    if (limits?.memoryEnabled && messages.length > 0) {
       saveAssistantMessages(roomId, messages);
     }
-  }, [roomId, messages]);
+  }, [roomId, messages, limits?.memoryEnabled]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -103,6 +131,10 @@ export function RoomStudyAssistant({
   async function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
+    if (limits?.dailyPromptsRemaining === 0) {
+      setError("Daily prompt limit reached for this room. Upgrade to Premium for unlimited AI.");
+      return;
+    }
 
     setError(null);
     const userMessage: StudyAssistantMessage = {
@@ -141,8 +173,26 @@ export function RoomStudyAssistant({
       const contentType = res.headers.get("content-type") ?? "";
 
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
+        const data = (await res.json()) as {
+          error?: string;
+          dailyPromptsRemaining?: number;
+        };
         setError(data.error ?? "Something went wrong");
+        if (typeof data.dailyPromptsRemaining === "number") {
+          setLimits((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  dailyPromptsRemaining: data.dailyPromptsRemaining ?? 0,
+                  dailyPromptsUsed: prev.dailyPromptLimit
+                    ? prev.dailyPromptLimit - (data.dailyPromptsRemaining ?? 0)
+                    : prev.dailyPromptsUsed,
+                }
+              : prev
+          );
+        } else {
+          void refreshLimits();
+        }
         return;
       }
 
@@ -201,6 +251,7 @@ export function RoomStudyAssistant({
       setLoading(false);
       setStreamingMessageId(null);
       abortRef.current = null;
+      void refreshLimits();
     }
   }
 
@@ -228,10 +279,14 @@ export function RoomStudyAssistant({
     setStreamingMessageId(null);
     setMessages([]);
     setError(null);
-    if (typeof window !== "undefined") {
+    if (limits?.memoryEnabled && typeof window !== "undefined") {
       sessionStorage.removeItem(`studyverce-assistant-${roomId}`);
     }
   }
+
+  const limitReached = limits?.dailyPromptsRemaining === 0;
+  const showFreePlanNotice =
+    limits && !limits.memoryEnabled && limits.dailyPromptLimit !== null;
 
   return (
     <div
@@ -252,7 +307,11 @@ export function RoomStudyAssistant({
           <div className="min-w-0">
             <p className="text-sm font-semibold">Study assistant</p>
             <p className="truncate text-xs text-muted-foreground">
-              Your Personal Study AI Coach
+              {limits?.memoryEnabled
+                ? "Unlimited messages with memory"
+                : limits?.dailyPromptLimit
+                  ? `${limits.dailyPromptsRemaining ?? limits.dailyPromptLimit}/${limits.dailyPromptLimit} prompts left today`
+                  : "Your Personal Study AI Coach"}
             </p>
           </div>
         </div>
@@ -266,6 +325,17 @@ export function RoomStudyAssistant({
       {!collapsed && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+            {showFreePlanNotice && (
+              <p className="mx-1 mb-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                Free plan: each prompt is standalone with no conversation memory or post-it
+                context.{" "}
+                <Link href="/plans" className="text-primary underline-offset-4 hover:underline">
+                  Upgrade to Premium
+                </Link>{" "}
+                for unlimited messages and memory.
+              </p>
+            )}
+
             {messages.length === 0 && !loading && (
               <div className="flex flex-col items-center justify-center gap-3 px-2 py-6 text-center">
                 <p className="text-sm text-muted-foreground">
@@ -276,7 +346,7 @@ export function RoomStudyAssistant({
                     <button
                       key={suggestion}
                       type="button"
-                      disabled={loading}
+                      disabled={loading || limitReached}
                       onClick={() => void sendMessage(suggestion)}
                       className="rounded-xl border border-border/50 bg-card/30 px-3 py-2 text-left text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-card/50 light:bg-white/90 light:hover:bg-white"
                     >
@@ -344,9 +414,13 @@ export function RoomStudyAssistant({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message study assistant…"
+                placeholder={
+                  limitReached
+                    ? "Daily prompt limit reached"
+                    : "Message study assistant…"
+                }
                 rows={1}
-                disabled={loading}
+                disabled={loading || limitReached}
                 maxLength={4000}
                 className="max-h-[120px] min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
               />
@@ -362,7 +436,7 @@ export function RoomStudyAssistant({
               ) : (
                 <button
                   type="submit"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || limitReached}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
                   aria-label="Send message"
                 >
@@ -372,7 +446,9 @@ export function RoomStudyAssistant({
             </div>
             <div className="mt-2 flex items-center justify-between gap-2 px-1">
               <p className="text-[10px] text-muted-foreground">
-                Enter to send · Shift+Enter for newline
+                {limitReached
+                  ? "Upgrade on the Plans page for unlimited AI"
+                  : "Enter to send · Shift+Enter for newline"}
               </p>
               {messages.length > 0 && (
                 <button

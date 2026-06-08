@@ -7,6 +7,7 @@ import {
   resolveAppOrigin,
 } from "@/lib/music/oauth-config";
 import { setMusicOAuthState, safeReturnPath } from "@/lib/music/oauth-state";
+import { assertStreamingIntegrationAllowed } from "@/lib/music/plan-limits";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 
 const PROVIDERS: StreamingMusicProvider[] = ["spotify", "youtube_music", "apple_music"];
@@ -93,6 +94,15 @@ export async function GET(
       `${appOrigin}${incoming.pathname}${incoming.search}`
     );
     return NextResponse.redirect(login);
+  }
+
+  const streamingCheck = await assertStreamingIntegrationAllowed(supabase, user.id);
+  if (!streamingCheck.ok) {
+    const appOrigin = resolveAppOrigin(request);
+    const returnTo = safeReturnPath(new URL(request.url).searchParams.get("returnTo"));
+    const redirect = new URL(returnTo, appOrigin);
+    redirect.searchParams.set("music_error", "premium_required");
+    return NextResponse.redirect(redirect);
   }
 
   const { searchParams } = new URL(request.url);

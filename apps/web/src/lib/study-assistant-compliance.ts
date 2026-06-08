@@ -57,20 +57,30 @@ export function buildStudyAssistantLlmMessages(options: {
   history: StudyAssistantChatTurn[];
   roomName?: string;
   goalText?: string;
+  memoryEnabled?: boolean;
 }): {
   system: string;
   messages: { role: "user" | "assistant"; content: string }[];
 } {
+  const memoryEnabled = options.memoryEnabled ?? true;
   const history = options.history.slice(-24);
-  const summary = summarizeStudyConversation(history, {
-    goalText: options.goalText,
-  });
-  const recent = history.slice(-STUDY_ASSISTANT_RECENT_MESSAGE_COUNT);
+  const effectiveHistory = memoryEnabled
+    ? history
+    : history.filter((message) => message.role === "user").slice(-1);
+  const summary = memoryEnabled
+    ? summarizeStudyConversation(history, {
+        goalText: options.goalText,
+      })
+    : "";
+  const recent = memoryEnabled
+    ? history.slice(-STUDY_ASSISTANT_RECENT_MESSAGE_COUNT)
+    : effectiveHistory;
 
   const system = buildStudyAssistantSystemPrompt({
-    roomName: options.roomName,
-    goalText: options.goalText,
+    roomName: memoryEnabled ? options.roomName : undefined,
+    goalText: memoryEnabled ? options.goalText : undefined,
     conversationSummary: summary,
+    includeContext: memoryEnabled,
   });
 
   return {

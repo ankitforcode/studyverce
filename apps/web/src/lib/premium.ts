@@ -1,12 +1,16 @@
 import type { PlanTier } from "@studyverce/shared";
-import { PLAN_LIMITS, FEATURE_FLAGS } from "@studyverce/shared";
+import { PLAN_LIMITS } from "@studyverce/shared";
+import {
+  getStudyAssistantPlanLimits,
+  hasTeamFeatures as hasTeamFeaturesForTier,
+} from "@/lib/study-assistant-limits";
 
 export function canCreatePrivateRoom(planTier: PlanTier, currentPrivateRoomCount: number): boolean {
   return currentPrivateRoomCount < PLAN_LIMITS[planTier].maxPrivateRooms;
 }
 
-export function hasAiAccess(planTier: PlanTier): boolean {
-  return PLAN_LIMITS[planTier].aiFeatures && FEATURE_FLAGS.aiStudyPlanner;
+export function hasTeamFeatures(planTier: PlanTier | null | undefined): boolean {
+  return hasTeamFeaturesForTier(planTier);
 }
 
 export function hasAdvancedAnalytics(planTier: PlanTier): boolean {
@@ -15,6 +19,10 @@ export function hasAdvancedAnalytics(planTier: PlanTier): boolean {
 
 export function isPremium(planTier: PlanTier): boolean {
   return planTier === "premium" || planTier === "institution";
+}
+
+export function getPlanLimitsSummary(planTier: PlanTier | null | undefined) {
+  return getStudyAssistantPlanLimits(planTier);
 }
 
 /** Phase 2 stub — Stripe subscription webhook handler */

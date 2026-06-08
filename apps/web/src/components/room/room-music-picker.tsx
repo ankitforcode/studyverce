@@ -39,6 +39,7 @@ import { notificationMessages } from "@/lib/notifications/messages";
 import {
   getTrackLibrary,
   getMyTracks,
+  getMyMusicLibraryLimits,
   addProviderTrackLink,
   setRoomTrack,
   requestRoomTrack,
@@ -47,6 +48,7 @@ import {
   updateRoomTrack,
   clearRoomTrack,
 } from "@/app/rooms/music-actions";
+import type { MusicLibraryLimits } from "@/lib/music/plan-limits";
 
 interface RoomMusicPickerProps {
   roomId: string;
@@ -75,6 +77,7 @@ export function RoomMusicPicker({
   const [category, setCategory] = useState("all");
   const [library, setLibrary] = useState<RoomTrack[]>([]);
   const [mine, setMine] = useState<RoomTrack[]>([]);
+  const [musicLimits, setMusicLimits] = useState<MusicLibraryLimits | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -95,9 +98,14 @@ export function RoomMusicPicker({
   const loadTracks = useCallback(async () => {
     setLoading(true);
     try {
-      const [lib, my] = await Promise.all([getTrackLibrary(category), getMyTracks()]);
+      const [lib, my, limits] = await Promise.all([
+        getTrackLibrary(category),
+        getMyTracks(),
+        getMyMusicLibraryLimits(),
+      ]);
       setLibrary(lib);
       setMine(my);
+      setMusicLimits(limits);
     } finally {
       setLoading(false);
     }
@@ -292,7 +300,17 @@ export function RoomMusicPicker({
           )}
 
           {tab === "mine" && (
-            <TrackList
+            <>
+              {musicLimits && musicLimits.linkLimit !== null && (
+                <p className="mb-4 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                  {musicLimits.linksUsed}/{musicLimits.linkLimit} music links used on your Free
+                  plan.
+                  {musicLimits.linksRemaining === 0
+                    ? " Delete a track below to add another, or upgrade to Premium for unlimited links."
+                    : " Delete tracks here to free space before adding more."}
+                </p>
+              )}
+              <TrackList
               tracks={mine}
               loading={loading}
               currentId={currentTrackId}
@@ -317,6 +335,7 @@ export function RoomMusicPicker({
                 loadTracks();
               }}
             />
+            </>
           )}
 
           {tab === "streaming" && (
@@ -324,6 +343,7 @@ export function RoomMusicPicker({
               returnPath={pathname || "/rooms"}
               isOwner={isOwner}
               pending={pending}
+              limits={musicLimits}
               onAdded={(track) => {
                 setMine((prev) => [track, ...prev.filter((t) => t.id !== track.id)]);
                 setTab("mine");
@@ -337,6 +357,7 @@ export function RoomMusicPicker({
             <PasteLinkForm
               pending={pending}
               uploadError={uploadError}
+              limits={musicLimits}
               onSubmit={handleAddLink}
             />
           )}
@@ -402,10 +423,12 @@ const PASTE_LINK_PROVIDERS: {
 function PasteLinkForm({
   pending,
   uploadError,
+  limits,
   onSubmit,
 }: {
   pending: boolean;
   uploadError: string | null;
+  limits: MusicLibraryLimits | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
   const [sourceUrl, setSourceUrl] = useState("");
@@ -414,6 +437,8 @@ function PasteLinkForm({
 
   const parsed = sourceUrl.trim() ? parseMusicProviderUrl(sourceUrl) : null;
   const showInvalid = touched && sourceUrl.trim().length > 0 && !parsed;
+  const limitReached =
+    limits !== null && limits.linkLimit !== null && limits.linksRemaining === 0;
 
   async function handlePaste() {
     setPasteError(null);
@@ -432,6 +457,21 @@ function PasteLinkForm({
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-5">
+      {limits && limits.linkLimit !== null && (
+        <p
+          className={cn(
+            "rounded-lg border px-3 py-2 text-sm",
+            limitReached
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-border/60 bg-muted/20 text-muted-foreground"
+          )}
+        >
+          {limitReached
+            ? `${limits.linksUsed}/${limits.linkLimit} music links used. Delete tracks in My Links before adding another, or upgrade to Premium.`
+            : `${limits.linksUsed}/${limits.linkLimit} music links used on Free. Remove a track in My Links when you need room for new titles.`}
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {PASTE_LINK_PROVIDERS.map((provider) => (
           <span
@@ -605,7 +645,11 @@ function PasteLinkForm({
       <Button
         type="submit"
         className="w-full gap-2"
-        disabled={pending || (touched && !parsed && sourceUrl.trim().length > 0)}
+        disabled={
+          pending ||
+          limitReached ||
+          (touched && !parsed && sourceUrl.trim().length > 0)
+        }
       >
         <Link2 className="h-4 w-4" />
         {pending ? "Adding..." : "Add to library"}

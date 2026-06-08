@@ -18,6 +18,8 @@ export const REDIS_TTL = {
   roomMusicSeconds: 3600,
   postItTaskSeconds: 4 * 60 * 60,
   postItGenSeconds: 300,
+  /** Resets at UTC midnight; keep through next day. */
+  studyAssistantQuotaSeconds: 48 * 60 * 60,
 } as const;
 
 export function profileKey(userId: string) {
@@ -63,4 +65,12 @@ export function roomChatKey(roomId: string) {
 
 export function listingCacheKey(scope: string, userId?: string) {
   return userId ? `listing:${scope}:${userId}` : `listing:${scope}`;
+}
+
+export function studyAssistantDailyQuotaKey(
+  userId: string,
+  roomId: string,
+  dayKey: string
+) {
+  return `study-assistant:quota:${userId}:${roomId}:${dayKey}`;
 }

@@ -14,6 +14,11 @@ import { RoomClient } from "@/components/room/room-client";
 import { mergeRoomSettings } from "@studyverce/db";
 import type { StudyRoomSettings } from "@studyverce/shared";
 import { resolveWallpaperOverlay } from "@/lib/wallpaper-overlay";
+import {
+  fetchUserPlanTier,
+  hasRoomVideo,
+  hasVoiceNotes,
+} from "@/lib/plan-limits";
 
 export default async function RoomPage({
   params,
@@ -96,6 +101,7 @@ export default async function RoomPage({
   );
   const initialWallpaperOverlay = resolveWallpaperOverlay(roomSettings);
   const initialFavorited = await isRoomFavorited(room.id);
+  const planTier = await fetchUserPlanTier(supabase, user.id);
 
   return (
     <RoomClient
@@ -120,6 +126,8 @@ export default async function RoomPage({
       pomodoroBreaksEnabled={roomSettings.breaksEnabled}
       initialSidebarPanelOrder={sidebarPanelOrder}
       initialFavorited={initialFavorited}
+      roomVideoEnabled={hasRoomVideo(planTier)}
+      voiceNotesEnabled={hasVoiceNotes(planTier)}
     />
   );
 }

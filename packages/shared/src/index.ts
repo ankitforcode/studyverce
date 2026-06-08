@@ -253,6 +253,20 @@ export interface RoomAccessRequest {
   requesterUsername?: string;
 }
 
+export interface RoomVoiceNote {
+  id: string;
+  roomId: string;
+  userId: string;
+  audioUrl: string;
+  durationSeconds: number | null;
+  transcript: string | null;
+  isShared: boolean;
+  sharedAt: string | null;
+  createdAt: string;
+  authorDisplayName?: string;
+  authorUsername?: string;
+}
+
 /** Incoming friend request from someone currently in the study room. */
 export interface RoomFriendRequest {
   userId: string;
@@ -506,20 +520,48 @@ export type SubjectTag = (typeof SUBJECT_TAGS)[number];
 export const PLAN_LIMITS = {
   free: {
     maxPrivateRooms: 1,
-    aiFeatures: false,
+    maxRoomParticipants: 20,
+    teamFeatures: false,
+    aiDailyPromptsPerRoom: 10,
+    aiConversationMemory: false,
     advancedAnalytics: false,
+    maxUserMusicLinks: 10,
+    streamingIntegration: false,
+    roomVideo: false,
+    voiceNotes: false,
   },
   premium: {
     maxPrivateRooms: Infinity,
-    aiFeatures: true,
+    maxRoomParticipants: null,
+    teamFeatures: true,
+    aiDailyPromptsPerRoom: null,
+    aiConversationMemory: true,
     advancedAnalytics: true,
+    maxUserMusicLinks: null,
+    streamingIntegration: true,
+    roomVideo: true,
+    voiceNotes: true,
   },
   institution: {
     maxPrivateRooms: Infinity,
-    aiFeatures: true,
+    maxRoomParticipants: null,
+    teamFeatures: true,
+    aiDailyPromptsPerRoom: null,
+    aiConversationMemory: true,
     advancedAnalytics: true,
+    maxUserMusicLinks: null,
+    streamingIntegration: true,
+    roomVideo: true,
+    voiceNotes: true,
   },
 } as const;
+
+export const FREE_MAX_ROOM_PARTICIPANTS = PLAN_LIMITS.free.maxRoomParticipants;
+
+export const STUDY_ASSISTANT_FREE_DAILY_PROMPTS =
+  PLAN_LIMITS.free.aiDailyPromptsPerRoom;
+
+export const MUSIC_FREE_LINK_LIMIT = PLAN_LIMITS.free.maxUserMusicLinks;
 
 export const POST_IT_COLORS = ["yellow", "mint", "pink", "sky", "lavender"] as const;
 export type PostItColor = (typeof POST_IT_COLORS)[number];

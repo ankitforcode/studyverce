@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SITE_NAME } from "@/lib/site-metadata";
+import { HOME_FREE_TIER_LINE } from "@/lib/plans/marketing";
 
 const previewChips = [
   { icon: Timer, label: "Focus: 24:59", className: "-left-3 top-1/4 sm:-left-6" },
@@ -53,7 +54,7 @@ export function HomeHero() {
 
             <p className="hero-fade-in hero-delay-3 mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
               Join live online study rooms, sync Pomodoro timers with others, and track your
-              progress — free accountability for students who don&apos;t want to study alone.
+              progress. {HOME_FREE_TIER_LINE}
             </p>
 
             <div className="hero-fade-in hero-delay-4 mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">

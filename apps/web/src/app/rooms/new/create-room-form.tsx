@@ -17,7 +17,15 @@ import { cn } from "@/lib/utils";
 const FOCUS_LENGTHS = [15, 20, 25, 30, 45, 50, 60] as const;
 const BREAK_LENGTHS = [5, 10, 15, 20] as const;
 
-export function CreateRoomForm() {
+export function CreateRoomForm({
+  maxParticipantsDefault = 50,
+  maxParticipantsCap = 100,
+  participantLimitLabel = null,
+}: {
+  maxParticipantsDefault?: number;
+  maxParticipantsCap?: number;
+  participantLimitLabel?: string | null;
+}) {
   const [state, formAction, pending] = useActionState(createRoomAction, {
     error: null as string | null,
   });
@@ -297,13 +305,16 @@ export function CreateRoomForm() {
             <Users className="h-4 w-4 text-muted-foreground" />
             Max participants
           </Label>
+          {participantLimitLabel && (
+            <p className="text-xs text-muted-foreground">{participantLimitLabel}</p>
+          )}
           <Input
             id="max_participants"
             name="max_participants"
             type="number"
-            defaultValue={50}
+            defaultValue={maxParticipantsDefault}
             min={2}
-            max={100}
+            max={maxParticipantsCap}
             className="h-11 rounded-xl border-border/60 bg-background/60"
           />
         </section>

@@ -9,7 +9,7 @@ export const SITE_TITLE =
   "Free Virtual Study Rooms — Pomodoro Timer & Study Together Online";
 
 export const SITE_DESCRIPTION =
-  "Join free virtual study rooms with shared Pomodoro timers, lo-fi music, and live chat. Study together online with accountability — built for focused students.";
+  "Join free virtual study rooms with shared Pomodoro timers, post-it tasks, study music, and live chat. Upgrade to Premium for team rooms, voice notes, and unlimited AI — study together online.";
 
 export const OG_IMAGE_PATH = "/opengraph-image";
 

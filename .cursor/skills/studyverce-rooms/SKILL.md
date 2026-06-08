@@ -125,6 +125,19 @@ Both must share the same array (includes closed tasks).
 - `RoomTaskPrompt` when `!hasRoomTasks` and not skipped in sessionStorage.
 - Key: `studyverce-skip-room-task-${roomId}`.
 
+## Music plan limits
+
+Enforced server-side in `lib/music/plan-limits.ts` + `music-actions.ts` / `music-streaming-actions.ts` / OAuth routes.
+
+| Plan | Saved links (`room_tracks` by user, non-builtin) | Streaming OAuth | Participants | Video | Voice notes |
+|------|--------------------------------------------------|-----------------|--------------|-------|-------------|
+| Free | 10 max — must delete in **My Links** before adding | No (Spotify, YouTube, Apple) | 20 max per room | No | No |
+| Premium / Institution | Unlimited | Yes | Up to room setting (100) | Yes | Yes (record, share, transcribe) |
+
+- UI: `room-music-picker.tsx` (My Links + Paste link banners), `room-music-streaming.tsx` (connect/browse disabled + upgrade copy).
+- Constants: `PLAN_LIMITS.maxUserMusicLinks`, `PLAN_LIMITS.streamingIntegration` in `@studyverce/shared`.
+- Free users can still paste SoundCloud URLs within the 10-link cap.
+
 ## Realtime (`use-socket.ts` / socket-server)
 
 Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks.

@@ -12,14 +12,14 @@ export const metadata: Metadata = createSiteMetadata({
   path: "/terms",
   title: "Terms of Service",
   description:
-    "Terms governing your use of StudyVerce virtual study rooms, Pomodoro timers, focus tracking, chat, and related features.",
+    "Terms for StudyVerce study rooms, plan limits, Premium pricing, chat, music, voice notes, AI coach, cookies, and acceptable use.",
 });
 
 export default function TermsPage() {
   return (
     <LegalPageShell
       title="Terms of Service"
-      description="Rules for using StudyVerce when you study together online."
+      description="Rules for using StudyVerce, including Free and Premium plan limits and community guidelines."
       lastUpdated={TERMS_LAST_UPDATED}
     >
       <nav

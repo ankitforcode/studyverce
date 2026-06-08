@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { upsertMusicConnection } from "@/lib/music/connection-store";
+import { assertStreamingIntegrationAllowed } from "@/lib/music/plan-limits";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 
 export async function POST(request: Request) {
@@ -14,6 +15,11 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const streamingCheck = await assertStreamingIntegrationAllowed(supabase, user.id);
+  if (!streamingCheck.ok) {
+    return NextResponse.json({ error: streamingCheck.error }, { status: 403 });
   }
 
   const body = (await request.json()) as {
