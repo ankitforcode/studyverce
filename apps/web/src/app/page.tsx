@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SITE_NAME } from "@/lib/site-metadata";
 
 const features = [
   {
@@ -35,7 +36,7 @@ const features = [
   {
     icon: Sparkles,
     title: "AI Study Coach",
-    description: "  AI planners, flashcards, and personalized study schedules.",
+    description: "AI planners, flashcards, and personalized study schedules.",
   },
   {
     icon: BookOpen,
@@ -51,19 +52,20 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5 pointer-events-none" />
         <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 text-center relative">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary mb-6">
-            <Users className="h-4 w-4" />
-            Discord for studying
+            <BookOpen className="h-4 w-4" aria-hidden />
+            {SITE_NAME}
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6">
-            Study together.
-            <br />
-            <span className="text-primary">Stay accountable.</span>
-            <br />
-            Focus better.
+            {SITE_NAME}
           </h1>
+          <p className="text-lg sm:text-xl text-foreground max-w-3xl mx-auto mb-4 font-medium">
+            {SITE_NAME} is a virtual study platform that helps students join live focus
+            rooms, sync Pomodoro timers with others, chat while they study, and track focus
+            over time.
+          </p>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
-            StudyVerce combines virtual study rooms, real-time accountability, and focus tracking —
-            so you never have to study alone again.
+            Study together. Stay accountable. Focus better — so you never have to study
+            alone again.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signup">
@@ -78,6 +80,29 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section
+        id="about"
+        aria-labelledby="about-heading"
+        className="mx-auto max-w-3xl px-4 py-12 sm:px-6"
+      >
+        <h2 id="about-heading" className="text-2xl font-bold text-center mb-4">
+          About {SITE_NAME}
+        </h2>
+        <div className="space-y-4 text-center text-muted-foreground leading-relaxed">
+          <p>
+            {SITE_NAME} gives students a shared online space to study with accountability
+            partners. Create or join study rooms, run synchronized focus sessions, keep
+            personal task notes, and see how your study habits improve over time.
+          </p>
+          <p>
+            Sign in with Google or email to create your {SITE_NAME} account, save your
+            profile and progress, and access private rooms, friends, and focus analytics.
+            We only use your Google account to authenticate you — not to access unrelated
+            data.
+          </p>
         </div>
       </section>
 
