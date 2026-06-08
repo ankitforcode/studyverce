@@ -124,6 +124,40 @@ export async function getCachedActiveCount(
   return count;
 }
 
+export async function getCachedActiveCountsBatch(
+  redis: Redis,
+  roomIds: string[],
+  computeCount: (roomId: string) => Promise<number>
+): Promise<Record<string, number>> {
+  if (roomIds.length === 0) return {};
+
+  const keys = roomIds.map((roomId) => roomActiveCountKey(roomId));
+  const cached = await redis.mget(...keys);
+  const counts: Record<string, number> = {};
+  const misses: string[] = [];
+
+  roomIds.forEach((roomId, index) => {
+    const value = cached[index];
+    if (value !== null && value !== undefined) {
+      counts[roomId] = Number.parseInt(value, 10);
+      return;
+    }
+    misses.push(roomId);
+  });
+
+  if (misses.length > 0) {
+    await Promise.all(
+      misses.map(async (roomId) => {
+        counts[roomId] = await getCachedActiveCount(redis, roomId, () =>
+          computeCount(roomId)
+        );
+      })
+    );
+  }
+
+  return counts;
+}
+
 export async function invalidateActiveCount(redis: Redis, roomId: string): Promise<void> {
   await redis.del(roomActiveCountKey(roomId));
 }

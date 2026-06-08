@@ -250,7 +250,8 @@ Production targets **256 MB storage** and **500k commands/month** (`REDIS_BUDGET
 | Listing cache | 120s | Was 45s — room list invalidates on mutations. |
 | Post-it lazy flush | 2000ms debounce | Batches drag/resize writes. |
 | Participant / music keys | TTL + room index SET | Keys expire; sweeps use `SMEMBERS` instead of `SCAN`. |
-| Rate limits | Lua `INCR`+`EXPIRE` script | 1 command per bucket check instead of up to 4. |
+| `/presence` batch reads | `MGET` active-count keys | One Redis round-trip per poll instead of N `GET`s. |
+| Rate limits | 1 EVAL / request (2× INCR + EXPIRE on first hit only) | Skips `/presence`; no TTL inside Lua; bucket keys avoid orphan keys. |
 
 Monitor usage in the Upstash console. If you approach the cap, raise debounce/TTL values or disable `RATE_LIMIT_ENABLED` on Amplify (socket server still rate-limits).
 

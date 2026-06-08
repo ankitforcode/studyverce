@@ -36,6 +36,7 @@ import {
 import {
   appendChatMessage,
   getCachedActiveCount,
+  getCachedActiveCountsBatch,
   getCachedChatHistory,
   getCachedProfile,
   getCachedRoomMember,
@@ -225,12 +226,10 @@ app.get("/presence", async (req, res) => {
 
   log.debug("GET /presence", { roomCount: roomIds.length, roomIds });
 
-  const counts: Record<string, number> = {};
-  await Promise.all(
-    roomIds.map(async (roomId) => {
-      counts[roomId] = await getActiveParticipantCount(roomId);
-    })
-  );
+  const counts = await getCachedActiveCountsBatch(redis, roomIds, async (roomId) => {
+    const participants = await getParticipants(roomId);
+    return countActiveParticipants(participants);
+  });
 
   res.json({ counts });
 });

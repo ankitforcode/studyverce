@@ -1,6 +1,7 @@
 import {
   GLOBAL_IP_RATE_LIMIT,
   resolveEndpointConfig,
+  shouldRateLimitRequest,
   type RateLimitRule,
 } from "./config";
 import { getRateLimitRedis, isRateLimitEnabled } from "./redis";
@@ -50,37 +51,67 @@ function failClosed(endpointId: string, rule: RateLimitRule): RateLimitResult {
   };
 }
 
+function windowStartSec(nowMs: number, windowSeconds: number): number {
+  const nowSec = Math.floor(nowMs / 1000);
+  return Math.floor(nowSec / windowSeconds) * windowSeconds;
+}
+
+function resetAtForWindow(windowStartSec: number, windowSeconds: number): number {
+  return (windowStartSec + windowSeconds) * 1000;
+}
+
+function bucketKey(prefix: string, ip: string, id: string, windowStartSec: number): string {
+  return `${prefix}:${ip}:${id}:${windowStartSec}`;
+}
+
+/** One EVAL: INCR both buckets; EXPIRE only on first hit (no TTL round-trip). */
 const RATE_LIMIT_SCRIPT = `
-local count = redis.call('INCR', KEYS[1])
-if count == 1 then
-  redis.call('EXPIRE', KEYS[1], ARGV[1])
-elseif redis.call('TTL', KEYS[1]) < 0 then
+local e = redis.call('INCR', KEYS[1])
+if e == 1 then
   redis.call('EXPIRE', KEYS[1], ARGV[1])
 end
-local ttl = redis.call('TTL', KEYS[1])
-return {count, ttl}
+local g = redis.call('INCR', KEYS[2])
+if g == 1 then
+  redis.call('EXPIRE', KEYS[2], ARGV[2])
+end
+return {e, g}
 `;
 
-async function consumeBucket(
+async function consumeBuckets(
   redis: import("ioredis").default,
-  key: string,
-  rule: RateLimitRule
-): Promise<{ allowed: boolean; count: number; resetAt: number }> {
-  const ttl = rule.windowSeconds;
+  endpointKey: string,
+  globalKey: string,
+  rule: RateLimitRule,
+  globalRule: RateLimitRule,
+  endpointResetAt: number,
+  globalResetAt: number
+): Promise<{
+  endpoint: { allowed: boolean; count: number; resetAt: number };
+  global: { allowed: boolean; count: number; resetAt: number };
+}> {
   const result = (await redis.eval(
     RATE_LIMIT_SCRIPT,
-    1,
-    key,
-    String(ttl)
+    2,
+    endpointKey,
+    globalKey,
+    String(rule.windowSeconds),
+    String(globalRule.windowSeconds)
   )) as [number, number];
-  const count = Number(result[0]);
-  const ttlSeconds = Number(result[1]);
-  const resetAt = Date.now() + Math.max(ttlSeconds, 1) * 1000;
+
+  const endpointCount = Number(result[0]);
+  const globalCount = Number(result[1]);
 
   return {
-    allowed: count <= rule.limit,
-    count,
-    resetAt,
+    endpoint: {
+      allowed: endpointCount <= rule.limit,
+      count: endpointCount,
+      resetAt: endpointResetAt,
+    },
+    global: {
+      allowed: globalCount <= globalRule.limit,
+      count: globalCount,
+      resetAt: globalResetAt,
+    },
   };
 }
 
@@ -97,7 +128,7 @@ export async function checkRateLimit(
   const { endpointId, rule } = resolveEndpointConfig(input.method, input.pathname);
   const ip = normalizeIp(input.ip);
 
-  if (!isRateLimitEnabled()) {
+  if (!isRateLimitEnabled() || !shouldRateLimitRequest(input.method, input.pathname)) {
     return failOpen(endpointId);
   }
 
@@ -111,20 +142,30 @@ export async function checkRateLimit(
       await redis.connect();
     }
 
-    const endpointKey = `rl:${ip}:ep:${endpointId}`;
-    const globalKey = `rl:${ip}:global`;
+    const now = Date.now();
+    const endpointWindowStart = windowStartSec(now, rule.windowSeconds);
+    const globalWindowStart = windowStartSec(now, GLOBAL_IP_RATE_LIMIT.windowSeconds);
+    const endpointKey = bucketKey("rl", ip, `ep:${endpointId}`, endpointWindowStart);
+    const globalKey = bucketKey("rl", ip, "global", globalWindowStart);
+    const endpointResetAt = resetAtForWindow(endpointWindowStart, rule.windowSeconds);
+    const globalResetAt = resetAtForWindow(
+      globalWindowStart,
+      GLOBAL_IP_RATE_LIMIT.windowSeconds
+    );
 
-    const [endpointResult, globalResult] = await Promise.all([
-      consumeBucket(redis, endpointKey, rule),
-      consumeBucket(redis, globalKey, GLOBAL_IP_RATE_LIMIT),
-    ]);
+    const { endpoint: endpointResult, global: globalResult } = await consumeBuckets(
+      redis,
+      endpointKey,
+      globalKey,
+      rule,
+      GLOBAL_IP_RATE_LIMIT,
+      endpointResetAt,
+      globalResetAt
+    );
 
     const allowed = endpointResult.allowed && globalResult.allowed;
     const limiting = endpointResult.allowed ? globalResult : endpointResult;
-    const activeRule = endpointResult.allowed ? GLOBAL_IP_RATE_LIMIT : rule;
-    const activeLimit = endpointResult.allowed
-      ? GLOBAL_IP_RATE_LIMIT.limit
-      : rule.limit;
+    const activeLimit = endpointResult.allowed ? GLOBAL_IP_RATE_LIMIT.limit : rule.limit;
 
     const remaining = Math.max(activeLimit - limiting.count, 0);
     const retryAfterSec = Math.max(

@@ -75,6 +75,22 @@ export const GLOBAL_IP_RATE_LIMIT: RateLimitRule = {
   windowSeconds: 60,
 };
 
+/** Paths that should consume Redis rate-limit commands. */
+export function shouldRateLimitRequest(method: string, pathname: string): boolean {
+  if (pathname === "/presence") return false;
+
+  if (pathname.startsWith("/api/")) return true;
+
+  const upperMethod = method.toUpperCase();
+  for (const cfg of ENDPOINT_RATE_LIMITS) {
+    if (!cfg.pathnamePattern.test(pathname)) continue;
+    if (cfg.methods && !cfg.methods.includes(upperMethod)) continue;
+    return true;
+  }
+
+  return false;
+}
+
 export function resolveEndpointConfig(
   method: string,
   pathname: string

@@ -3,6 +3,7 @@ export {
   ENDPOINT_RATE_LIMITS,
   GLOBAL_IP_RATE_LIMIT,
   resolveEndpointConfig,
+  shouldRateLimitRequest,
   type EndpointRateLimitConfig,
   type RateLimitRule,
 } from "./config";
