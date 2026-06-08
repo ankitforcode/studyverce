@@ -2,32 +2,32 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPageShell, LegalSection } from "@/components/legal/legal-page-shell";
 import {
-  PRIVACY_CONTACT_EMAIL,
-  PRIVACY_LAST_UPDATED,
-  privacySections,
-} from "@/lib/legal/privacy-content";
+  TERMS_CONTACT_EMAIL,
+  TERMS_LAST_UPDATED,
+  termsSections,
+} from "@/lib/legal/terms-content";
 import { createSiteMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = createSiteMetadata({
-  title: "Privacy Policy",
+  title: "Terms of Service",
   description:
-    "How StudyVerce collects, uses, and protects your information when you use virtual study rooms, focus tracking, and related features.",
+    "Terms governing your use of StudyVerce virtual study rooms, focus tracking, chat, and related features.",
 });
 
-export default function PrivacyPage() {
+export default function TermsPage() {
   return (
     <LegalPageShell
-      title="Privacy Policy"
-      description="How StudyVerce handles your information when you study together online."
-      lastUpdated={PRIVACY_LAST_UPDATED}
+      title="Terms of Service"
+      description="Rules for using StudyVerce when you study together online."
+      lastUpdated={TERMS_LAST_UPDATED}
     >
       <nav
-        aria-label="Privacy policy sections"
+        aria-label="Terms of service sections"
         className="rounded-xl border border-border/60 bg-card/40 p-5"
       >
         <p className="mb-3 text-sm font-medium text-foreground">On this page</p>
         <ul className="grid gap-2 sm:grid-cols-2">
-          {privacySections.map((section) => (
+          {termsSections.map((section) => (
             <li key={section.id}>
               <a
                 href={`#${section.id}`}
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
         </ul>
       </nav>
 
-      {privacySections.map((section) => (
+      {termsSections.map((section) => (
         <LegalSection
           key={section.id}
           id={section.id}
@@ -53,14 +53,14 @@ export default function PrivacyPage() {
       <p className="border-t border-border pt-8 text-sm text-muted-foreground">
         Questions?{" "}
         <a
-          href={`mailto:${PRIVACY_CONTACT_EMAIL}`}
+          href={`mailto:${TERMS_CONTACT_EMAIL}`}
           className="font-medium text-primary hover:underline"
         >
-          {PRIVACY_CONTACT_EMAIL}
+          {TERMS_CONTACT_EMAIL}
         </a>
         . See also our{" "}
-        <Link href="/terms" className="font-medium text-primary hover:underline">
-          Terms of Service
+        <Link href="/privacy" className="font-medium text-primary hover:underline">
+          Privacy Policy
         </Link>
         .
       </p>

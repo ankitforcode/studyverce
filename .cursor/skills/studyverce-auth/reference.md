@@ -9,7 +9,7 @@
 | `/settings/account` | `app/settings/account/page.tsx` + `components/settings/account-settings-form.tsx` | Email change, password, inline reauth |
 | `/settings/profile` | `app/settings/profile/page.tsx` | Profile fields; shell in `app/settings/layout.tsx` |
 | `/onboarding` | `app/onboarding/page.tsx` | Server redirect when `onboarding_completed`; form in `components/onboarding/onboarding-form.tsx` |
-| `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate; links to `/privacy` |
+| `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate; links to `/terms` and `/privacy` |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
 | `/auth/reset-password` | `app/auth/reset-password/page.tsx` | Session required; toast on success |
 | `/auth/accept-invite` | `app/auth/accept-invite/page.tsx` | New room invitees set password, then `post_auth_redirect` |

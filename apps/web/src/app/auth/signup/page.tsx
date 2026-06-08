@@ -162,6 +162,10 @@ function SignupForm() {
 
         <p className="text-center text-xs leading-5 text-muted-foreground">
           By creating an account, you agree to our{" "}
+          <Link href="/terms" className="font-medium text-primary hover:underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
           <Link href="/privacy" className="font-medium text-primary hover:underline">
             Privacy Policy
           </Link>

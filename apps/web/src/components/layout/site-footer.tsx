@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-const footerLinks = [{ href: "/privacy", label: "Privacy" }] as const;
+const footerLinks = [
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+] as const;
 
 export function SiteFooter({ className }: { className?: string }) {
   return (
