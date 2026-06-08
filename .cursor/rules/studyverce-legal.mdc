@@ -1,0 +1,21 @@
+---
+description: Legal pages, privacy/terms content, robots.txt, and sitemap maintenance
+globs: apps/web/src/lib/legal/**,apps/web/src/app/privacy/**,apps/web/src/app/terms/**,apps/web/src/components/legal/**,apps/web/src/app/robots.ts,apps/web/src/app/sitemap.ts,apps/web/src/lib/seo/**
+alwaysApply: false
+---
+
+# Legal & SEO
+
+Read `.cursor/skills/studyverce-legal/SKILL.md` before editing these files.
+
+## Non-negotiables
+
+1. **Content source** — legal copy lives in `lib/legal/privacy-content.ts` and `terms-content.ts`; pages only render sections.
+2. **Canonical paths** — import `/privacy` and `/terms` from `lib/legal/urls.ts` (Google OAuth consent screen must match production).
+3. **Last updated** — bump `PRIVACY_LAST_UPDATED` / `TERMS_LAST_UPDATED` on material policy changes.
+4. **Feature changes** — when adding data collection, integrations, or user-facing capabilities, update legal copy in the **same task** (see skill trigger map).
+5. **Robots** — disallow paths in `lib/seo/robots-disallow.ts`; keep aligned with protected routes + `/auth/`.
+
+## When shipping product changes elsewhere
+
+If your PR touches auth, rooms, AI, music, analytics, billing, or social features but not legal files, still read `studyverce-legal` and update privacy/terms if user-facing disclosures changed.

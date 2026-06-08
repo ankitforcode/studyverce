@@ -11,6 +11,7 @@ Deep workflows for agents. **Read the matching skill before editing; update it w
 | Redis & rate limits | `studyverce-redis/SKILL.md` | `packages/redis`, `packages/rate-limit`, socket caches, Upstash budget |
 | Post-it notes | `studyverce-post-it-notes/SKILL.md` | Room post-its, `task-actions`, schema, todo panel sync |
 | Dashboard | `studyverce-dashboard/SKILL.md` | Dashboard shell, stats, calendar, charts (no post-it canvas) |
+| Legal & SEO | `studyverce-legal/SKILL.md` | Privacy/Terms content, footer links, signup disclosures, robots/sitemap, OAuth consent URLs |
 
 Each skill may include `reference.md` for file/action/migration tables.
 
@@ -34,6 +35,7 @@ Friends list: `app/friends/page.tsx` + `friends/actions.ts` (also covered in `st
 | `room-features.mdc` | room components |
 | `post-it-notes.mdc` | post-it files |
 | `supabase-migrations.mdc` | migrations |
+| `studyverce-legal.mdc` | legal content, privacy/terms pages, robots, sitemap |
 
 ## Related agent memory
 

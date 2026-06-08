@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
+import {
+  PRIVACY_POLICY_PATH,
+  TERMS_OF_SERVICE_PATH,
+} from "@/lib/legal/urls";
 import { SITE_NAME } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
-
-const PRIVACY_POLICY_PATH = "/privacy";
-const TERMS_OF_SERVICE_PATH = "/terms";
 
 const productLinks = [
   { href: "/rooms", label: "Study rooms" },

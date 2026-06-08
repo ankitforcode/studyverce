@@ -28,7 +28,7 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Room listing | `apps/web/src/components/rooms/rooms-directory.tsx`, `lib/rooms/listing.ts`, `lib/cache/listing.ts` |
 | Redis caching | `packages/redis/`, `packages/rate-limit/`, `apps/socket-server/src/redis-cache.ts`, `apps/web/src/lib/redis.ts` |
 | Auth & session | `apps/web/src/app/auth/`, `app/settings/account/`, `lib/auth/`, `middleware.ts`, `components/layout/navbar*.tsx`, `supabase/templates/` |
-| Legal pages | `apps/web/src/app/privacy/page.tsx`, `app/terms/page.tsx`, `lib/legal/*`, `components/layout/site-footer.tsx` |
+| Legal pages & SEO | `app/privacy/page.tsx`, `app/terms/page.tsx`, `lib/legal/*`, `app/robots.ts`, `app/sitemap.ts`, `site-footer.tsx` — skill `studyverce-legal` |
 | Room email invite | `apps/web/src/app/rooms/invite-actions.ts`, `components/room/room-share-link.tsx` |
 | Rate limits | `packages/rate-limit/src/limiter.ts`, `shouldRateLimitRequest()` in `config.ts` |
 | Room UI tokens | `apps/web/src/lib/room-ui.ts` |
@@ -42,7 +42,7 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 - **Skills**: `.cursor/skills/*/SKILL.md` — deep workflows (index: `.cursor/skills/README.md`)
 - **Maintenance**: rule `skills-maintenance.mdc` — update skills/rules/AGENTS when features change
 
-Read the relevant skill **before** changing post-its, room UI, auth/middleware, Redis, or migrations. Update that skill **in the same task** when you add or materially change a feature (see rule `skills-maintenance.mdc` — checklist required before finishing).
+Read the relevant skill **before** changing post-its, room UI, auth/middleware, Redis, legal pages, or migrations. Update that skill **in the same task** when you add or materially change a feature (see rule `skills-maintenance.mdc` — checklist required before finishing). Product changes that collect data or add integrations may require privacy/terms updates even when legal files are not in the diff — see `studyverce-legal`.
 
 ## Non-negotiables
 

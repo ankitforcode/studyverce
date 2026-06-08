@@ -25,6 +25,8 @@ Skip doc updates only for typo fixes, pure refactors with **no** behavior change
 | Room UI, listing, socket events, presence | `studyverce-rooms` | skill + `room-features.mdc` |
 | Post-its, tasks, todo panel | `studyverce-post-it-notes` | skill + `post-it-notes.mdc` |
 | Dashboard shell / stats | `studyverce-dashboard` | skill |
+| Privacy / Terms / footer legal links / robots / sitemap | `studyverce-legal` | skill + `studyverce-legal.mdc` |
+| New data collection, third-party integration, billing, AI (even if not editing legal files) | `studyverce-legal` | privacy/terms content + `*_LAST_UPDATED` |
 | Schema, RLS, migrations | `supabase-migrations.mdc` + affected feature skill | migration + types + mapper |
 | Cross-cutting layout, commands, new primary files | root `AGENTS.md`, `studyverce-overview.mdc` | index row in `.cursor/skills/README.md` |
 
@@ -38,6 +40,7 @@ Skip doc updates only for typo fixes, pure refactors with **no** behavior change
 | Redis / rate limits / presence cache | `studyverce-redis` |
 | Post-its / tasks | `studyverce-post-it-notes` |
 | Dashboard | `studyverce-dashboard` |
+| Legal / privacy / terms / robots | `studyverce-legal` |
 | Cross-cutting layout or commands | `studyverce-overview.mdc`, root `AGENTS.md` |
 | File-specific patterns | Relevant `.cursor/rules/*.mdc` |
 | New feature domain | New skill under `.cursor/skills/<name>/` + row in `.cursor/skills/README.md` |
