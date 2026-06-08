@@ -57,7 +57,7 @@ export const privacySections: PrivacySection[] = [
     ],
     bullets: [
       "Other users: your username, display name, avatar, and activity visible in shared rooms (for example chat messages, presence, and public profile pages).",
-      "Service providers that help us run StudyVerce, including Supabase (authentication and database), hosting and infrastructure providers, Redis caching, email delivery, analytics (PostHog when configured), and OpenAI when the AI study coach is enabled.",
+      "Service providers that help us run StudyVerce, including Supabase (authentication and database), hosting and infrastructure providers, Redis caching, email delivery, analytics (PostHog when configured, and Google Analytics), and OpenAI when the AI study coach is enabled.",
       "Music providers you choose to connect (Spotify, YouTube Music, or Apple Music) receive OAuth authorization requests according to their own policies.",
       "Legal and safety: when required by law, to respond to valid requests, or to protect users, our rights, and the security of the service.",
       "Business transfers: if StudyVerce is involved in a merger, acquisition, or asset sale, information may transfer as part of that transaction with notice where required.",
@@ -68,12 +68,16 @@ export const privacySections: PrivacySection[] = [
     title: "Cookies and similar technologies",
     paragraphs: [
       "We use cookies and local storage to keep you signed in, remember preferences, and measure product usage.",
+      "When you first visit StudyVerce, a cookie banner lets you accept all cookies, reject optional cookies, or customize analytics and marketing preferences. Your choice is stored in your browser and applied through Google Consent Mode.",
     ],
     bullets: [
       "Authentication cookies from Supabase to maintain your session.",
       "Short-lived OAuth state cookies when connecting a music provider.",
       "Browser session storage for AI coach conversation history in a room.",
-      "Analytics cookies and events through PostHog when NEXT_PUBLIC_POSTHOG_KEY is configured, including page views and selected product events such as sign-in, sign-up, and room interactions.",
+      "A consent preference stored in local storage so we remember your cookie choices.",
+      "Analytics cookies and events through PostHog when you allow analytics and NEXT_PUBLIC_POSTHOG_KEY is configured, including page views and selected product events such as sign-in, sign-up, and room interactions.",
+      "Analytics cookies and page-view measurement through Google Analytics (Google tag) when you allow analytics, to understand traffic and how visitors use our public pages.",
+      "Marketing cookies for ad measurement and personalization only when you allow marketing cookies (for example, if we run advertising campaigns in the future).",
     ],
   },
   {
@@ -96,6 +100,7 @@ export const privacySections: PrivacySection[] = [
       "Change your email or password at Settings → Account.",
       "Disconnect optional music integrations from room music settings.",
       "Clear AI coach history by clearing site data or session storage for StudyVerce in your browser.",
+      "Stop optional analytics or marketing cookies anytime using the Cookie settings link in the site footer.",
       "Stop using optional analytics by disabling cookies in your browser; core authentication cookies are required to stay signed in.",
       "Contact us to request account deletion or other privacy requests. We will respond within a reasonable time.",
     ],

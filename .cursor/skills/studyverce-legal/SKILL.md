@@ -55,6 +55,7 @@ Paths are defined once in `lib/legal/urls.ts`. If paths change, update Google OA
 - `app/manifest.ts` → web manifest; `app/opengraph-image.tsx` → default OG image
 - Metadata: `lib/site-metadata.ts` (`createSiteMetadata`, `NOINDEX_ROBOTS`, canonical via `path`)
 - Structured data: `lib/seo/structured-data.ts` + `components/seo/json-ld.tsx`
+- Google Analytics + Consent Mode v2: `components/seo/google-analytics.tsx`, `components/consent/*`, `lib/consent/*`
 - Keywords + homepage FAQ: `lib/seo/constants.ts`
 - Disallow list: `lib/seo/robots-disallow.ts` — keep aligned with `isProtectedAppPath()` plus `/auth/` and `/onboarding`
 - Public indexable pages: `/`, `/rooms`, `/leaderboard`, `/privacy`, `/terms`

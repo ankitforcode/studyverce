@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
+import { CookieSettingsButton } from "@/components/consent/cookie-settings-button";
 import {
   PRIVACY_POLICY_PATH,
   TERMS_OF_SERVICE_PATH,
@@ -95,13 +96,16 @@ export function SiteFooter({ className }: { className?: string }) {
                   </Link>
                 </li>
               ))}
+              <li>
+                <CookieSettingsButton className="text-sm text-muted-foreground transition-colors hover:text-foreground" />
+              </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-8 text-sm text-muted-foreground sm:flex-row">
           <p>© {new Date().getFullYear()} {SITE_NAME}. All rights reserved.</p>
-          <nav aria-label="Legal" className="flex items-center gap-5">
+          <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-5 sm:justify-end">
             {legalLinks.map((link) => (
               <Link
                 key={link.href}
@@ -111,6 +115,7 @@ export function SiteFooter({ className }: { className?: string }) {
                 {link.label}
               </Link>
             ))}
+            <CookieSettingsButton className="transition-colors hover:text-foreground" />
           </nav>
         </div>
       </div>

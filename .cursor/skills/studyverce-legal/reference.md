@@ -21,6 +21,10 @@
 | `lib/seo/structured-data.ts` | JSON-LD builders (Organization, FAQ, etc.) |
 | `lib/site-metadata.ts` | `createSiteMetadata()`, canonical URLs, robots helpers |
 | `components/seo/json-ld.tsx` | Renders `<script type="application/ld+json">` |
+| `components/seo/google-analytics.tsx` | Google tag + Consent Mode bootstrap |
+| `components/consent/consent-provider.tsx` | Cookie consent state + applies gtag/PostHog |
+| `components/consent/cookie-consent-banner.tsx` | Banner UI (accept / reject / customize) |
+| `lib/consent/*` | Consent storage, gtag mapping, PostHog sync |
 
 ## Public URLs
 
