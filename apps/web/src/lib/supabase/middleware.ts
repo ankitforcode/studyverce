@@ -1,4 +1,5 @@
 import { safeRedirectPath } from "@/lib/auth/paths";
+import { isProtectedAppPath } from "@/lib/auth/middleware-routes";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -28,10 +29,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const protectedPaths = ["/dashboard", "/settings", "/rooms/new", "/admin"];
-  const isProtectedRoom = /^\/rooms\/[^/]+$/.test(request.nextUrl.pathname);
-  const isProtected =
-    protectedPaths.some((p) => request.nextUrl.pathname.startsWith(p)) || isProtectedRoom;
+  const pathname = request.nextUrl.pathname;
+  const isProtected = isProtectedAppPath(pathname);
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
