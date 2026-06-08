@@ -4,7 +4,8 @@
 
 | Route | File | Notes |
 |-------|------|-------|
-| `/auth/login` | `app/auth/login/page.tsx` | |
+| `/auth/login` | `app/auth/login/page.tsx` | `resolvePostAuthDestination` after password sign-in |
+| `/onboarding` | `app/onboarding/page.tsx` | Server redirect when `onboarding_completed`; form in `components/onboarding/onboarding-form.tsx` |
 | `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
 | `/auth/reset-password` | `app/auth/reset-password/page.tsx` | Session required; toast on success |

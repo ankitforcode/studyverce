@@ -53,6 +53,8 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 - Signup with `enable_confirmations`: show “Check your email” when `signUp` returns no session.
 - Use `authCallbackUrl(redirect)` from `lib/auth/paths.ts` for all `emailRedirectTo` / OAuth `redirectTo` (reads `NEXT_PUBLIC_APP_URL`, not `window.location.origin`).
 - Signup stores `data: { post_auth_redirect: redirect }` — callback reads this when Supabase drops the `next` query param.
+- **Login + onboarding**: email login (`auth/login`) and `/auth/callback` both call `resolvePostAuthDestination()` after reading `profiles.onboarding_completed`. `/onboarding` is a server page that redirects completed profiles to `redirect` or `/dashboard`.
+- **Seed admin** (`supabase/seed.sql`): `on_auth_user_created` inserts a default profile; seed **UPDATE**s that row so `admin@studyverce.local` has `onboarding_completed = true` (do not rely on `INSERT … ON CONFLICT` alone).
 - Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; toast on success via `notificationMessages.passwordResetSuccess()`.
 - Password fields: use `components/auth/password-input.tsx` (animated eye toggle).
 

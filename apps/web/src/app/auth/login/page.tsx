@@ -15,6 +15,7 @@ import { trackEvent } from "@/lib/analytics";
 import {
   authCallbackUrl,
   forgotPasswordPath,
+  resolvePostAuthDestination,
   safeRedirectPath,
   signupPath,
 } from "@/lib/auth/paths";
@@ -47,11 +48,28 @@ function LoginForm() {
 
       if (signInError) {
         setError(signInError.message);
+        setLoading(false);
         return;
       }
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      let onboardingCompleted = false;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", user.id)
+          .maybeSingle();
+        onboardingCompleted = profile?.onboarding_completed ?? false;
+      }
+
       trackEvent("login_completed", { method: "email" });
-      router.replace(redirect);
+      const destination = resolvePostAuthDestination(redirect, onboardingCompleted);
+      router.replace(destination);
+      router.refresh();
     } catch {
       setError("Sign in failed. Please try again.");
       setLoading(false);

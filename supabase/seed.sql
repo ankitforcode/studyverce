@@ -227,32 +227,18 @@ BEGIN
     identity_data = EXCLUDED.identity_data,
     updated_at = NOW();
 
-  INSERT INTO public.profiles (
-    id,
-    username,
-    display_name,
-    study_streak,
-    total_focus_minutes,
-    subject_tags,
-    plan_tier,
-    onboarding_completed,
-    is_admin
-  ) VALUES (
-    admin_id,
-    'admin',
-    'StudyVerce Admin',
-    0,
-    0,
-    ARRAY['general']::text[],
-    'institution',
-    true,
-    true
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    username = EXCLUDED.username,
-    display_name = EXCLUDED.display_name,
-    plan_tier = EXCLUDED.plan_tier,
-    onboarding_completed = EXCLUDED.onboarding_completed,
-    is_admin = EXCLUDED.is_admin,
-    updated_at = NOW();
+  -- `on_auth_user_created` inserts a default profile; always UPDATE so seed admin
+  -- keeps username, admin flags, and onboarding_completed = true.
+  UPDATE public.profiles
+  SET
+    username = 'admin',
+    display_name = 'StudyVerce Admin',
+    study_streak = 0,
+    total_focus_minutes = 0,
+    subject_tags = ARRAY['general']::text[],
+    plan_tier = 'institution',
+    onboarding_completed = true,
+    is_admin = true,
+    updated_at = NOW()
+  WHERE id = admin_id;
 END $$;
