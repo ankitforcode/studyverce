@@ -136,6 +136,17 @@ Then update the inline `data:image/png;base64,...` in both HTML templates if the
 
 For hosted Supabase, paste the HTML into **Authentication → Email Templates** (**Confirm signup** / **Reset password**) in the dashboard.
 
+**Redirect URL configuration (required)** — if confirmation sends you to `https://localhost:3000/...`, Supabase **Site URL** is still the project default. Fix it in **Authentication → URL Configuration**:
+
+| Setting | Local dev | Production |
+|---------|-----------|------------|
+| **Site URL** | `http://localhost:3001` | `https://www.studyverce.com` (your Amplify URL) |
+| **Redirect URLs** | `http://localhost:3001/**` | `https://www.studyverce.com/**` |
+
+Also set `NEXT_PUBLIC_APP_URL` in `apps/web/.env.local` to the same origin (one line only — duplicate keys make the last value win). The app uses that for `emailRedirectTo` / OAuth callbacks via `authCallbackUrl()`.
+
+After email confirm, `/auth/callback` falls back to `user_metadata.post_auth_redirect` when Supabase drops the `next` query param.
+
 ### 4. Start Redis and ngrok (OAuth / HTTPS redirects)
 
 Copy the **repo root** env file (this is separate from `apps/web/.env.local`) and add your [ngrok authtoken](https://dashboard.ngrok.com/get-started/your-authtoken):

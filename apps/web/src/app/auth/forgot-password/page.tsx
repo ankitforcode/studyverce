@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { loginPath } from "@/lib/auth/paths";
+import { authCallbackUrl, loginPath } from "@/lib/auth/paths";
 
 function ForgotPasswordForm() {
   const searchParams = useSearchParams();
@@ -25,7 +25,7 @@ function ForgotPasswordForm() {
 
     const supabase = createClient();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/auth/reset-password")}`,
+      redirectTo: authCallbackUrl("/auth/reset-password"),
     });
 
     setLoading(false);

@@ -13,7 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
-import { loginPath, onboardingPath, safeRedirectPath } from "@/lib/auth/paths";
+import { loginPath, onboardingPath, authCallbackUrl, safeRedirectPath } from "@/lib/auth/paths";
 
 function SignupForm() {
   const router = useRouter();
@@ -37,7 +37,8 @@ function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
+        emailRedirectTo: authCallbackUrl(redirect),
+        data: { post_auth_redirect: redirect },
       },
     });
 
@@ -63,7 +64,7 @@ function SignupForm() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
+        redirectTo: authCallbackUrl(redirect),
       },
     });
   }

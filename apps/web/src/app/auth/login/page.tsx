@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
 import {
+  authCallbackUrl,
   forgotPasswordPath,
   onboardingPath,
   safeRedirectPath,
@@ -73,7 +74,7 @@ function LoginForm() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
+        redirectTo: authCallbackUrl(redirect),
       },
     });
   }

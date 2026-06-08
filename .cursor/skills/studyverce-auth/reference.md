@@ -8,13 +8,13 @@
 | `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
 | `/auth/reset-password` | `app/auth/reset-password/page.tsx` | Session required; toast on success |
-| `/auth/callback` | `app/auth/callback/route.ts` | OAuth + email verify; rate limited |
+| `/auth/callback` | `app/auth/callback/route.ts` | OAuth + email verify; `next` query or `user_metadata.post_auth_redirect`; rate limited |
 
 ## Auth helpers
 
 | File | Role |
 |------|------|
-| `lib/auth/paths.ts` | `safeRedirectPath`, `loginPath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password` |
+| `lib/auth/paths.ts` | `safeRedirectPath`, `authCallbackUrl`, `loginPath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password` |
 | `lib/auth/middleware-routes.ts` | `isProtectedAppPath()` — keep aligned with `middleware.ts` matcher |
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
 | `app/auth/navbar-actions.ts` | `getNavbarAuthState()` — profile + friend count (client-deferred) |

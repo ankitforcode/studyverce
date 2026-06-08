@@ -15,6 +15,14 @@ export function getSiteUrl(): string {
   return configured || DEFAULT_SITE_URL;
 }
 
+/** Canonical browser origin for OAuth/email redirects (prefer NEXT_PUBLIC_APP_URL). */
+export function getAppOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+  if (configured) return configured;
+  if (typeof window !== "undefined") return window.location.origin;
+  return DEFAULT_SITE_URL;
+}
+
 export function createSiteMetadata(overrides?: Metadata): Metadata {
   const siteUrl = getSiteUrl();
 

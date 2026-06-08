@@ -51,8 +51,14 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 ## Signup / reset UX
 
 - Signup with `enable_confirmations`: show “Check your email” when `signUp` returns no session.
+- Use `authCallbackUrl(redirect)` from `lib/auth/paths.ts` for all `emailRedirectTo` / OAuth `redirectTo` (reads `NEXT_PUBLIC_APP_URL`, not `window.location.origin`).
+- Signup stores `data: { post_auth_redirect: redirect }` — callback reads this when Supabase drops the `next` query param.
 - Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; toast on success via `notificationMessages.passwordResetSuccess()`.
 - Password fields: use `components/auth/password-input.tsx` (animated eye toggle).
+
+## Hosted Supabase URL config
+
+Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard → Authentication → URL Configuration** still has the default Site URL. Set Site URL + Redirect URLs to match `NEXT_PUBLIC_APP_URL` (see root `README.md` auth templates section).
 
 ## Pitfalls
 

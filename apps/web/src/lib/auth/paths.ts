@@ -1,5 +1,12 @@
+import { getAppOrigin } from "@/lib/site-metadata";
+
 /** Auth routes that are valid post-login redirect targets (e.g. password recovery). */
 const ALLOWED_AUTH_REDIRECT_PATHS = new Set(["/auth/reset-password"]);
+
+export function authCallbackUrl(redirectTo: string): string {
+  const safe = safeRedirectPath(redirectTo) ?? "/onboarding";
+  return `${getAppOrigin()}/auth/callback?next=${encodeURIComponent(safe)}`;
+}
 
 export function loginPath(redirectTo: string): string {
   return `/auth/login?redirect=${encodeURIComponent(redirectTo)}`;
