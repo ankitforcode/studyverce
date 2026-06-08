@@ -15,7 +15,6 @@ import { trackEvent } from "@/lib/analytics";
 import {
   authCallbackUrl,
   forgotPasswordPath,
-  onboardingPath,
   safeRedirectPath,
   signupPath,
 } from "@/lib/auth/paths";
@@ -39,34 +38,24 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (signInError) {
-      setError(signInError.message);
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      trackEvent("login_completed", { method: "email" });
+      router.replace(redirect);
+    } catch {
+      setError("Sign in failed. Please try again.");
       setLoading(false);
-      return;
     }
-
-    trackEvent("login_completed", { method: "email" });
-
-    const userId = signInData.user?.id;
-    const { data: profile } = userId
-      ? await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", userId)
-          .maybeSingle()
-      : { data: null };
-
-    const destination = profile?.onboarding_completed
-      ? redirect
-      : onboardingPath(redirect);
-    router.push(destination);
-    router.refresh();
   }
 
   async function handleGoogleLogin() {
