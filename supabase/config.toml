@@ -48,6 +48,8 @@ enable_signup = true
 double_confirm_changes = true
 # Required for signup confirmation emails in local Inbucket (http://localhost:54324).
 enable_confirmations = true
+# Minimum wait between auth emails to the same address (signup, invite, magic link, etc.).
+max_frequency = "30s"
 
 [auth.email.template.confirmation]
 subject = "Confirm your email — StudyVerce"

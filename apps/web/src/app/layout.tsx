@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/layout/app-providers";
 import { Navbar } from "@/components/layout/navbar";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { PostHogProvider } from "@/lib/analytics";
 import { createSiteMetadata } from "@/lib/site-metadata";
 import "./globals.css";
@@ -24,11 +25,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
+      >
         <PostHogProvider>
           <AppProviders>
             <Navbar />
-            {children}
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
           </AppProviders>
         </PostHogProvider>
       </body>

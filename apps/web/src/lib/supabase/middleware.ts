@@ -1,5 +1,6 @@
 import { safeRedirectPath } from "@/lib/auth/paths";
 import { isProtectedAppPath } from "@/lib/auth/middleware-routes";
+import { userMustSetPassword } from "@/lib/auth/room-invite";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -31,6 +32,18 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isProtected = isProtectedAppPath(pathname);
+
+  if (
+    user &&
+    userMustSetPassword(user.user_metadata, user.invited_at) &&
+    pathname !== "/auth/accept-invite" &&
+    pathname !== "/auth/callback"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/accept-invite";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();

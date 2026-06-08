@@ -2,15 +2,22 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { establishSessionFromUrl } from "@/lib/auth/establish-session";
 import { PasswordInput } from "@/components/auth/password-input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/input";
-import { loginPath, onboardingPath, safeRedirectPath } from "@/lib/auth/paths";
-import { POST_AUTH_REDIRECT_METADATA_KEY } from "@/lib/auth/room-invite";
+import { isRoomInvitePath, loginPath, safeRedirectPath } from "@/lib/auth/paths";
+import {
+  PASSWORD_SET_METADATA_KEY,
+  POST_AUTH_REDIRECT_METADATA_KEY,
+  FORCE_PASSWORD_CHANGE_METADATA_KEY,
+} from "@/lib/auth/room-invite";
 
 function AcceptInviteForm() {
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +28,24 @@ function AcceptInviteForm() {
 
   useEffect(() => {
     void (async () => {
+      const hasAuthParams =
+        searchParams.has("code") ||
+        searchParams.has("token_hash") ||
+        typeof window !== "undefined" && window.location.hash.includes("access_token");
+
+      if (hasAuthParams) {
+        const { error: sessionError } = await establishSessionFromUrl(searchParams);
+        if (sessionError) {
+          setError(sessionError);
+          setCheckingSession(false);
+          return;
+        }
+
+        if (typeof window !== "undefined") {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      }
+
       const supabase = createClient();
       const {
         data: { session },
@@ -37,7 +62,7 @@ function AcceptInviteForm() {
 
       setCheckingSession(false);
     })();
-  }, []);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +81,13 @@ function AcceptInviteForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: {
+        [PASSWORD_SET_METADATA_KEY]: true,
+        [FORCE_PASSWORD_CHANGE_METADATA_KEY]: false,
+      },
+    });
 
     if (updateError) {
       setLoading(false);
@@ -73,20 +104,8 @@ function AcceptInviteForm() {
       typeof redirectFromMetadata === "string" ? redirectFromMetadata : null
     );
 
-    let onboardingCompleted = false;
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", user.id)
-        .maybeSingle();
-      onboardingCompleted = profile?.onboarding_completed ?? false;
-    }
-
     const destination =
-      !onboardingCompleted && redirect
-        ? onboardingPath(redirect)
-        : redirect ?? "/onboarding";
+      redirect && isRoomInvitePath(redirect) ? redirect : redirect ?? "/onboarding";
 
     window.location.assign(destination);
   }

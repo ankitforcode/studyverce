@@ -159,6 +159,14 @@ function SignupForm() {
         <Button type="submit" className="w-full shadow-md shadow-primary/20" disabled={loading}>
           {loading ? "Creating account..." : "Create account"}
         </Button>
+
+        <p className="text-center text-xs leading-5 text-muted-foreground">
+          By creating an account, you agree to our{" "}
+          <Link href="/privacy" className="font-medium text-primary hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
 
       <div className="mt-5 space-y-4">

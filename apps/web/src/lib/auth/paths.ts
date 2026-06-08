@@ -11,6 +11,11 @@ export function authCallbackUrl(redirectTo: string): string {
   return `${getAppOrigin()}/auth/callback?next=${encodeURIComponent(safe)}`;
 }
 
+/** Supabase invite emails should land here (not `/auth/callback`) so the client can finish PKCE/hash exchange. */
+export function acceptInviteUrl(): string {
+  return `${getAppOrigin()}/auth/accept-invite`;
+}
+
 export function loginPath(redirectTo: string): string {
   return `/auth/login?redirect=${encodeURIComponent(redirectTo)}`;
 }
@@ -72,6 +77,10 @@ export function resolvePostAuthDestination(
   }
 
   const destination = safe ?? "/dashboard";
+
+  if (safe && isRoomInvitePath(safe)) {
+    return safe;
+  }
 
   if (!onboardingCompleted && destination !== "/onboarding") {
     return onboardingPath(destination);

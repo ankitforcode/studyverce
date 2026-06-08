@@ -3,20 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createServiceClient } from "@/lib/supabase/service";
-import { authCallbackUrl } from "@/lib/auth/paths";
+import { findAuthUserByEmail } from "@/lib/auth/admin-users";
+import { formatAuthEmailRateLimitError } from "@/lib/auth/errors";
+import { acceptInviteUrl, authCallbackUrl } from "@/lib/auth/paths";
 import {
   buildRoomInviteRedirectPath,
   buildRoomInviteUserMetadata,
 } from "@/lib/auth/room-invite";
-
-function isAlreadyRegisteredError(message: string): boolean {
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("already registered") ||
-    lower.includes("already been registered") ||
-    lower.includes("user already exists")
-  );
-}
 
 function isInvalidServiceRoleError(message: string): boolean {
   const lower = message.toLowerCase();
@@ -91,7 +84,7 @@ async function sendExistingUserRoomInvite(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: formatAuthEmailRateLimitError(error.message) };
   }
 
   return { error: null };
@@ -105,19 +98,19 @@ async function sendNewUserRoomInvite(
   const admin = createServiceClient();
   const metadata = buildRoomInviteUserMetadata(roomName, redirectPath);
 
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: authCallbackUrl("/auth/accept-invite"),
+  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: acceptInviteUrl(),
     data: metadata,
   });
 
-  if (error) {
-    if (isInvalidServiceRoleError(error.message)) {
+  if (inviteError) {
+    if (isInvalidServiceRoleError(inviteError.message)) {
       return {
         error:
           "SUPABASE_SERVICE_ROLE_KEY does not match this Supabase instance. Run `supabase status` and update apps/web/.env.local.",
       };
     }
-    return { error: error.message };
+    return { error: formatAuthEmailRateLimitError(inviteError.message) };
   }
 
   return { error: null };
@@ -150,13 +143,9 @@ export async function sendRoomEmailInvite(
   );
 
   try {
-    const newUserResult = await sendNewUserRoomInvite(normalized, redirectPath, room.name);
+    const existingUser = await findAuthUserByEmail(normalized);
 
-    if (!newUserResult.error) {
-      return { error: null, audience: "new" };
-    }
-
-    if (isAlreadyRegisteredError(newUserResult.error)) {
+    if (existingUser) {
       const existingResult = await sendExistingUserRoomInvite(
         normalized,
         redirectPath,
@@ -167,7 +156,8 @@ export async function sendRoomEmailInvite(
         : { error: null, audience: "existing" };
     }
 
-    return newUserResult;
+    const newUserResult = await sendNewUserRoomInvite(normalized, redirectPath, room.name);
+    return newUserResult.error ? newUserResult : { error: null, audience: "new" };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "Could not send invite.";
     if (message.includes("SUPABASE_SERVICE_ROLE_KEY") || isInvalidServiceRoleError(message)) {

@@ -9,7 +9,7 @@
 | `/settings/account` | `app/settings/account/page.tsx` + `components/settings/account-settings-form.tsx` | Email change, password, inline reauth |
 | `/settings/profile` | `app/settings/profile/page.tsx` | Profile fields; shell in `app/settings/layout.tsx` |
 | `/onboarding` | `app/onboarding/page.tsx` | Server redirect when `onboarding_completed`; form in `components/onboarding/onboarding-form.tsx` |
-| `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate |
+| `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate; links to `/privacy` |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
 | `/auth/reset-password` | `app/auth/reset-password/page.tsx` | Session required; toast on success |
 | `/auth/accept-invite` | `app/auth/accept-invite/page.tsx` | New room invitees set password, then `post_auth_redirect` |
@@ -20,9 +20,12 @@
 | File | Role |
 |------|------|
 | `lib/auth/paths.ts` | `safeRedirectPath`, `authCallbackUrl`, `accountSettingsPath`, `reauthenticatePath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password`, `/auth/accept-invite` |
-| `lib/auth/room-invite.ts` | `buildRoomInviteRedirectPath` for room email invites |
+| `lib/auth/room-invite.ts` | `buildRoomInviteRedirectPath`, `userMustSetPassword`, invite metadata keys |
+| `lib/auth/admin-users.ts` | `findAuthUserByEmail` (service role) — avoids double email on room invites |
+| `lib/auth/errors.ts` | `formatAuthEmailRateLimitError` — 30s cooldown copy when Supabase returns `0 seconds` |
 | `lib/supabase/anon.ts` | Server anon client for OTP/magic-link sends |
-| `app/rooms/invite-actions.ts` | `sendRoomEmailInvite` — `inviteUserByEmail` (new) or `signInWithOtp` (existing) |
+| `lib/auth/establish-session.ts` | Client `establishSessionFromUrl` — PKCE `code`, `token_hash`, implicit hash on invite landing |
+| `app/rooms/invite-actions.ts` | `sendRoomEmailInvite` — lookup email first; new → `inviteUserByEmail` + `acceptInviteUrl()`; existing → magic link → room invite path |
 | `lib/site-metadata.ts` | `getAppOrigin`, `resolveAuthRedirectOrigin` (callback / Amplify) |
 | `lib/auth/middleware-routes.ts` | `isProtectedAppPath()` — keep aligned with `middleware.ts` matcher |
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
@@ -48,7 +51,7 @@
 | `supabase/templates/invite.html` | You're invited — StudyVerce |
 | `supabase/templates/email-change.html` | Confirm your new email — StudyVerce |
 | `supabase/templates/reauthentication.html` | Confirm it's you — StudyVerce |
-| `supabase/config.toml` | `[auth.email.template.*]` keys for all six templates above |
+| `supabase/config.toml` | `[auth.email.template.*]` keys; `[auth.email] max_frequency = "30s"` |
 | `apps/web/public/logo-email.png` | Email logo asset (hosted at `https://www.studyverce.com/logo-email.png`) |
 | `apps/web/public/logo-email.svg` | SVG source for PNG |
 | `scripts/sync-email-logo.sh` | Regenerate PNG from SVG |

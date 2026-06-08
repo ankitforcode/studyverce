@@ -1,5 +1,7 @@
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { resolvePostAuthDestination, safeRedirectPath } from "@/lib/auth/paths";
+import { userMustSetPassword } from "@/lib/auth/room-invite";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAuthRedirectOrigin } from "@/lib/site-metadata";
@@ -20,32 +22,48 @@ export async function GET(request: Request) {
   const redirectOrigin = resolveAuthRedirectOrigin(request);
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const otpType = searchParams.get("type");
   const nextFromQuery = safeRedirectPath(searchParams.get("next"));
 
+  const supabase = await createClient();
+  let sessionEstablished = false;
+
   if (code) {
-    const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    sessionEstablished = !error;
+  } else if (tokenHash && otpType) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: otpType as EmailOtpType,
+    });
+    sessionEstablished = !error;
+  }
 
-      const nextFromMetadata = readPostAuthRedirectFromMetadata(user?.user_metadata);
-      const next = nextFromQuery ?? nextFromMetadata ?? "/onboarding";
+  if (sessionEstablished) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      let onboardingCompleted = false;
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", user.id)
-          .maybeSingle();
-        onboardingCompleted = profile?.onboarding_completed ?? false;
-      }
+    const nextFromMetadata = readPostAuthRedirectFromMetadata(user?.user_metadata);
+    let next = nextFromQuery ?? nextFromMetadata ?? "/onboarding";
 
-      const destination = resolvePostAuthDestination(next, onboardingCompleted);
-      return NextResponse.redirect(`${redirectOrigin}${destination}`);
+    if (user && userMustSetPassword(user.user_metadata, user.invited_at)) {
+      next = "/auth/accept-invite";
     }
+
+    let onboardingCompleted = false;
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .maybeSingle();
+      onboardingCompleted = profile?.onboarding_completed ?? false;
+    }
+
+    const destination = resolvePostAuthDestination(next, onboardingCompleted);
+    return NextResponse.redirect(`${redirectOrigin}${destination}`);
   }
 
   return NextResponse.redirect(`${redirectOrigin}/auth/login?error=auth`);
