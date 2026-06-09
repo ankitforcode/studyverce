@@ -16,6 +16,12 @@ See [reference.md](reference.md) for component tree, routes, server actions, and
 3. `room-client.tsx` — client shell: socket, state, layout; root has `data-room-shell` for light-mode CSS vars.
 4. Post-its overlay workspace; pomodoro centered; sidebar = todo + chat.
 
+## Room creation (`app/rooms/actions.ts`)
+
+- Slugs come from `slugify(name)` in `@studyverce/db`; collisions append `-<hex>`.
+- **Do not** check slug uniqueness with a client-scoped `SELECT` — RLS only exposes public rooms, your own rooms, and rooms you belong to, so another user's private room slug is invisible and the insert still hits `study_rooms_slug_key`.
+- `createRoom` retries insert up to 8 times on slug unique violations (covers RLS blind spots and double-submit races).
+
 ## Pointer-event layering
 
 When adding overlays:

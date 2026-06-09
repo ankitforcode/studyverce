@@ -8,6 +8,8 @@
 | `/auth/reauthenticate` | `app/auth/reauthenticate/page.tsx` | `reauthenticate()` email; exempt from logged-in `/auth/*` redirect |
 | `/settings/account` | `app/settings/account/page.tsx` + `components/settings/account-settings-form.tsx` | Email change, password, inline reauth |
 | `/settings/profile` | `app/settings/profile/page.tsx` | Profile fields; shell in `app/settings/layout.tsx` |
+| `/profile` | `app/profile/page.tsx` | Redirects signed-in user to `/profile/[username]` by user id (mobile nav avatar uses this — avoids stale username 404s) |
+| `/profile/[username]` | `app/profile/[username]/page.tsx` | Public profile; normalizes username segment (lowercase, strips `@`) |
 | `/onboarding` | `app/onboarding/page.tsx` | Server redirect when `onboarding_completed`; form in `components/onboarding/onboarding-form.tsx` |
 | `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate; links to `/terms` and `/privacy` |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
@@ -30,6 +32,7 @@
 | `lib/auth/middleware-routes.ts` | `isProtectedAppPath()` — keep aligned with `middleware.ts` matcher |
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
 | `app/auth/navbar-actions.ts` | `getNavbarAuthState()` — profile + friend count (client-deferred) |
+| `lib/auth/navbar-profile-sync.ts` | `notifyNavbarProfileUpdated()` — client event; navbar refetches/applies profile patch after onboarding or settings |
 | `app/auth/actions.ts` | `signOutAction` |
 
 ## Layout

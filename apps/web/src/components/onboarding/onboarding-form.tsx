@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SUBJECT_TAGS } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +10,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { notifyNavbarProfileUpdated } from "@/lib/auth/navbar-profile-sync";
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -21,6 +22,39 @@ export function OnboardingForm() {
   const [subjectTags, setSubjectTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadExistingProfile() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (cancelled || !profile) return;
+
+      if (profile.display_name) {
+        setDisplayName(profile.display_name);
+      }
+      if (profile.username && !profile.username.startsWith("user_")) {
+        setUsername(profile.username);
+      }
+    }
+
+    void loadExistingProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function toggleTag(tag: string) {
     setSubjectTags((prev) =>
@@ -58,6 +92,12 @@ export function OnboardingForm() {
       setLoading(false);
       return;
     }
+
+    const normalizedUsername = username.toLowerCase();
+    notifyNavbarProfileUpdated({
+      username: normalizedUsername,
+      displayName,
+    });
 
     router.push(redirect);
     router.refresh();

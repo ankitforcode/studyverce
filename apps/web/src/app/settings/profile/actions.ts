@@ -33,6 +33,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/settings/profile");
+  revalidatePath("/profile");
   revalidatePath(`/profile/${parsed.data.username}`);
-  redirect(`/profile/${parsed.data.username}`);
+  redirect("/profile");
 }

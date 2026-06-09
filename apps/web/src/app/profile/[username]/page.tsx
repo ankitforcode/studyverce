@@ -1,20 +1,23 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Flame, Clock, Award } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/badge";
+import { Badge, Avatar } from "@/components/ui/badge";
 import { formatFocusTime } from "@/lib/utils";
+import { normalizeProfileUsername } from "@/lib/profiles/username";
 import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
-  const { username } = await params;
+  const { username: rawUsername } = await params;
+  const username = normalizeProfileUsername(rawUsername);
   return createSiteMetadata({
     path: `/profile/${username}`,
     title: `${username} on StudyVerce`,
@@ -27,14 +30,15 @@ export default async function ProfilePage({
 }: {
   params: Promise<{ username: string }>;
 }) {
-  const { username } = await params;
+  const { username: rawUsername } = await params;
+  const username = normalizeProfileUsername(rawUsername);
   const supabase = await createClient();
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("username", username)
-    .single();
+    .maybeSingle();
 
   if (!profile) {
     notFound();
@@ -50,16 +54,19 @@ export default async function ProfilePage({
   } = await supabase.auth.getUser();
 
   const isOwnProfile = user?.id === profile.id;
+  if (rawUsername !== profile.username) {
+    redirect(`/profile/${profile.username}`);
+  }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <div className="flex items-start gap-6 mb-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
         <Avatar src={profile.avatar_url} fallback={profile.display_name} size="lg" />
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{profile.display_name}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold sm:text-3xl">{profile.display_name}</h1>
           <p className="text-muted-foreground">@{profile.username}</p>
           {profile.subject_tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
               {profile.subject_tags.map((tag) => (
                 <Badge key={tag} variant="secondary">{tag}</Badge>
               ))}
@@ -68,7 +75,7 @@ export default async function ProfilePage({
           {isOwnProfile && (
             <Link
               href="/settings/profile"
-              className="inline-block mt-3 text-sm text-primary hover:underline"
+              className="mt-3 inline-block text-sm text-primary hover:underline"
             >
               Edit profile
             </Link>

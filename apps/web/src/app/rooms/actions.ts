@@ -21,6 +21,25 @@ import {
   fetchUserPlanTier,
 } from "@/lib/plan-limits";
 
+const MAX_ROOM_SLUG_ATTEMPTS = 8;
+
+function isStudyRoomSlugConflict(error: {
+  code?: string;
+  message?: string;
+  details?: string;
+}): boolean {
+  if (error.code !== "23505") return false;
+  const text = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+  return text.includes("study_rooms_slug_key") || text.includes("(slug)");
+}
+
+function roomSlugForAttempt(baseSlug: string, attempt: number): string {
+  if (attempt === 0) return baseSlug;
+  const suffix = crypto.randomBytes(4).toString("hex");
+  const maxBaseLen = Math.max(1, 60 - 1 - suffix.length);
+  return `${baseSlug.slice(0, maxBaseLen)}-${suffix}`;
+}
+
 export async function createRoom(input: CreateRoomInput) {
   const parsed = createRoomSchema.safeParse(input);
   if (!parsed.success) {
@@ -74,19 +93,8 @@ export async function createRoom(input: CreateRoomInput) {
     }
   }
 
-  let slug = slugify(parsed.data.name);
-  if (!slug) {
-    slug = `room-${crypto.randomBytes(4).toString("hex")}`;
-  }
-  const { data: existing } = await supabase
-    .from("study_rooms")
-    .select("slug")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (existing) {
-    slug = `${slug}-${crypto.randomBytes(3).toString("hex")}`;
-  }
+  const baseSlug =
+    slugify(parsed.data.name) || `room-${crypto.randomBytes(4).toString("hex")}`;
 
   const settings = mergeRoomSettings(parsed.data.settings);
   const inviteToken = parsed.data.is_public ? null : crypto.randomBytes(16).toString("hex");
@@ -97,24 +105,41 @@ export async function createRoom(input: CreateRoomInput) {
     parsed.data.max_participants
   );
 
-  const { data: room, error } = await supabase
-    .from("study_rooms")
-    .insert({
-      slug,
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-      is_public: parsed.data.is_public,
-      owner_id: user.id,
-      max_participants: maxParticipants,
-      wallpaper_id: wallpaperId,
-      settings: settings as unknown as Database["public"]["Tables"]["study_rooms"]["Insert"]["settings"],
-      invite_token: inviteToken,
-    })
-    .select()
-    .single();
+  let room: Database["public"]["Tables"]["study_rooms"]["Row"] | null = null;
+  for (let attempt = 0; attempt < MAX_ROOM_SLUG_ATTEMPTS; attempt++) {
+    const slug = roomSlugForAttempt(baseSlug, attempt);
+    const { data, error } = await supabase
+      .from("study_rooms")
+      .insert({
+        slug,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        is_public: parsed.data.is_public,
+        owner_id: user.id,
+        max_participants: maxParticipants,
+        wallpaper_id: wallpaperId,
+        settings: settings as unknown as Database["public"]["Tables"]["study_rooms"]["Insert"]["settings"],
+        invite_token: inviteToken,
+      })
+      .select()
+      .single();
 
-  if (error) {
+    if (!error) {
+      room = data;
+      break;
+    }
+
+    if (isStudyRoomSlugConflict(error)) {
+      continue;
+    }
+
     return { error: error.message };
+  }
+
+  if (!room) {
+    return {
+      error: "Could not create a unique room URL. Try a different name.",
+    };
   }
 
   const { error: memberError } = await supabase.from("room_members").insert({

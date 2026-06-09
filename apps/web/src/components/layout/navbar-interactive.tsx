@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Menu,
+  Settings,
   Shield,
   Sparkles,
   Trophy,
+  User,
   Users,
   X,
 } from "lucide-react";
@@ -19,6 +21,10 @@ import { NavLink } from "@/components/layout/nav-link";
 import { Avatar } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import {
+  onNavbarProfileUpdated,
+  type NavbarProfilePatch,
+} from "@/lib/auth/navbar-profile-sync";
 import { cn } from "@/lib/utils";
 
 const navLinkClass =
@@ -37,6 +43,7 @@ export function NavbarInteractive() {
   const isHome = pathname === "/";
   const [authState, setAuthState] = useState<NavbarAuthState | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const skipPathnameRefreshRef = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,22 +53,83 @@ export function NavbarInteractive() {
       if (!cancelled) {
         setAuthState(next);
       }
+      return next;
     }
 
-    void loadAuthState();
+    function applyProfilePatch(patch?: NavbarProfilePatch) {
+      if (!patch) return;
+      setAuthState((prev) => {
+        if (!prev?.profile) return prev;
+        return {
+          ...prev,
+          profile: {
+            ...prev.profile,
+            ...(patch.username !== undefined ? { username: patch.username } : {}),
+            ...(patch.displayName !== undefined ? { displayName: patch.displayName } : {}),
+            ...(patch.avatarUrl !== undefined ? { avatarUrl: patch.avatarUrl } : {}),
+          },
+        };
+      });
+    }
+
+    async function loadAuthStateWithProfileRetry() {
+      const next = await loadAuthState();
+      if (cancelled || next.profile) return;
+
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      if (!cancelled) {
+        await loadAuthState();
+      }
+    }
+
+    void loadAuthStateWithProfileRetry();
 
     const supabase = createClient();
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
+      void loadAuthStateWithProfileRetry();
+    });
+
+    const unsubscribeProfileSync = onNavbarProfileUpdated((patch) => {
+      applyProfilePatch(patch);
       void loadAuthState();
     });
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
+      unsubscribeProfileSync();
     };
   }, []);
+
+  useEffect(() => {
+    if (skipPathnameRefreshRef.current) {
+      skipPathnameRefreshRef.current = false;
+      return;
+    }
+
+    let cancelled = false;
+
+    async function refreshAuthState() {
+      const next = await getNavbarAuthState();
+      if (!cancelled) {
+        setAuthState(next);
+      }
+    }
+
+    void refreshAuthState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -144,7 +212,7 @@ export function NavbarInteractive() {
         ) : profile ? (
           <>
             <Link
-              href={`/profile/${profile.username}`}
+              href="/profile"
               className="rounded-lg p-1 sm:hidden"
               aria-label="Your profile"
             >
@@ -215,15 +283,26 @@ export function NavbarInteractive() {
                 </Link>
               ))}
             {profile && (
-              <NavLink
-                href="/dashboard"
-                match="exact"
-                className={mobileNavLinkClass}
-                onClick={() => setMobileOpen(false)}
-              >
-                <LayoutDashboard className="h-4 w-4 shrink-0" />
-                Dashboard
-              </NavLink>
+              <>
+                <NavLink
+                  href="/profile"
+                  match="prefix"
+                  className={mobileNavLinkClass}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <User className="h-4 w-4 shrink-0" />
+                  Profile
+                </NavLink>
+                <NavLink
+                  href="/dashboard"
+                  match="exact"
+                  className={mobileNavLinkClass}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  Dashboard
+                </NavLink>
+              </>
             )}
             <NavLink
               href="/leaderboard"
@@ -255,6 +334,17 @@ export function NavbarInteractive() {
               </NavLink>
             )}
           </nav>
+
+          {profile && (
+            <div className="mt-4 flex flex-col gap-2 border-t border-border/50 pt-4">
+              <Link href="/settings/profile" onClick={() => setMobileOpen(false)}>
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Button>
+              </Link>
+            </div>
+          )}
 
           {!profile && !isLoading && (
             <div className="mt-4 flex flex-col gap-2 border-t border-border/50 pt-4">

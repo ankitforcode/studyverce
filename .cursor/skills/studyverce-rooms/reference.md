@@ -43,6 +43,7 @@
 
 | File | Actions |
 |------|---------|
+| `app/rooms/actions.ts` | `createRoom` (slug retry on `study_rooms_slug_key`; do not pre-check slug via SELECT — RLS hides other users' private rooms) |
 | `app/rooms/favorite-actions.ts` | `toggleRoomFavorite`, `getFavoriteRooms` |
 | `app/rooms/member-actions.ts` | `kickRoomMember` |
 | `app/rooms/access-actions.ts` | `setRoomVisibility`, `getRoomShareLink`, access requests |

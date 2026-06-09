@@ -15,6 +15,7 @@ import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
 import { syncPostHogUserFromSession } from "@/lib/consent/posthog-consent";
 import { loginPath, onboardingPath, authCallbackUrl, safeRedirectPath } from "@/lib/auth/paths";
+import { notifyNavbarProfileUpdated } from "@/lib/auth/navbar-profile-sync";
 import { SIGNUP_FREE_DISCLOSURE } from "@/lib/plans/marketing";
 import {
   PRIVACY_POLICY_PATH,
@@ -62,6 +63,7 @@ function SignupForm() {
 
     await syncPostHogUserFromSession();
     trackEvent("signup_completed", { method: "email" });
+    notifyNavbarProfileUpdated();
     router.push(onboardingPath(redirect));
     router.refresh();
   }

@@ -37,7 +37,7 @@ export function NavbarProfileMenu({
 }: NavbarProfileMenuProps) {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
-  const profileHref = `/profile/${username}`;
+  const profileHref = "/profile";
 
   return (
     <div className="group relative hidden sm:block">
