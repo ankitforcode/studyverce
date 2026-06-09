@@ -7,7 +7,7 @@ CDK stack for **socket server + ALB**. The Next.js web app deploys separately vi
 | Resource | Purpose |
 |----------|---------|
 | Existing VPC (`vpc-0d80eb44a8a5aaa25` default) | Reuses account VPC — **no new VPC, no NAT gateway** |
-| Subnets | **Public only** — ALB and ECS Fargate Spot (`assignPublicIp`) |
+| Subnets | **Public only, 2 AZs** — ALB and ECS Fargate Spot (`assignPublicIp`); AWS-managed public IPs (ALBs do not use Elastic IPs) |
 | ECR `studyverce-socket` | Created by CI if missing; CDK imports by name |
 | ECS Fargate Spot `studyverce-socket` | **0.25 vCPU / 512 MB** — lowest Fargate size |
 | ALB `studyverce-socket` | HTTPS/WebSocket on :443 (`websocket.studyverce.com`) |

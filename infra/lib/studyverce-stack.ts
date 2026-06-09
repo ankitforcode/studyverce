@@ -65,7 +65,15 @@ const DEFAULT_REDIS_URL_PARAM = "/socket/production/redis_url";
 
 const ECR_REPOSITORY_NAME = "studyverce-socket";
 
-const PUBLIC_SUBNETS: ec2.SubnetSelection = { subnetType: ec2.SubnetType.PUBLIC };
+/** ALB and ECS use public subnets in the first N AZs of the looked-up VPC. */
+const DEPLOYMENT_AZ_COUNT = 2;
+
+function publicSubnetsForDeployment(vpc: ec2.IVpc): ec2.SubnetSelection {
+  return {
+    subnetType: ec2.SubnetType.PUBLIC,
+    availabilityZones: vpc.availabilityZones.slice(0, DEPLOYMENT_AZ_COUNT),
+  };
+}
 
 export class StudyverceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: StudyverceStackProps) {
@@ -82,6 +90,7 @@ export class StudyverceStack extends cdk.Stack {
       "vpc-0d80eb44a8a5aaa25";
 
     const vpc = ec2.Vpc.fromLookup(this, "Vpc", { vpcId });
+    const deploymentSubnets = publicSubnetsForDeployment(vpc);
 
     const albSecurityGroup = new ec2.SecurityGroup(this, "AlbSecurityGroup", {
       vpc,
@@ -241,7 +250,7 @@ export class StudyverceStack extends cdk.Stack {
       desiredCount: 1,
       assignPublicIp: true,
       securityGroups: [socketSecurityGroup],
-      vpcSubnets: PUBLIC_SUBNETS,
+      vpcSubnets: deploymentSubnets,
       capacityProviderStrategies: [
         {
           capacityProvider: "FARGATE_SPOT",
@@ -256,7 +265,7 @@ export class StudyverceStack extends cdk.Stack {
     const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "SocketAlb", {
       vpc,
       internetFacing: true,
-      vpcSubnets: PUBLIC_SUBNETS,
+      vpcSubnets: deploymentSubnets,
       securityGroup: albSecurityGroup,
       loadBalancerName: "studyverce-socket",
     });
