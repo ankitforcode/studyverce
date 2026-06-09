@@ -21,6 +21,11 @@ export function isPremium(planTier: PlanTier): boolean {
   return planTier === "premium" || planTier === "institution";
 }
 
+export function canUseMagicLinkLogin(planTier: PlanTier | null | undefined): boolean {
+  if (!planTier) return false;
+  return PLAN_LIMITS[planTier].magicLinkLogin;
+}
+
 export function getPlanLimitsSummary(planTier: PlanTier | null | undefined) {
   return getStudyAssistantPlanLimits(planTier);
 }

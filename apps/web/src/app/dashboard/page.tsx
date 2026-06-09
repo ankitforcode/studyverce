@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, Zap, Bell } from "lucide-react";
+import { CheckCircle2, Clock, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,9 @@ import { formatFocusTime } from "@/lib/utils";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { StudyCalendar } from "@/components/dashboard/study-calendar";
 import { DashboardStatCard } from "@/components/dashboard/dashboard-stat-card";
+import { RemindersTodayStat } from "@/components/dashboard/reminders-today-stat";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { computeDashboardStats } from "@/lib/dashboard/stats";
 import { subDays, format } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -58,8 +60,6 @@ export default async function DashboardPage() {
     );
   }
 
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-
   const { data: sessions } = await supabase
     .from("study_sessions")
     .select("*")
@@ -67,36 +67,11 @@ export default async function DashboardPage() {
     .gte("started_at", subDays(new Date(), 30).toISOString())
     .order("started_at", { ascending: false });
 
-  const todaySessions =
-    sessions?.filter(
-      (s) => format(new Date(s.started_at), "yyyy-MM-dd") === todayStr
-    ) ?? [];
-
-  const todayMinutes = todaySessions.reduce((acc, s) => acc + s.focus_minutes, 0);
-
-  const dailyData = Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(new Date(), 6 - i);
-    const dateStr = format(date, "yyyy-MM-dd");
-    const minutes =
-      sessions
-        ?.filter((s) => format(new Date(s.started_at), "yyyy-MM-dd") === dateStr)
-        .reduce((acc, s) => acc + s.focus_minutes, 0) ?? 0;
-    return { day: format(date, "EEE"), minutes };
-  });
-
-  const sessionDates =
-    sessions
-      ?.filter((s) => s.focus_minutes > 0)
-      .map((s) => format(new Date(s.started_at), "yyyy-MM-dd")) ?? [];
-
-  const yesterdayMinutes =
-    sessions
-      ?.filter(
-        (s) =>
-          format(new Date(s.started_at), "yyyy-MM-dd") ===
-          format(subDays(new Date(), 1), "yyyy-MM-dd")
-      )
-      .reduce((acc, s) => acc + s.focus_minutes, 0) ?? 0;
+  const stats = computeDashboardStats(
+    sessions,
+    profile.study_streak,
+    profile.total_focus_minutes
+  );
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-background">
@@ -121,41 +96,41 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardStatCard
           label="Sessions Today"
-          value={String(todaySessions.length)}
+          value={String(stats.todaySessionCount)}
           icon={CheckCircle2}
-          trend={todaySessions.length > 0 ? `+${todaySessions.length}` : undefined}
+          trend={
+            stats.todaySessionCount > 0
+              ? `+${stats.todaySessionCount}`
+              : undefined
+          }
           variant="primary"
         />
         <DashboardStatCard
           label="Hours Spent"
-          value={formatHoursShort(todayMinutes)}
+          value={formatHoursShort(stats.todayMinutes)}
           icon={Clock}
           hint={
-            todayMinutes > yesterdayMinutes && yesterdayMinutes > 0
-              ? `+${formatHoursShort(todayMinutes - yesterdayMinutes)} vs yesterday`
-              : "today"
+            stats.todayMinutes > stats.yesterdayMinutes && stats.yesterdayMinutes > 0
+              ? `+${formatHoursShort(stats.todayMinutes - stats.yesterdayMinutes)} vs yesterday`
+              : `${formatHoursShort(stats.weeklyMinutes)} this week`
           }
           variant="teal"
         />
         <DashboardStatCard
           label="Day Streak"
-          value={String(profile.study_streak)}
+          value={String(stats.studyStreak)}
           icon={Zap}
+          hint={`${formatHoursShort(stats.totalFocusMinutes)} total focus`}
           variant="accent"
         />
-        <DashboardStatCard
-          label="Reminders Today"
-          value="0"
-          icon={Bell}
-          variant="muted"
-        />
+        <RemindersTodayStat />
       </div>
 
       <QuickActions />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <DashboardCharts data={dailyData} />
-        <StudyCalendar sessionDates={sessionDates} />
+        <DashboardCharts data={stats.dailyData} />
+        <StudyCalendar sessionDates={stats.sessionDates} />
       </div>
 
       <Card id="reminders">
@@ -163,9 +138,9 @@ export default async function DashboardPage() {
           <CardTitle>Recent Sessions</CardTitle>
         </CardHeader>
         <CardContent>
-          {sessions && sessions.length > 0 ? (
+          {stats.recentSessions.length > 0 ? (
             <ul className="space-y-3">
-              {sessions.slice(0, 10).map((session) => (
+              {stats.recentSessions.map((session) => (
                 <li
                   key={session.id}
                   className="flex items-center justify-between border-b border-border pb-3 text-sm last:border-0"
@@ -193,7 +168,7 @@ export default async function DashboardPage() {
               <Link href="/rooms" className="text-primary hover:underline">
                 Join a study room
               </Link>{" "}
-              to get started.
+              and start the pomodoro timer to track focus time.
             </p>
           )}
         </CardContent>

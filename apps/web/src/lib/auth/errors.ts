@@ -1,5 +1,7 @@
 const DEFAULT_EMAIL_COOLDOWN_SECONDS = 30;
 
+export const MAGIC_LINK_PREMIUM_REQUIRED = "premium_required";
+
 /** Parse Supabase "wait N seconds" copy; falls back to 30s when missing or zero. */
 export function parseAuthEmailCooldownSeconds(message: string): number {
   const match = message.match(/after (\d+) seconds?/i);

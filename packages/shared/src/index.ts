@@ -414,7 +414,11 @@ export interface ClientToServerEvents {
     goalText?: string;
     subjects?: string[];
   }) => void;
-  "session:end": (payload: { sessionId: string }) => void;
+  "session:end": (payload: {
+    sessionId: string;
+    focusMinutes: number;
+    breakMinutes: number;
+  }) => void;
   "access:request-created": (payload: {
     roomId: string;
     request: RoomAccessRequest;
@@ -529,6 +533,7 @@ export const PLAN_LIMITS = {
     streamingIntegration: false,
     roomVideo: false,
     voiceNotes: false,
+    magicLinkLogin: false,
   },
   premium: {
     maxPrivateRooms: Infinity,
@@ -541,6 +546,7 @@ export const PLAN_LIMITS = {
     streamingIntegration: true,
     roomVideo: true,
     voiceNotes: true,
+    magicLinkLogin: true,
   },
   institution: {
     maxPrivateRooms: Infinity,
@@ -553,6 +559,7 @@ export const PLAN_LIMITS = {
     streamingIntegration: true,
     roomVideo: true,
     voiceNotes: true,
+    magicLinkLogin: true,
   },
 } as const;
 

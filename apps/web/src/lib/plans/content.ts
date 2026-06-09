@@ -145,6 +145,14 @@ function voiceNotesFeature(tier: PlanTier): PlanFeature {
   };
 }
 
+function magicLinkFeature(tier: PlanTier): PlanFeature {
+  return {
+    label: "Passwordless magic link sign-in",
+    included: PLAN_LIMITS[tier].magicLinkLogin,
+    highlight: PLAN_LIMITS[tier].magicLinkLogin,
+  };
+}
+
 export const PRODUCT_PLANS: ProductPlan[] = [
   {
     tier: "free",
@@ -168,6 +176,7 @@ export const PRODUCT_PLANS: ProductPlan[] = [
       aiFeature("free"),
       teamFeature("free"),
       analyticsFeature("free"),
+      magicLinkFeature("free"),
     ],
   },
   {
@@ -193,6 +202,7 @@ export const PRODUCT_PLANS: ProductPlan[] = [
       voiceNotesFeature("premium"),
       aiFeature("premium"),
       analyticsFeature("premium"),
+      magicLinkFeature("premium"),
       { label: "Priority access to new features", included: true },
     ],
   },
@@ -218,6 +228,7 @@ export const PRODUCT_PLANS: ProductPlan[] = [
       voiceNotesFeature("institution"),
       aiFeature("institution"),
       analyticsFeature("institution"),
+      magicLinkFeature("institution"),
       { label: "Admin-managed accounts (roadmap)", included: true },
       { label: "Dedicated onboarding support", included: true },
     ],

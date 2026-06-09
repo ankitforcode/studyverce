@@ -4,7 +4,7 @@
 
 | Route | File | Notes |
 |-------|------|-------|
-| `/auth/login` | `app/auth/login/page.tsx` | Password or magic link (`signInWithOtp`); `resolvePostAuthDestination` after password sign-in |
+| `/auth/login` | `app/auth/login/page.tsx` | Password or magic link (`sendMagicLinkLogin` — Premium/Institution only); `resolvePostAuthDestination` after password sign-in |
 | `/auth/reauthenticate` | `app/auth/reauthenticate/page.tsx` | `reauthenticate()` email; exempt from logged-in `/auth/*` redirect |
 | `/settings/account` | `app/settings/account/page.tsx` + `components/settings/account-settings-form.tsx` | Email change, password, inline reauth |
 | `/settings/profile` | `app/settings/profile/page.tsx` | Profile fields; shell in `app/settings/layout.tsx` |
@@ -33,7 +33,7 @@
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
 | `app/auth/navbar-actions.ts` | `getNavbarAuthState()` — profile + friend count (client-deferred) |
 | `lib/auth/navbar-profile-sync.ts` | `notifyNavbarProfileUpdated()` — client event; navbar refetches/applies profile patch after onboarding or settings |
-| `app/auth/actions.ts` | `signOutAction` |
+| `app/auth/actions.ts` | `signOutAction`, `sendMagicLinkLogin` (Premium/Institution gate) |
 
 ## Layout
 

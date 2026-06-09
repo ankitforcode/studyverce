@@ -1222,8 +1222,12 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("session:end", async ({ sessionId }) => {
-    await endStudySession(sessionId, 0, 0);
+  socket.on("session:end", async ({ sessionId, focusMinutes, breakMinutes }) => {
+    await endStudySession(
+      sessionId,
+      Math.max(0, Math.floor(focusMinutes)),
+      Math.max(0, Math.floor(breakMinutes))
+    );
     socket.emit("session:ended", { sessionId });
   });
 

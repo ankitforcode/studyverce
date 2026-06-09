@@ -146,7 +146,7 @@ Enforced server-side in `lib/music/plan-limits.ts` + `music-actions.ts` / `music
 
 ## Realtime (`use-socket.ts` / socket-server)
 
-Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks.
+Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks. Pomodoro focus/break minutes persist via `useStudySessionTracking` → `session:start` / `session:end` → `study_sessions` + `update_profile_stats` (dashboard + leaderboard).
 
 **Redis (socket-server):** `SOCKET_REDIS_ADAPTER=true` only when ECS `desiredCount > 1`; production single-task runs in-memory adapter. Caches profiles (10m), room auth (2m), chat (1h), music (1h TTL), presence hashes (2h TTL + `room:participant_rooms` index), active-count (15s). Budget targets: 256 MB / 500k cmds/mo (`REDIS_BUDGET` in `packages/redis`). Web invalidates via `@studyverce/redis` on DB mutations.
 
@@ -156,6 +156,7 @@ Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks
 | `room:membership-revoked` | server → client | `reason: "kicked"` \| `"inactive"`; redirect `/rooms?removed=kicked` |
 | `rooms:presence:subscribe` | listing | Live room counts |
 | `rooms:presence-count` | listing | Count updates |
+| `session:start` / `session:end` | client → server | Persist pomodoro focus/break minutes to Postgres |
 
 Kicked users see banner on `rooms-directory.tsx` (`?removed=kicked`).
 

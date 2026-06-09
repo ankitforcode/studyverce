@@ -14,7 +14,7 @@
 
 | Component | Role |
 |-----------|------|
-| `room-client.tsx` | Main layout orchestrator; `data-room-shell`, passes owner/socket to header |
+| `room-client.tsx` | Main layout orchestrator; `data-room-shell`, passes owner/socket to header; `useStudySessionTracking` for pomodoro → DB stats |
 | `participant-list.tsx` | Compact participant dropdown: search, friend/kick, portaled panel |
 | `room-favorite-button.tsx` | Header + listing card favorite toggle |
 | `room-share-link.tsx` | Share modal: copy link + email invite (`invite-actions.ts`) |
@@ -63,6 +63,8 @@
 | File | Role |
 |------|------|
 | `hooks/use-socket.ts` | Room socket, `setPresenceMode`, `membership-revoked` redirect |
+| `hooks/use-study-session.ts` | Pomodoro → `session:start` / `session:end` (focus/break minutes) for dashboard + leaderboard |
+| `hooks/use-local-pomodoro.ts` | Per-user room pomodoro state (sessionStorage) |
 | `hooks/use-room-listing-presence.ts` | Live counts on `/rooms` cards |
 | `lib/room-ui.ts` | Glass tokens, `ROOM_HEADER_ICON_BUTTON`, portal helpers |
 | `components/layout/conditional-site-footer.tsx` | On `/rooms/[slug]`, hides footer link columns; keeps copyright/legal bar |

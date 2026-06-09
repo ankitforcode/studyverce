@@ -5,6 +5,7 @@ import { getRoomVisibility } from "@/app/rooms/access-actions";
 import { useRoomAppearance } from "@/hooks/use-room-appearance";
 import { useRoomFullscreen } from "@/hooks/use-room-fullscreen";
 import { useLocalPomodoro } from "@/hooks/use-local-pomodoro";
+import { useStudySessionTracking } from "@/hooks/use-study-session";
 import { useRoomSocket } from "@/hooks/use-socket";
 import { RoomAppearanceToggle } from "@/components/room/room-appearance-toggle";
 import { RoomFullscreenToggle } from "@/components/room/room-fullscreen-toggle";
@@ -65,6 +66,7 @@ interface RoomClientProps {
   initialFavorited?: boolean;
   roomVideoEnabled?: boolean;
   voiceNotesEnabled?: boolean;
+  subjectTags?: string[];
 }
 
 export function RoomClient({
@@ -91,6 +93,7 @@ export function RoomClient({
   initialFavorited = false,
   roomVideoEnabled = false,
   voiceNotesEnabled = false,
+  subjectTags = [],
 }: RoomClientProps) {
   const [roomIsPublic, setRoomIsPublic] = useState(isPublic);
   const [roomInviteToken, setRoomInviteToken] = useState(inviteToken);
@@ -156,6 +159,15 @@ export function RoomClient({
     initialWallpaperId,
     initialBackgroundUrl
   );
+
+  useStudySessionTracking({
+    socket,
+    connected,
+    roomId,
+    pomodoro,
+    goalText,
+    subjects: subjectTags,
+  });
 
   function handleBackgroundApply(id: string | null, url: string | null) {
     broadcastWallpaper(id, url);

@@ -3,8 +3,9 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Mail } from "lucide-react";
+import { Mail, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { sendMagicLinkLogin } from "@/app/auth/actions";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
@@ -20,7 +21,7 @@ import {
   safeRedirectPath,
   signupPath,
 } from "@/lib/auth/paths";
-import { formatMagicLinkLoginError } from "@/lib/auth/errors";
+import { MAGIC_LINK_PREMIUM_REQUIRED } from "@/lib/auth/errors";
 
 type LoginMode = "password" | "magic_link";
 
@@ -92,20 +93,16 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: authCallbackUrl(redirect),
-        shouldCreateUser: false,
-        data: { post_auth_redirect: redirect },
-      },
-    });
+    const result = await sendMagicLinkLogin(email, redirect);
 
     setLoading(false);
 
-    if (otpError) {
-      setError(formatMagicLinkLoginError(otpError.message));
+    if (result.error) {
+      if (result.error === MAGIC_LINK_PREMIUM_REQUIRED) {
+        setError("Magic link sign-in is available on Premium and Institution plans.");
+      } else {
+        setError(result.error);
+      }
       return;
     }
 
@@ -193,7 +190,7 @@ function LoginForm() {
         </button>
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             mode === "magic_link"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -204,6 +201,7 @@ function LoginForm() {
           }}
         >
           Magic link
+          <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
         </button>
       </div>
 
@@ -252,14 +250,23 @@ function LoginForm() {
 
         {mode === "magic_link" && (
           <p className="text-sm text-muted-foreground">
-            We&apos;ll email you a one-time link — no password needed.
+            Premium feature — we&apos;ll email you a one-time link, no password needed.
           </p>
         )}
 
         {error && (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
+          <div className="space-y-2">
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+            {error.includes("Premium") && (
+              <p className="text-sm text-muted-foreground">
+                <Link href="/plans" className="font-medium text-primary hover:underline">
+                  View Premium plans
+                </Link>
+              </p>
+            )}
+          </div>
         )}
 
         <Button type="submit" className="w-full shadow-md shadow-primary/20" disabled={loading}>

@@ -102,6 +102,11 @@ export default async function RoomPage({
   const initialWallpaperOverlay = resolveWallpaperOverlay(roomSettings);
   const initialFavorited = await isRoomFavorited(room.id);
   const planTier = await fetchUserPlanTier(supabase, user.id);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subject_tags")
+    .eq("id", user.id)
+    .single();
 
   return (
     <RoomClient
@@ -128,6 +133,7 @@ export default async function RoomPage({
       initialFavorited={initialFavorited}
       roomVideoEnabled={hasRoomVideo(planTier)}
       voiceNotesEnabled={hasVoiceNotes(planTier)}
+      subjectTags={profile?.subject_tags ?? []}
     />
   );
 }

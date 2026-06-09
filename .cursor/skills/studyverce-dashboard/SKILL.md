@@ -14,9 +14,14 @@ description: StudyVerce dashboard shell — custom layout without global navbar,
 
 ## Content (`app/dashboard/page.tsx`)
 
-- Stat cards (`dashboard-stat-card.tsx`) — e.g. sessions today
+- Stat cards (`dashboard-stat-card.tsx`) — sessions today, hours spent, streak + total focus, reminders (`reminders-today-stat.tsx` from notification inbox)
+- Stats computed in `lib/dashboard/stats.ts` from `study_sessions` + `profiles` (meaningful sessions = `focus_minutes > 0`)
 - Quick actions (`quick-actions.tsx`)
 - Study calendar, charts — do not re-add post-it board here
+
+## Study session data
+
+Pomodoro focus in rooms persists via `hooks/use-study-session.ts` → socket `session:start` / `session:end` → `study_sessions` + `update_profile_stats`. Dashboard and leaderboard read these values.
 
 ## Styling
 
