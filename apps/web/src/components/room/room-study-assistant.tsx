@@ -81,7 +81,7 @@ export function RoomStudyAssistant({
     null
   );
   const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -114,8 +114,11 @@ export function RoomStudyAssistant({
   }, [roomId, messages, limits?.memoryEnabled]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, streamingMessageId]);
+    if (collapsed) return;
+    const container = messagesScrollRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [messages, loading, streamingMessageId, collapsed]);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -324,7 +327,10 @@ export function RoomStudyAssistant({
 
       {!collapsed && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+          <div
+            ref={messagesScrollRef}
+            className="min-h-0 flex-1 overflow-y-auto px-3 pb-2"
+          >
             {showFreePlanNotice && (
               <p className="mx-1 mb-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                 Free plan: each prompt is standalone with no conversation memory or post-it
@@ -397,7 +403,6 @@ export function RoomStudyAssistant({
                 </div>
               )}
             </div>
-            <div ref={bottomRef} />
           </div>
 
           {error && (

@@ -41,7 +41,7 @@ export const HOME_FAQ = [
   {
     question: "Do you use cookies or analytics?",
     answer:
-      "We use essential cookies to keep you signed in. Optional analytics (Google Analytics and PostHog) run only if you accept them in our cookie banner. PostHog may record Core Web Vitals and anonymized session replays (with inputs and sensitive text masked) to measure page speed and improve the product. You can change your choice anytime from Cookie settings in the footer.",
+      "We use essential cookies to keep you signed in. Optional analytics (Google Analytics and PostHog) run only if you accept them in our cookie banner. PostHog may record Core Web Vitals and session replays (with inputs and sensitive text masked) to measure page speed and diagnose issues; replays for signed-in users are linked to your account. You can change your choice anytime from Cookie settings in the footer.",
   },
 ] as const;
 

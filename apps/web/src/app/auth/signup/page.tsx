@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
+import { syncPostHogUserFromSession } from "@/lib/consent/posthog-consent";
 import { loginPath, onboardingPath, authCallbackUrl, safeRedirectPath } from "@/lib/auth/paths";
 import { SIGNUP_FREE_DISCLOSURE } from "@/lib/plans/marketing";
 import {
@@ -59,6 +60,7 @@ function SignupForm() {
       return;
     }
 
+    await syncPostHogUserFromSession();
     trackEvent("signup_completed", { method: "email" });
     router.push(onboardingPath(redirect));
     router.refresh();

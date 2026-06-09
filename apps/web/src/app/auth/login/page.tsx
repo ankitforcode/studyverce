@@ -12,6 +12,7 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { trackEvent } from "@/lib/analytics";
+import { syncPostHogUserFromSession } from "@/lib/consent/posthog-consent";
 import {
   authCallbackUrl,
   forgotPasswordPath,
@@ -76,6 +77,7 @@ function LoginForm() {
         }
       }
 
+      await syncPostHogUserFromSession();
       trackEvent("login_completed", { method: "email" });
       const destination = resolvePostAuthDestination(redirect, onboardingCompleted);
       window.location.assign(destination);

@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics, GoogleConsentMode } from "@/components/seo/google-analytics";
 import { ConsentProvider } from "@/components/consent/consent-provider";
 import { PostHogRouteContext } from "@/components/analytics/posthog-route-context";
+import { PostHogUserIdentity } from "@/components/analytics/posthog-user-identity";
 import { DEFAULT_JSON_LD } from "@/lib/seo/structured-data";
 import { createSiteMetadata } from "@/lib/site-metadata";
 import "./globals.css";
@@ -39,6 +40,7 @@ export default function RootLayout({
         <GoogleAnalytics />
         <ConsentProvider>
           <PostHogRouteContext />
+          <PostHogUserIdentity />
           <AppProviders>
             <Navbar />
             <main className="flex-1">{children}</main>

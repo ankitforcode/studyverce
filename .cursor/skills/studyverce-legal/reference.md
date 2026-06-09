@@ -26,8 +26,9 @@
 | `components/consent/consent-provider.tsx` | Cookie consent state + applies gtag/PostHog |
 | `components/consent/cookie-consent-banner.tsx` | Banner UI (accept / reject / customize) |
 | `components/analytics/posthog-route-context.tsx` | Route context on PostHog events after consent |
+| `components/analytics/posthog-user-identity.tsx` | PostHog `identify()` / `reset()` from Supabase auth |
 | `lib/consent/posthog-config.ts` | PostHog init options (Web Vitals, session replay masking) |
-| `lib/consent/posthog-consent.ts` | PostHog init, consent sync, `captureAnalyticsEvent` |
+| `lib/consent/posthog-consent.ts` | PostHog init, consent sync, identify, `captureAnalyticsEvent` |
 
 ## Public URLs
 

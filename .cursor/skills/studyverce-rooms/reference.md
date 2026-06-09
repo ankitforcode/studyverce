@@ -32,7 +32,10 @@
 | `room-post-it-toolbar.tsx` | Add post-it + color picker |
 | `room-task-prompt.tsx` | First-visit focus modal |
 | `pomodoro-timer.tsx` | Center timer + goal text |
-| `room-chat.tsx` | Sidebar chat |
+| `room-chat.tsx` | Sidebar chat; mic trigger for voice notes in message input |
+| `room-chat-voice-section.tsx` | Chat + voice notes wiring (recording hook, shared state) |
+| `room-voice-notes.tsx` | Voice note list, stop/share controls while recording |
+| `use-room-voice-recording.ts` | MediaRecorder upload hook for voice notes |
 | `room-music-player.tsx` / `room-music-picker.tsx` | Room music |
 | `rooms-directory.tsx` | Listing tabs, presence badges, favorites on cards |
 

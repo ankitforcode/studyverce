@@ -9,7 +9,7 @@ import { useRoomSocket } from "@/hooks/use-socket";
 import { RoomAppearanceToggle } from "@/components/room/room-appearance-toggle";
 import { RoomFullscreenToggle } from "@/components/room/room-fullscreen-toggle";
 import { PomodoroTimer } from "@/components/room/pomodoro-timer";
-import { RoomChat } from "@/components/room/room-chat";
+import { RoomChatVoiceSection } from "@/components/room/room-chat-voice-section";
 import { RoomResizableSidebar } from "@/components/room/room-resizable-sidebar";
 import { RoomSidebarPanels } from "@/components/room/room-sidebar-panels";
 import { ParticipantList } from "@/components/room/participant-list";
@@ -21,7 +21,6 @@ import { RoomTaskPrompt } from "@/components/room/room-task-prompt";
 import { RoomStudyAssistant } from "@/components/room/room-study-assistant";
 import { RoomTodoPanel } from "@/components/room/room-todo-panel";
 import { RoomVideoHint } from "@/components/room/room-video";
-import { RoomVoiceNotes } from "@/components/room/room-voice-notes";
 import { RoomFavoriteButton } from "@/components/room/room-favorite-button";
 import { RoomShareLink } from "@/components/room/room-share-link";
 import { RoomVisibilityToggle } from "@/components/room/room-visibility-toggle";
@@ -461,26 +460,17 @@ export function RoomClient({
                 />
               ),
               chat: (
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <RoomChat
-                    messages={messages}
-                    currentUserId={currentUserId}
-                    isModerator={isOwner || isModerator}
-                    onSend={sendMessage}
-                    onDelete={deleteMessage}
-                    collapsed={chatCollapsed}
-                    onCollapsedChange={setChatCollapsed}
-                    className="min-h-0 flex-1"
-                  />
-                  {!chatCollapsed && (
-                    <RoomVoiceNotes
-                      roomId={roomId}
-                      currentUserId={currentUserId}
-                      voiceNotesEnabled={voiceNotesEnabled}
-                      className="mx-4 mb-4 shrink-0"
-                    />
-                  )}
-                </div>
+                <RoomChatVoiceSection
+                  roomId={roomId}
+                  currentUserId={currentUserId}
+                  voiceNotesEnabled={voiceNotesEnabled}
+                  messages={messages}
+                  isModerator={isOwner || isModerator}
+                  onSend={sendMessage}
+                  onDelete={deleteMessage}
+                  collapsed={chatCollapsed}
+                  onCollapsedChange={setChatCollapsed}
+                />
               ),
             }}
           />

@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, MessageSquare, Send, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Mic,
+  Send,
+  Trash2,
+} from "lucide-react";
+import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
 import type { ChatMessage } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/badge";
@@ -19,6 +27,9 @@ interface RoomChatProps {
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   className?: string;
+  voiceNotesEnabled?: boolean;
+  voiceRecordPending?: boolean;
+  onStartVoiceRecord?: () => void;
 }
 
 export function RoomChat({
@@ -30,11 +41,14 @@ export function RoomChat({
   collapsed: collapsedProp,
   onCollapsedChange,
   className,
+  voiceNotesEnabled = false,
+  voiceRecordPending = false,
+  onStartVoiceRecord,
 }: RoomChatProps) {
   const [collapsedInternal, setCollapsedInternal] = useState(false);
   const collapsed = collapsedProp ?? collapsedInternal;
   const [input, setInput] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -45,9 +59,10 @@ export function RoomChat({
   }
 
   useEffect(() => {
-    if (!collapsed) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    if (collapsed) return;
+    const container = messagesScrollRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages, collapsed]);
 
   function handleSend(e: React.FormEvent) {
@@ -91,7 +106,10 @@ export function RoomChat({
 
       {!collapsed && (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 pb-4 pt-1">
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1">
+          <div
+            ref={messagesScrollRef}
+            className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1"
+          >
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <p className="text-sm text-muted-foreground">No messages yet</p>
@@ -165,20 +183,52 @@ export function RoomChat({
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </div>
 
           <form
             onSubmit={handleSend}
             className="flex shrink-0 gap-2 border-t border-border/50 pt-3"
           >
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message..."
-              maxLength={2000}
-              className={ROOM_FIELD}
-            />
+            <div className="relative min-w-0 flex-1">
+              {onStartVoiceRecord && (
+                <PostItIconTooltip
+                  label={
+                    voiceNotesEnabled
+                      ? "Record voice note"
+                      : "Voice notes (Premium)"
+                  }
+                  side="top"
+                  align="start"
+                  className="absolute left-2 top-1/2 z-10 -translate-y-1/2"
+                >
+                  <button
+                    type="button"
+                    onClick={onStartVoiceRecord}
+                    disabled={!voiceNotesEnabled || voiceRecordPending}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      voiceNotesEnabled
+                        ? "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        : "cursor-not-allowed text-muted-foreground/50"
+                    )}
+                    aria-label={
+                      voiceNotesEnabled
+                        ? "Record voice note"
+                        : "Voice notes require Premium"
+                    }
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                </PostItIconTooltip>
+              )}
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message..."
+                maxLength={2000}
+                className={cn(onStartVoiceRecord && "pl-10", ROOM_FIELD)}
+              />
+            </div>
             <Button
               type="submit"
               size="icon"
