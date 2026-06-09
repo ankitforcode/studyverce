@@ -64,36 +64,58 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ActiveToast[]>([]);
   const remindersHandled = useRef(false);
   const toastTimers = useRef<Map<string, number>>(new Map());
+  /** Guards save/load so one user's in-memory inbox is never written to another user's key. */
+  const hydratedUserIdRef = useRef<string | null>(null);
+
+  const clearAllToasts = useCallback(() => {
+    for (const timer of toastTimers.current.values()) {
+      window.clearTimeout(timer);
+    }
+    toastTimers.current.clear();
+    setToasts([]);
+  }, []);
+
+  const hydrateForUser = useCallback(
+    (nextUserId: string | null) => {
+      if (!nextUserId) {
+        hydratedUserIdRef.current = null;
+        setUserId(null);
+        setNotifications([]);
+        clearAllToasts();
+        remindersHandled.current = false;
+        setReady(true);
+        return;
+      }
+
+      if (hydratedUserIdRef.current !== nextUserId) {
+        hydratedUserIdRef.current = nextUserId;
+        setNotifications(loadNotifications(nextUserId));
+        clearAllToasts();
+        remindersHandled.current = false;
+      }
+
+      setUserId(nextUserId);
+      setReady(true);
+    },
+    [clearAllToasts]
+  );
 
   useEffect(() => {
     const supabase = createClient();
-    void supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-      setReady(true);
-    });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null);
-      remindersHandled.current = false;
+      hydrateForUser(session?.user?.id ?? null);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [hydrateForUser]);
 
   useEffect(() => {
-    if (!userId) {
-      setNotifications([]);
-      return;
-    }
-    setNotifications(loadNotifications(userId));
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
+    if (!userId || hydratedUserIdRef.current !== userId) return;
     saveNotifications(userId, notifications);
-  }, [userId, notifications]);
+  }, [notifications, userId]);
 
   const pushToast = useCallback((input: ToastInput) => {
     const id = createNotificationId();
@@ -124,7 +146,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const toast = useCallback(
     (input: ToastInput) => {
       pushToast(input);
-      if (input.persist === false || !userId) return;
+      if (input.persist === false || !userId || hydratedUserIdRef.current !== userId) {
+        return;
+      }
 
       const stored = toStoredNotification(input);
       setNotifications((prev) => [stored, ...prev].slice(0, 100));
@@ -134,8 +158,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!userId || !ready || remindersHandled.current) return;
+    if (hydratedUserIdRef.current !== userId) return;
 
-    const reminders = loadNotifications(userId).filter(
+    const reminders = notifications.filter(
       (entry) => entry.remindOnLogin && !entry.dismissed
     );
     if (reminders.length === 0) {
@@ -162,7 +187,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       )
     );
     remindersHandled.current = true;
-  }, [userId, ready, pushToast]);
+  }, [userId, ready, notifications, pushToast]);
 
   const dismissToast = useCallback((id: string) => {
     const timer = toastTimers.current.get(id);
