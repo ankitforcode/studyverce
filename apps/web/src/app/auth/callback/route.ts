@@ -1,10 +1,16 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { resolvePostAuthDestination, safeRedirectPath } from "@/lib/auth/paths";
 import { userMustSetPassword } from "@/lib/auth/room-invite";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAuthRedirectOrigin } from "@/lib/site-metadata";
+import {
+  REFERRAL_COOKIE_NAME,
+  normalizeReferralCode,
+} from "@/lib/referrals/capture";
+import { attachReferralFromCode } from "@/lib/referrals/rewards";
 
 const POST_AUTH_REDIRECT_METADATA_KEY = "post_auth_redirect";
 
@@ -54,6 +60,20 @@ export async function GET(request: Request) {
 
     let onboardingCompleted = false;
     if (user) {
+      const referralFromMetadata = normalizeReferralCode(
+        typeof user.user_metadata?.referral_code === "string"
+          ? user.user_metadata.referral_code
+          : null
+      );
+      const cookieStore = await cookies();
+      const referralFromCookie = normalizeReferralCode(
+        cookieStore.get(REFERRAL_COOKIE_NAME)?.value
+      );
+      const referralCode = referralFromMetadata ?? referralFromCookie;
+      if (referralCode) {
+        await attachReferralFromCode(user.id, referralCode);
+      }
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_completed")

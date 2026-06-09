@@ -32,7 +32,8 @@
 | `room-post-it-toolbar.tsx` | Add post-it + color picker |
 | `room-task-prompt.tsx` | First-visit focus modal |
 | `pomodoro-timer.tsx` | Center timer + goal text |
-| `room-chat.tsx` | Sidebar chat; mic trigger for voice notes in message input |
+| `room-chat.tsx` | Sidebar chat; `@` mention autocomplete + highlighted mentions; mic trigger for voice notes |
+| `lib/chat/mentions.ts` | Mention query/insert/split helpers for room chat |
 | `room-chat-voice-section.tsx` | Chat + voice notes wiring (recording hook, shared state) |
 | `room-voice-notes.tsx` | Voice note list, stop/share controls while recording |
 | `use-room-voice-recording.ts` | MediaRecorder upload hook for voice notes |
@@ -63,6 +64,7 @@
 | File | Role |
 |------|------|
 | `hooks/use-socket.ts` | Room socket, `setPresenceMode`, `membership-revoked` redirect |
+| `components/notifications/chat-mention-notification-bridge.tsx` | `@mention` toast + inbox via `chat:mention-notification` |
 | `hooks/use-study-session.ts` | Pomodoro → `session:start` / `session:end` (focus/break minutes) for dashboard + leaderboard |
 | `hooks/use-local-pomodoro.ts` | Per-user room pomodoro state (sessionStorage) |
 | `hooks/use-room-listing-presence.ts` | Live counts on `/rooms` cards |
@@ -72,7 +74,7 @@
 | `apps/socket-server/src/index.ts` | `room:member:kick`, presence, inactive kick; `SOCKET_REDIS_ADAPTER` (off when single ECS task) |
 | `apps/socket-server/src/redis-cache.ts` | Profile, chat, room-auth, active-count Redis caches |
 | `packages/redis/` | Shared keys, lazy client, invalidation (`invalidateRoomMusic`, etc.) |
-| `packages/shared/src/index.ts` | `RoomPresenceMode`, `viewPresenceMode`, socket events incl. `room:presence:set`, `room:member:kick` |
+| `packages/shared/src/index.ts` | `RoomPresenceMode`, `viewPresenceMode`, `parseMentionUsernames`, `ChatMentionNotification`, socket events incl. `room:presence:set`, `chat:mention-notification`, `room:member:kick` |
 
 ## Migrations (recent social/listing)
 

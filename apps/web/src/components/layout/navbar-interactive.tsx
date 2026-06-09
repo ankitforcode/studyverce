@@ -227,6 +227,10 @@ export function NavbarInteractive() {
               avatarUrl={profile.avatarUrl}
               isAdmin={profile.isAdmin}
               pendingFriendRequests={authState.pendingFriendRequests}
+              planTier={profile.planTier}
+              premiumUntil={profile.premiumUntil}
+              premiumSource={profile.premiumSource}
+              achievementSlugs={profile.achievementSlugs}
             />
           </>
         ) : (

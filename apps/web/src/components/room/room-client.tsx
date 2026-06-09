@@ -36,10 +36,13 @@ import { wallpaperImageFilter } from "@/lib/wallpaper-overlay";
 import { cn } from "@/lib/utils";
 import type {
   ChatMessage,
+  PlanTier,
+  PremiumSource,
   RoomSidebarPanelId,
   RoomTrack,
   UserPostItTask,
 } from "@studyverce/shared";
+import type { UserBadgeAchievement } from "@/components/profile/user-badge-strip";
 import { roomTrackToMusicState } from "@studyverce/shared";
 
 interface RoomClientProps {
@@ -67,6 +70,12 @@ interface RoomClientProps {
   roomVideoEnabled?: boolean;
   voiceNotesEnabled?: boolean;
   subjectTags?: string[];
+  currentUserBadge?: {
+    planTier: PlanTier;
+    premiumUntil: string | null;
+    premiumSource: PremiumSource;
+    achievements?: UserBadgeAchievement[];
+  };
 }
 
 export function RoomClient({
@@ -94,6 +103,7 @@ export function RoomClient({
   roomVideoEnabled = false,
   voiceNotesEnabled = false,
   subjectTags = [],
+  currentUserBadge,
 }: RoomClientProps) {
   const [roomIsPublic, setRoomIsPublic] = useState(isPublic);
   const [roomInviteToken, setRoomInviteToken] = useState(inviteToken);
@@ -315,6 +325,7 @@ export function RoomClient({
               menuAlign="end"
               roomAppearance={appearance}
               className="hidden sm:flex"
+              currentUserBadge={currentUserBadge}
             />
             <RoomAppearanceToggle
               appearance={appearance}
@@ -391,6 +402,7 @@ export function RoomClient({
           menuAlign="start"
           roomAppearance={appearance}
           className="px-4 pb-3 sm:hidden"
+          currentUserBadge={currentUserBadge}
         />
 
         <RoomMusicPlayer
@@ -478,6 +490,7 @@ export function RoomClient({
                 <RoomChatVoiceSection
                   roomId={roomId}
                   currentUserId={currentUserId}
+                  participants={participants}
                   voiceNotesEnabled={voiceNotesEnabled}
                   messages={messages}
                   isModerator={isOwner || isModerator}

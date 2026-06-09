@@ -16,6 +16,7 @@ export type NotificationAction =
   | "membership_inactive"
   | "membership_kicked"
   | "music_request_sent"
+  | "chat_mention"
   | "share_link_copied"
   | "password_reset"
   | "generic";
@@ -41,6 +42,8 @@ export type ToastInput = {
   href?: string;
   /** When false, shows toast only without saving to the inbox. Default true. */
   persist?: boolean;
+  /** When false, saves to inbox without showing a floating toast. Default true. */
+  showToast?: boolean;
 };
 
 export type ActiveToast = ToastInput & {

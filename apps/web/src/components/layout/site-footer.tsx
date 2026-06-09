@@ -9,10 +9,13 @@ import { FOOTER_TAGLINE } from "@/lib/plans/marketing";
 import { SITE_NAME } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 
-const productLinks = [
+const baseProductLinks = [
   { href: "/rooms", label: "Study rooms" },
   { href: "/plans", label: "Plans" },
   { href: "/leaderboard", label: "Leaderboard" },
+] as const;
+
+const authProductLinks = [
   { href: "/auth/signup", label: "Sign up" },
   { href: "/auth/login", label: "Log in" },
 ] as const;
@@ -33,11 +36,17 @@ const legalLinks = [
 export function SiteFooter({
   className,
   hideMainSection = false,
+  hideAuthLinks = false,
 }: {
   className?: string;
   /** Hide link columns on immersive pages (e.g. study room). Keeps copyright bar. */
   hideMainSection?: boolean;
+  /** Hide sign-up / log-in links for authenticated users. */
+  hideAuthLinks?: boolean;
 }) {
+  const productLinks = hideAuthLinks
+    ? baseProductLinks
+    : [...baseProductLinks, ...authProductLinks];
   return (
     <footer
       className={cn(

@@ -3,12 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { profileSchema } from "@studyverce/db";
 import { createClient } from "@/lib/supabase/server";
+import {
+  qualifyReferralAndGrantRewards,
+  syncReferralCodeForUsername,
+} from "@/lib/referrals/rewards";
 
 export async function completeOnboarding(input: {
   username: string;
   displayName: string;
   subjectTags: string[];
-}): Promise<{ error: string | null }> {
+}): Promise<{ error: string | null; referralQualified?: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,9 +56,13 @@ export async function completeOnboarding(input: {
     return { error: "Could not save your profile. Please try again." };
   }
 
+  await syncReferralCodeForUsername(user.id, parsed.data.username);
+  const referralResult = await qualifyReferralAndGrantRewards(user.id);
+
   revalidatePath("/onboarding");
   revalidatePath("/dashboard");
   revalidatePath("/profile");
+  revalidatePath("/settings/referrals");
 
-  return { error: null };
+  return { error: null, referralQualified: referralResult.qualified };
 }

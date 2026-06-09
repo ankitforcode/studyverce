@@ -135,6 +135,18 @@ export const notificationMessages = {
     title: "Track declined",
     message: `You declined the request for "${trackName}".`,
   }),
+  chatMention: (
+    senderName: string,
+    roomName: string,
+    roomSlug: string,
+    preview: string
+  ): ToastInput => ({
+    action: "chat_mention",
+    kind: "info",
+    title: `${senderName} mentioned you`,
+    message: `In ${roomName}: ${preview}`,
+    href: `/rooms/${roomSlug}`,
+  }),
   shareLinkCopied: (): ToastInput => ({
     action: "share_link_copied",
     kind: "success",

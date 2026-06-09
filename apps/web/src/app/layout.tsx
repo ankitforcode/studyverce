@@ -1,7 +1,9 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import { AppProviders } from "@/components/layout/app-providers";
 import { Navbar } from "@/components/layout/navbar";
 import { ConditionalSiteFooter } from "@/components/layout/conditional-site-footer";
+import { ReferralCapture } from "@/components/referrals/referral-capture";
 import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics, GoogleConsentMode } from "@/components/seo/google-analytics";
 import { ConsentProvider } from "@/components/consent/consent-provider";
@@ -39,6 +41,9 @@ export default function RootLayout({
         <GoogleConsentMode />
         <GoogleAnalytics />
         <ConsentProvider>
+          <Suspense fallback={null}>
+            <ReferralCapture />
+          </Suspense>
           <PostHogRouteContext />
           <PostHogUserIdentity />
           <AppProviders>

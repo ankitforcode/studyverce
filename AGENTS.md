@@ -31,6 +31,7 @@ Commands: `pnpm dev`, `pnpm typecheck`, `supabase db push`.
 | Auth & session | `apps/web/src/app/auth/`, `app/settings/account/`, `lib/auth/`, `middleware.ts`, `components/layout/navbar*.tsx`, `supabase/templates/`, `app/auth/actions.ts` (`acceptInviteSetPassword`, `sendMagicLinkLogin`, `signOutAction`) |
 | Legal pages & SEO | `app/privacy/page.tsx`, `app/terms/page.tsx`, `lib/legal/*`, `app/robots.ts`, `app/sitemap.ts`, `site-footer.tsx` — skill `studyverce-legal` |
 | Plans & pricing | `app/plans/page.tsx`, `components/plans/plans-grid.tsx`, `lib/plans/content.ts` |
+| Referrals & rewards | `app/settings/referrals/`, `lib/referrals/`, `components/profile/user-badge-strip.tsx`, migration `20250610000000_referrals_rewards.sql` — skill `studyverce-referrals` |
 | Room email invite | `apps/web/src/app/rooms/invite-actions.ts`, `components/room/room-share-link.tsx` |
 | Rate limits | `packages/rate-limit/src/limiter.ts`, `shouldRateLimitRequest()` in `config.ts` |
 | Room UI tokens | `apps/web/src/lib/room-ui.ts` |

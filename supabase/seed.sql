@@ -58,7 +58,8 @@ INSERT INTO public.achievements (slug, name, description, icon) VALUES
   ('streak_7', 'Week Warrior', 'Maintain a 7-day study streak', 'flame'),
   ('streak_30', 'Monthly Master', 'Maintain a 30-day study streak', 'crown'),
   ('hours_10', 'Deep Focus', 'Accumulate 10 hours of focus time', 'clock'),
-  ('hours_100', 'Century Scholar', 'Accumulate 100 hours of focus time', 'book')
+  ('hours_100', 'Century Scholar', 'Accumulate 100 hours of focus time', 'book'),
+  ('referrals_10', 'Ambassador', 'Invited 10 friends who joined StudyVerce', 'users-star')
 ON CONFLICT (slug) DO NOTHING;
 
 -- ---------------------------------------------------------------------------

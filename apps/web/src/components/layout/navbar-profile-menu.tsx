@@ -12,6 +12,8 @@ import {
   Users,
 } from "lucide-react";
 import { signOutAction } from "@/app/auth/actions";
+import type { NavbarAuthState } from "@/app/auth/navbar-actions";
+import { UserBadgeStrip } from "@/components/profile/user-badge-strip";
 import { useNotifications } from "@/components/notifications/notification-provider";
 import { Avatar } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,10 @@ interface NavbarProfileMenuProps {
   avatarUrl: string | null;
   isAdmin?: boolean;
   pendingFriendRequests?: number;
+  planTier?: NavbarAuthState["profile"] extends null ? never : NonNullable<NavbarAuthState["profile"]>["planTier"];
+  premiumUntil?: string | null;
+  premiumSource?: NavbarAuthState["profile"] extends null ? never : NonNullable<NavbarAuthState["profile"]>["premiumSource"];
+  achievementSlugs?: string[];
 }
 
 const menuLinkClass =
@@ -34,6 +40,10 @@ export function NavbarProfileMenu({
   avatarUrl,
   isAdmin = false,
   pendingFriendRequests = 0,
+  planTier = "free",
+  premiumUntil = null,
+  premiumSource = "free",
+  achievementSlugs = [],
 }: NavbarProfileMenuProps) {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
@@ -70,8 +80,20 @@ export function NavbarProfileMenu({
             >
               <Avatar src={avatarUrl} fallback={displayName} size="sm" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {displayName}
+                <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <span className="truncate">{displayName}</span>
+                  <UserBadgeStrip
+                    layout="inline"
+                    compact
+                    planTier={planTier}
+                    premiumUntil={premiumUntil}
+                    premiumSource={premiumSource}
+                    achievements={achievementSlugs.map((slug) => ({
+                      slug,
+                      name: slug,
+                      icon: slug === "referrals_10" ? "users-star" : "star",
+                    }))}
+                  />
                 </p>
                 <p className="truncate text-xs text-muted-foreground">@{username}</p>
               </div>

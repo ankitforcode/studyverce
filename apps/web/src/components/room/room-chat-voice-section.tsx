@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { ChatMessage } from "@studyverce/shared";
+import type { ChatMessage, RoomParticipant } from "@studyverce/shared";
 import { RoomChat } from "@/components/room/room-chat";
 import {
   RoomVoiceNotes,
@@ -12,6 +12,7 @@ import { useRoomVoiceRecording } from "@/components/room/use-room-voice-recordin
 interface RoomChatVoiceSectionProps {
   roomId: string;
   currentUserId: string;
+  participants?: RoomParticipant[];
   voiceNotesEnabled: boolean;
   messages: ChatMessage[];
   isModerator: boolean;
@@ -24,6 +25,7 @@ interface RoomChatVoiceSectionProps {
 export function RoomChatVoiceSection({
   roomId,
   currentUserId,
+  participants = [],
   voiceNotesEnabled,
   messages,
   isModerator,
@@ -62,6 +64,7 @@ export function RoomChatVoiceSection({
       <RoomChat
         messages={messages}
         currentUserId={currentUserId}
+        participants={participants}
         isModerator={isModerator}
         onSend={onSend}
         onDelete={onDelete}

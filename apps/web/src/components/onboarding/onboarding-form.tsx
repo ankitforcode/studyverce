@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { notifyNavbarProfileUpdated } from "@/lib/auth/navbar-profile-sync";
+import { trackEvent } from "@/lib/analytics";
 
 export function OnboardingForm() {
   const searchParams = useSearchParams();
@@ -78,6 +79,10 @@ export function OnboardingForm() {
         setError(result.error);
         setLoading(false);
         return;
+      }
+
+      if (result.referralQualified) {
+        trackEvent("referral_qualified");
       }
 
       const normalizedUsername = username.toLowerCase();

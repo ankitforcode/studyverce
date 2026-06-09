@@ -1,5 +1,57 @@
 export type PlanTier = "free" | "premium" | "institution";
 
+export type PremiumSource =
+  | "free"
+  | "referral_trial"
+  | "referral_reward"
+  | "referral_lifetime"
+  | "stripe"
+  | "admin";
+
+/** Qualified referral counts required for referrer milestone rewards. */
+export const REFERRAL_MILESTONES = {
+  premiumMonth: 3,
+  ambassadorBadge: 10,
+  lifetimePremium: 25,
+} as const;
+
+export const REFEREE_TRIAL_DAYS = 7;
+export const REFERRER_PREMIUM_GRANT_DAYS = 30;
+
+export type ReferralStatus = "pending" | "qualified" | "rejected";
+
+export type ReferralRewardType =
+  | "referee_trial"
+  | "premium_1mo"
+  | "ambassador_badge"
+  | "lifetime_premium";
+
+export type ProfileEntitlement = {
+  planTier: PlanTier;
+  premiumUntil: string | null;
+  premiumSource: PremiumSource;
+};
+
+export function resolveEffectivePlanTier(
+  profile: Pick<ProfileEntitlement, "planTier" | "premiumUntil" | "premiumSource"> & {
+    planTier: PlanTier;
+  },
+  now: Date = new Date()
+): PlanTier {
+  if (profile.planTier === "institution") return "institution";
+  if (profile.premiumSource === "referral_lifetime") return "premium";
+  if (profile.planTier === "premium") return "premium";
+  if (profile.premiumUntil) {
+    const until = new Date(profile.premiumUntil);
+    if (!Number.isNaN(until.getTime()) && until > now) return "premium";
+  }
+  return "free";
+}
+
+export function isLifetimePremium(profile: Pick<ProfileEntitlement, "premiumSource">): boolean {
+  return profile.premiumSource === "referral_lifetime";
+}
+
 export type RoomRole = "owner" | "moderator" | "member";
 
 export type PomodoroPhase = "idle" | "focus" | "break";
@@ -97,6 +149,85 @@ export interface ChatMessage {
   avatarUrl: string | null;
   content: string;
   createdAt: string;
+}
+
+/** Delivered to a user when they are @mentioned in room chat. */
+export interface ChatMentionNotification {
+  roomId: string;
+  roomSlug: string;
+  roomName: string;
+  messageId: string;
+  senderUserId: string;
+  senderDisplayName: string;
+  senderUsername: string;
+  contentPreview: string;
+}
+
+export const CHAT_MENTION_HERE = "here" as const;
+export const CHAT_MENTION_EVERYONE = "everyone" as const;
+export const CHAT_BROADCAST_MENTIONS = [
+  CHAT_MENTION_HERE,
+  CHAT_MENTION_EVERYONE,
+] as const;
+export type ChatBroadcastMention = (typeof CHAT_BROADCAST_MENTIONS)[number];
+
+export type ParsedChatMentions = {
+  usernames: string[];
+  broadcastMentions: ChatBroadcastMention[];
+};
+
+export function isChatBroadcastMention(
+  token: string
+): token is ChatBroadcastMention {
+  return token === CHAT_MENTION_HERE || token === CHAT_MENTION_EVERYONE;
+}
+
+/** Parse @usernames plus @here / @everyone broadcast tokens from chat text. */
+export function parseChatMentions(content: string): ParsedChatMentions {
+  const usernames = new Set<string>();
+  const broadcastMentions = new Set<ChatBroadcastMention>();
+  const pattern = /@([a-z0-9_]+)/gi;
+
+  for (const match of content.matchAll(pattern)) {
+    const token = match[1]?.toLowerCase();
+    if (!token) continue;
+    if (token === CHAT_MENTION_HERE) {
+      broadcastMentions.add(CHAT_MENTION_HERE);
+    } else if (token === CHAT_MENTION_EVERYONE) {
+      broadcastMentions.add(CHAT_MENTION_EVERYONE);
+    } else {
+      usernames.add(token);
+    }
+  }
+
+  return {
+    usernames: [...usernames],
+    broadcastMentions: [...broadcastMentions],
+  };
+}
+
+/** Extract unique @usernames from message text (lowercase, without @). Excludes @here/@everyone. */
+export function parseMentionUsernames(content: string): string[] {
+  return parseChatMentions(content).usernames;
+}
+
+/** @here targets — actively online (green presence) in the room. */
+export function isParticipantOnlineForChatHere(
+  participant: RoomParticipant
+): boolean {
+  return (
+    participant.isActive &&
+    normalizePresenceMode(participant.presenceMode) === "active"
+  );
+}
+
+/** @everyone targets — visible in-room members (active or away, not invisible). */
+export function isParticipantInRoomForChatEveryone(
+  participant: RoomParticipant,
+  excludedUserId: string
+): boolean {
+  if (participant.userId === excludedUserId) return false;
+  return normalizePresenceMode(participant.presenceMode) !== "invisible";
 }
 
 export interface StudyRoomSettings {
@@ -496,6 +627,7 @@ export interface ServerToClientEvents {
   "room:friend-request:new": (payload: { request: RoomFriendRequest }) => void;
   "room:friend-request:removed": (payload: { requesterId: string }) => void;
   "room:invite-owner-notification": (payload: RoomInviteOwnerNotification) => void;
+  "chat:mention-notification": (payload: ChatMentionNotification) => void;
   "session:started": (payload: { sessionId: string }) => void;
   "session:ended": (payload: { sessionId: string }) => void;
   error: (payload: { message: string }) => void;

@@ -67,6 +67,7 @@ export async function createRoom(input: CreateRoomInput) {
       id: user.id,
       username: fallbackUsername,
       display_name: user.email?.split("@")[0] ?? "Student",
+      referral_code: fallbackUsername,
     });
 
     if (profileError) {
@@ -74,11 +75,7 @@ export async function createRoom(input: CreateRoomInput) {
     }
   }
 
-  const { data: profileAfterEnsure } = await supabase
-    .from("profiles")
-    .select("plan_tier")
-    .eq("id", user.id)
-    .single();
+  const ownerPlanTier = await fetchUserPlanTier(supabase, user.id);
 
   if (!parsed.data.is_public) {
     const { count } = await supabase
@@ -87,7 +84,7 @@ export async function createRoom(input: CreateRoomInput) {
       .eq("owner_id", user.id)
       .eq("is_public", false);
 
-    const limit = PLAN_LIMITS[(profileAfterEnsure?.plan_tier ?? "free") as keyof typeof PLAN_LIMITS].maxPrivateRooms;
+    const limit = PLAN_LIMITS[ownerPlanTier].maxPrivateRooms;
     if ((count ?? 0) >= limit) {
       return { error: "Private room limit reached. Upgrade to Premium for unlimited private rooms." };
     }
@@ -99,7 +96,6 @@ export async function createRoom(input: CreateRoomInput) {
   const settings = mergeRoomSettings(parsed.data.settings);
   const inviteToken = parsed.data.is_public ? null : crypto.randomBytes(16).toString("hex");
   const wallpaperId = await pickRandomBuiltinWallpaperId();
-  const ownerPlanTier = (profileAfterEnsure?.plan_tier ?? "free") as keyof typeof PLAN_LIMITS;
   const maxParticipants = capMaxParticipantsForPlan(
     ownerPlanTier,
     parsed.data.max_participants

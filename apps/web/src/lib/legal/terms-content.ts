@@ -5,7 +5,7 @@ import {
 } from "@/lib/plans/marketing";
 import { STUDY_ASSISTANT_FREE_DAILY_PROMPTS } from "@studyverce/shared";
 
-export const TERMS_LAST_UPDATED = "June 8, 2026";
+export const TERMS_LAST_UPDATED = "June 9, 2026";
 
 export const TERMS_CONTACT_EMAIL = "legal@studyverce.com";
 
@@ -129,6 +129,21 @@ export const termsSections: TermsSection[] = [
       "THE SERVICE IS PROVIDED “AS IS” AND “AS AVAILABLE” WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.",
       "We do not warrant that study outcomes, grades, focus metrics, transcripts, or leaderboard rankings will meet your expectations.",
       "In-room video streaming and some Premium features may be released gradually; availability can vary by account and region.",
+    ],
+  },
+  {
+    id: "referral-program",
+    title: "Referral program",
+    paragraphs: [
+      "StudyVerce may offer a referral program that rewards users when new accounts sign up using a personal referral link and complete onboarding.",
+      "Referral rewards may include time-limited Premium access, profile badges, or lifetime Premium entitlements as described in the product. Rewards have no cash value, are non-transferable, and may not be sold or exchanged.",
+      "We may change referral milestones, reward types, or eligibility rules at any time. Changes apply prospectively; rewards already granted for qualified referrals are generally retained unless we detect fraud or abuse.",
+      "We may withhold or revoke rewards if we reasonably believe you engaged in self-referrals, fake accounts, automated signups, or other manipulation. Our determination in good faith is final for program purposes.",
+    ],
+    bullets: [
+      "A qualified referral typically requires a new user to sign up via your link and finish onboarding.",
+      "Invited users may receive a promotional Premium trial after onboarding.",
+      "Referral links and attribution may be stored using cookies and account metadata.",
     ],
   },
   {

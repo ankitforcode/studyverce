@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { fetchUserPlanTier } from "@/lib/plan-limits";
 import { getStudyAssistantPlanLimits } from "@/lib/study-assistant-limits";
 import { getStudyAssistantQuotaStatus } from "@/lib/study-assistant-quota";
 import type { PlanTier } from "@studyverce/shared";
@@ -27,13 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not a member of this room" }, { status: 403 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan_tier")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const planTier = (profile?.plan_tier ?? "free") as PlanTier;
+  const planTier = await fetchUserPlanTier(supabase, user.id);
   const limits = getStudyAssistantPlanLimits(planTier);
 
   if (limits.dailyPromptLimit === null) {

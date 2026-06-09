@@ -2,11 +2,17 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Flame, Clock, Award } from "lucide-react";
+import type { PremiumSource } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, Avatar } from "@/components/ui/badge";
+import {
+  AchievementListItem,
+  UserBadgeStrip,
+} from "@/components/profile/user-badge-strip";
 import { formatFocusTime } from "@/lib/utils";
 import { normalizeProfileUsername } from "@/lib/profiles/username";
+import { resolveEffectivePlanTierFromRow } from "@/lib/referrals/entitlements";
 import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +64,23 @@ export default async function ProfilePage({
     redirect(`/profile/${profile.username}`);
   }
 
+  const achievementItems =
+    achievements?.flatMap((ua) => {
+      const achievement = ua.achievements as unknown as {
+        slug: string;
+        name: string;
+        description: string;
+        icon: string;
+      } | null;
+      return achievement ? [achievement] : [];
+    }) ?? [];
+
+  const effectivePlan = resolveEffectivePlanTierFromRow({
+    plan_tier: profile.plan_tier,
+    premium_until: profile.premium_until,
+    premium_source: profile.premium_source as PremiumSource,
+  });
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
@@ -65,6 +88,14 @@ export default async function ProfilePage({
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold sm:text-3xl">{profile.display_name}</h1>
           <p className="text-muted-foreground">@{profile.username}</p>
+          <UserBadgeStrip
+            className="mt-3 justify-center sm:justify-start"
+            planTier={profile.plan_tier}
+            premiumUntil={profile.premium_until}
+            premiumSource={profile.premium_source as PremiumSource}
+            achievements={achievementItems}
+            showPremiumDetail={isOwnProfile}
+          />
           {profile.subject_tags.length > 0 && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
               {profile.subject_tags.map((tag) => (
@@ -73,12 +104,14 @@ export default async function ProfilePage({
             </div>
           )}
           {isOwnProfile && (
-            <Link
-              href="/settings/profile"
-              className="mt-3 inline-block text-sm text-primary hover:underline"
-            >
-              Edit profile
-            </Link>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+              <Link href="/settings/profile" className="text-sm text-primary hover:underline">
+                Edit profile
+              </Link>
+              <Link href="/settings/referrals" className="text-sm text-primary hover:underline">
+                Invite friends
+              </Link>
+            </div>
           )}
         </div>
       </div>
@@ -111,8 +144,8 @@ export default async function ProfilePage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant={profile.plan_tier === "free" ? "secondary" : "accent"}>
-              {profile.plan_tier}
+            <Badge variant={effectivePlan === "free" ? "secondary" : "accent"}>
+              {effectivePlan}
             </Badge>
           </CardContent>
         </Card>
@@ -123,26 +156,17 @@ export default async function ProfilePage({
           <CardTitle>Achievements</CardTitle>
         </CardHeader>
         <CardContent>
-          {achievements && achievements.length > 0 ? (
+          {achievementItems.length > 0 ? (
             <ul className="space-y-2">
-              {achievements.map((ua) => {
-                const achievement = ua.achievements as unknown as {
-                  slug: string;
-                  name: string;
-                  description: string;
-                  icon: string;
-                } | null;
-                if (!achievement) return null;
-                return (
-                  <li key={achievement.slug} className="flex items-center gap-3 text-sm">
-                    <span className="text-lg">🏆</span>
-                    <div>
-                      <p className="font-medium">{achievement.name}</p>
-                      <p className="text-muted-foreground text-xs">{achievement.description}</p>
-                    </div>
-                  </li>
-                );
-              })}
+              {achievementItems.map((achievement) => (
+                <AchievementListItem
+                  key={achievement.slug}
+                  slug={achievement.slug}
+                  name={achievement.name}
+                  description={achievement.description}
+                  icon={achievement.icon}
+                />
+              ))}
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Flame, Zap } from "lucide-react";
 import type { LeaderboardEntry, LeaderboardTab } from "@/lib/leaderboard/data";
+import { UserBadgeStrip } from "@/components/profile/user-badge-strip";
 import { Avatar, Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatFocusTime } from "@/lib/utils";
@@ -19,10 +20,8 @@ function primaryScore(entry: LeaderboardEntry, tab: LeaderboardTab): string {
   return formatFocusTime(entry.totalFocusMinutes);
 }
 
-function planLabel(tier: LeaderboardEntry["planTier"]): string | null {
-  if (tier === "premium") return "Premium";
-  if (tier === "institution") return "Institution";
-  return null;
+function planLabel(tier: LeaderboardEntry["planTier"]): boolean {
+  return tier === "premium" || tier === "institution";
 }
 
 export function LeaderboardTable({
@@ -50,7 +49,7 @@ export function LeaderboardTable({
             {leaders.map((leader, index) => {
               const rank = index + 1;
               const isYou = currentUserId === leader.id;
-              const plan = planLabel(leader.planTier);
+              const showPremium = planLabel(leader.planTier);
 
               return (
                 <li
@@ -86,10 +85,11 @@ export function LeaderboardTable({
                           You
                         </Badge>
                       )}
-                      {plan && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {plan}
-                        </Badge>
+                      {showPremium && (
+                        <UserBadgeStrip
+                          planTier={leader.planTier}
+                          compact
+                        />
                       )}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">

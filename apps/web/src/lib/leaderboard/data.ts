@@ -1,5 +1,6 @@
-import type { PlanTier } from "@studyverce/shared";
+import type { PlanTier, PremiumSource } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
+import { resolveEffectivePlanTierFromRow } from "@/lib/referrals/entitlements";
 
 export type LeaderboardTab = "all-time" | "week" | "streak";
 
@@ -46,6 +47,8 @@ type ProfileRow = {
   total_focus_minutes: number;
   study_streak: number;
   plan_tier: PlanTier;
+  premium_until: string | null;
+  premium_source: PremiumSource;
   subject_tags: string[];
 };
 
@@ -53,6 +56,11 @@ function mapProfile(
   row: ProfileRow,
   weeklyByUser: Map<string, number>
 ): LeaderboardEntry {
+  const effectivePlanTier = resolveEffectivePlanTierFromRow({
+    plan_tier: row.plan_tier,
+    premium_until: row.premium_until,
+    premium_source: row.premium_source,
+  });
   return {
     id: row.id,
     username: row.username,
@@ -61,7 +69,7 @@ function mapProfile(
     totalFocusMinutes: row.total_focus_minutes,
     weeklyFocusMinutes: weeklyByUser.get(row.id) ?? 0,
     studyStreak: row.study_streak,
-    planTier: row.plan_tier,
+    planTier: effectivePlanTier,
     subjectTags: row.subject_tags ?? [],
   };
 }
@@ -121,7 +129,7 @@ export async function getLeaderboardPageData(
     supabase
       .from("profiles")
       .select(
-        "id, username, display_name, avatar_url, total_focus_minutes, study_streak, plan_tier, subject_tags"
+        "id, username, display_name, avatar_url, total_focus_minutes, study_streak, plan_tier, premium_until, premium_source, subject_tags"
       ),
     supabase.rpc("leaderboard_weekly_focus", { p_limit: 100 }),
   ]);

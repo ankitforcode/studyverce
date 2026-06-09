@@ -77,6 +77,8 @@ Compact dropdown in header (and mobile strip). **Portal panel to `document.body`
 - Header: "In this room" + active/away counts (summary only — no per-row Active/Away pills).
 - **Search** above list: filters **other** users by display name or `@handle` (`ROOM_FIELD` + search icon).
 - **Current user** pinned at top in a bordered card (`border-primary/35`); always visible regardless of search.
+- **Room owner** shows a crown icon with an **Owner** tooltip on their row (current-user card and others list); uses `roomOwnerId` prop.
+- **Current user** premium/achievement badges use `UserBadgeStrip` with `layout="inline"` on the name row (sparkles + tooltips), matching the owner crown placement.
 - **Others** listed below a divider, sorted active first then name.
 - Escape clears search first, then closes panel; search resets on close.
 - Row enter animations: `participant-panel-enter` / `participant-row-enter` in `globals.css`.
@@ -149,6 +151,7 @@ Enforced server-side in `lib/music/plan-limits.ts` + `music-actions.ts` / `music
 - **Room join**: `room_members` INSERT RLS requires `can_self_join_room()` (public, owner, or approved access); role forced to `member` except owner bootstrap. App `joinRoom` is not the only gate — browser Supabase client shares RLS.
 - **Invite token**: expose only to room owners (`getRoomVisibility`, `RoomClient` props, `get_user_private_rooms` RPC).
 - **Socket chat**: web app uses `chat:broadcast` after `sendRoomMessage`; server re-fetches DB row before relay. `chat:send` requires membership + joined socket room. `chat:broadcast-delete` checks delete auth. `session:end` requires session ownership.
+- **Chat @mentions**: `room-chat.tsx` + `lib/chat/mentions.ts` — typing `@` opens a participant picker (users + **@here** / **@everyone**); ↑/↓ + Enter/Tab to insert; Escape dismisses. **@here** notifies online (active/green) members; **@everyone** notifies all visible in-room members (active or away, not invisible). User @mentions still resolve by username. Sent messages highlight `@username`, `@here`, and `@everyone`. On send, socket-server expands broadcast tokens via Redis presence + emits `chat:mention-notification` per target; `ChatMentionNotificationBridge` toast + inbox (`action: chat_mention`). Helpers: `parseChatMentions`, `isParticipantOnlineForChatHere`, `isParticipantInRoomForChatEveryone` in `@studyverce/shared`.
 - **Study assistant**: `/api/study-assistant/*` requires `room_members` row (`lib/rooms/membership.ts`).
 
 ## Realtime (`use-socket.ts` / socket-server)

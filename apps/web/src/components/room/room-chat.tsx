@@ -1,26 +1,45 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import {
+  Megaphone,
   ChevronDown,
   ChevronUp,
   MessageSquare,
   Mic,
   Send,
   Trash2,
+  Users,
 } from "lucide-react";
 import { PostItIconTooltip } from "@/components/dashboard/post-it-icon-tooltip";
-import type { ChatMessage } from "@studyverce/shared";
+import type { ChatMessage, RoomParticipant } from "@studyverce/shared";
+import { filterParticipantsForViewer } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  collectMentionUsernames,
+  filterMentionCandidates,
+  getActiveMentionQuery,
+  insertMention,
+  splitMessageMentions,
+  type MentionCandidate,
+} from "@/lib/chat/mentions";
 import { formatDistanceToNow } from "date-fns";
-import { ROOM_FIELD } from "@/lib/room-ui";
+import { ROOM_FIELD, ROOM_INNER_SURFACE } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 
 interface RoomChatProps {
   messages: ChatMessage[];
   currentUserId: string;
+  participants?: RoomParticipant[];
   isModerator: boolean;
   onSend: (content: string) => void;
   onDelete: (messageId: string) => void;
@@ -32,9 +51,42 @@ interface RoomChatProps {
   onStartVoiceRecord?: () => void;
 }
 
+function ChatMessageBody({
+  content,
+  mentionUsernames,
+  isOwn,
+}: {
+  content: string;
+  mentionUsernames: ReadonlySet<string>;
+  isOwn: boolean;
+}) {
+  const parts = splitMessageMentions(content, mentionUsernames);
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.type === "mention" ? (
+          <span
+            key={`${index}-${part.value}`}
+            className={cn(
+              "font-semibold",
+              isOwn ? "text-primary-foreground underline decoration-primary-foreground/50" : "text-primary"
+            )}
+          >
+            @{part.value}
+          </span>
+        ) : (
+          <span key={`${index}-text`}>{part.value}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export function RoomChat({
   messages,
   currentUserId,
+  participants = [],
   isModerator,
   onSend,
   onDelete,
@@ -48,7 +100,33 @@ export function RoomChat({
   const [collapsedInternal, setCollapsedInternal] = useState(false);
   const collapsed = collapsedProp ?? collapsedInternal;
   const [input, setInput] = useState("");
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionDismissed, setMentionDismissed] = useState(false);
+  const [inputCursor, setInputCursor] = useState(0);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const visibleParticipants = useMemo(
+    () => filterParticipantsForViewer(participants, currentUserId),
+    [participants, currentUserId]
+  );
+  const mentionUsernames = useMemo(
+    () => collectMentionUsernames(visibleParticipants),
+    [visibleParticipants]
+  );
+
+  const activeMention = useMemo(
+    () => getActiveMentionQuery(input, inputCursor),
+    [input, inputCursor]
+  );
+  const mentionCandidates = useMemo(() => {
+    if (!activeMention) return [];
+    return filterMentionCandidates(visibleParticipants, activeMention.query);
+  }, [activeMention, visibleParticipants]);
+  const mentionPickerOpen =
+    !mentionDismissed &&
+    Boolean(activeMention) &&
+    mentionCandidates.length > 0;
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -65,11 +143,91 @@ export function RoomChat({
     container.scrollTop = container.scrollHeight;
   }, [messages, collapsed]);
 
+  useEffect(() => {
+    setMentionIndex(0);
+    setMentionDismissed(false);
+  }, [activeMention?.query, activeMention?.startIndex]);
+
+  const syncInputCursor = useCallback(() => {
+    const cursor = inputRef.current?.selectionStart;
+    if (cursor != null) {
+      setInputCursor(cursor);
+    }
+  }, []);
+
+  const applyMention = useCallback(
+    (candidate: MentionCandidate) => {
+      if (!activeMention) return;
+
+      const token =
+        candidate.kind === "broadcast"
+          ? candidate.token
+          : candidate.participant.username;
+
+      const { text, cursor } = insertMention(
+        input,
+        activeMention.startIndex,
+        activeMention.endIndex,
+        token
+      );
+      setInput(text);
+      setInputCursor(cursor);
+      requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(cursor, cursor);
+      });
+    },
+    [activeMention, input]
+  );
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
     onSend(input.trim());
     setInput("");
+    setInputCursor(0);
+  }
+
+  function handleInputChange(value: string) {
+    setInput(value);
+    requestAnimationFrame(syncInputCursor);
+  }
+
+  function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!mentionPickerOpen) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setMentionIndex((prev) =>
+        prev + 1 >= mentionCandidates.length ? 0 : prev + 1
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setMentionIndex((prev) =>
+        prev - 1 < 0 ? mentionCandidates.length - 1 : prev - 1
+      );
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      const selected = mentionCandidates[mentionIndex];
+      if (selected) {
+        applyMention(selected);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setMentionDismissed(true);
+      return;
+    }
   }
 
   return (
@@ -169,7 +327,11 @@ export function RoomChat({
                           : "rounded-tl-sm bg-muted text-foreground"
                       )}
                     >
-                      {msg.content}
+                      <ChatMessageBody
+                        content={msg.content}
+                        mentionUsernames={mentionUsernames}
+                        isOwn={isOwn}
+                      />
                     </p>
                   </div>
                   {isOwn && (
@@ -190,6 +352,76 @@ export function RoomChat({
             className="flex shrink-0 gap-2 border-t border-border/50 pt-3"
           >
             <div className="relative min-w-0 flex-1">
+              {mentionPickerOpen && (
+                <div
+                  role="listbox"
+                  aria-label="Mention a participant"
+                  className={cn(
+                    "absolute bottom-full left-0 right-0 z-20 mb-1 max-h-44 overflow-y-auto rounded-lg border border-border/60 p-1 shadow-lg",
+                    ROOM_INNER_SURFACE
+                  )}
+                >
+                  {mentionCandidates.map((candidate, index) => (
+                    <button
+                      key={
+                        candidate.kind === "broadcast"
+                          ? `broadcast-${candidate.token}`
+                          : candidate.participant.userId
+                      }
+                      type="button"
+                      role="option"
+                      aria-selected={index === mentionIndex}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                        index === mentionIndex
+                          ? "bg-primary/15 text-foreground"
+                          : "text-foreground hover:bg-muted/50"
+                      )}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        applyMention(candidate);
+                      }}
+                    >
+                      {candidate.kind === "broadcast" ? (
+                        <>
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                            {candidate.token === "here" ? (
+                              <Megaphone className="h-3.5 w-3.5" aria-hidden />
+                            ) : (
+                              <Users className="h-3.5 w-3.5" aria-hidden />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">
+                            <span className="font-medium">{candidate.label}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              · {candidate.description}
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Avatar
+                            src={candidate.participant.avatarUrl}
+                            fallback={candidate.participant.displayName}
+                            size="sm"
+                            className="h-7 w-7 shrink-0 text-[10px]"
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            <span className="font-medium">
+                              @{candidate.participant.username}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              · {candidate.participant.displayName}
+                            </span>
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
               {onStartVoiceRecord && (
                 <PostItIconTooltip
                   label={
@@ -222,9 +454,14 @@ export function RoomChat({
                 </PostItIconTooltip>
               )}
               <Input
+                ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message..."
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={handleInputKeyDown}
+                onKeyUp={syncInputCursor}
+                onClick={syncInputCursor}
+                onSelect={syncInputCursor}
+                placeholder="Type a message… @user, @here, or @everyone"
                 maxLength={2000}
                 className={cn(onStartVoiceRecord && "pl-10", ROOM_FIELD)}
               />

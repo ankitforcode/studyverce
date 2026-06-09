@@ -145,7 +145,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const toast = useCallback(
     (input: ToastInput) => {
-      pushToast(input);
+      if (input.showToast !== false) {
+        pushToast(input);
+      }
       if (input.persist === false || !userId || hydratedUserIdRef.current !== userId) {
         return;
       }

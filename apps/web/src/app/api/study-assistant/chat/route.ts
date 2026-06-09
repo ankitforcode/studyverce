@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { PlanTier } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/server";
+import { fetchUserPlanTier } from "@/lib/plan-limits";
 import { rateLimitOrNull } from "@/lib/rate-limit/route-guard";
 import "@/lib/redis";
 import {
@@ -99,13 +100,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not a member of this room" }, { status: 403 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan_tier")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const planTier = (profile?.plan_tier ?? "free") as PlanTier;
+  const planTier = await fetchUserPlanTier(supabase, user.id);
   const planLimits = getStudyAssistantPlanLimits(planTier);
   const memoryEnabled = planLimits.memoryEnabled;
 

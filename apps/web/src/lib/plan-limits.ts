@@ -1,8 +1,18 @@
 import type { PlanTier } from "@studyverce/shared";
 import { FREE_MAX_ROOM_PARTICIPANTS, PLAN_LIMITS } from "@studyverce/shared";
 import type { createClient } from "@/lib/supabase/server";
+import {
+  legacyProfileToEntitlementRow,
+  PROFILE_ENTITLEMENT_SELECT,
+  PROFILE_LEGACY_SELECT,
+  resolveEffectivePlanTierFromRow,
+  type ProfileEntitlementRow,
+} from "@/lib/referrals/entitlements";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+export type { ProfileEntitlementRow };
+export { PROFILE_ENTITLEMENT_SELECT, resolveEffectivePlanTierFromRow };
 
 export function getPlanTierOrFree(planTier: PlanTier | null | undefined): PlanTier {
   return planTier ?? "free";
@@ -46,17 +56,41 @@ export function roomVideoUpgradeError(): string {
   return "In-room video streaming requires Premium or Institution. Upgrade on the Plans page.";
 }
 
+export async function fetchUserEntitlement(
+  supabase: SupabaseServerClient,
+  userId: string
+): Promise<ProfileEntitlementRow | null> {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select(PROFILE_ENTITLEMENT_SELECT)
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!error && profile) {
+    return profile as ProfileEntitlementRow;
+  }
+
+  if (error) {
+    console.error("fetchUserEntitlement:", error.message);
+  }
+
+  const { data: legacyProfile } = await supabase
+    .from("profiles")
+    .select(PROFILE_LEGACY_SELECT)
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!legacyProfile) return null;
+  return legacyProfileToEntitlementRow(legacyProfile);
+}
+
 export async function fetchUserPlanTier(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<PlanTier> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan_tier")
-    .eq("id", userId)
-    .maybeSingle();
-
-  return getPlanTierOrFree(profile?.plan_tier as PlanTier | null | undefined);
+  const profile = await fetchUserEntitlement(supabase, userId);
+  if (!profile) return "free";
+  return resolveEffectivePlanTierFromRow(profile);
 }
 
 export async function fetchRoomOwnerPlanTier(

@@ -13,6 +13,11 @@ import {
   PASSWORD_SET_METADATA_KEY,
 } from "@/lib/auth/room-invite";
 import { canUseMagicLinkLogin } from "@/lib/premium";
+import {
+  PROFILE_ENTITLEMENT_SELECT,
+  resolveEffectivePlanTierFromRow,
+  type ProfileEntitlementRow,
+} from "@/lib/referrals/entitlements";
 
 const MAGIC_LINK_SENT_MESSAGE =
   "If an account exists for this email, we sent a sign-in link. Check your inbox.";
@@ -81,11 +86,15 @@ export async function sendMagicLinkLogin(
     const service = createServiceClient();
     const { data: profile, error: profileError } = await service
       .from("profiles")
-      .select("plan_tier")
+      .select(PROFILE_ENTITLEMENT_SELECT)
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profileError || !profile || !canUseMagicLinkLogin(profile.plan_tier as PlanTier)) {
+    const effectiveTier = profile
+      ? resolveEffectivePlanTierFromRow(profile as ProfileEntitlementRow)
+      : "free";
+
+    if (profileError || !profile || !canUseMagicLinkLogin(effectiveTier)) {
       return { error: null, message: MAGIC_LINK_SENT_MESSAGE };
     }
 

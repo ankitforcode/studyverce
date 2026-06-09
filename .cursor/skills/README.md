@@ -12,6 +12,7 @@ Deep workflows for agents. **Read the matching skill before editing; update it w
 | Post-it notes | `studyverce-post-it-notes/SKILL.md` | Room post-its, `task-actions`, schema, todo panel sync |
 | Dashboard | `studyverce-dashboard/SKILL.md` | Dashboard shell, stats, calendar, charts (no post-it canvas) |
 | Legal & SEO | `studyverce-legal/SKILL.md` | Privacy/Terms content, footer links, signup disclosures, robots/sitemap, OAuth consent URLs |
+| Referrals & rewards | `studyverce-referrals/SKILL.md` | Referral links, milestone grants, Premium entitlements, badges, `/settings/referrals` |
 
 Each skill may include `reference.md` for file/action/migration tables.
 

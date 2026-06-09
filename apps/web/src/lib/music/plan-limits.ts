@@ -1,6 +1,7 @@
 import type { PlanTier } from "@studyverce/shared";
 import { PLAN_LIMITS } from "@studyverce/shared";
 import type { createClient } from "@/lib/supabase/server";
+import { fetchUserPlanTier as fetchEffectiveUserPlanTier } from "@/lib/plan-limits";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,13 +28,7 @@ export async function fetchUserPlanTier(
   supabase: SupabaseServerClient,
   userId: string
 ): Promise<PlanTier> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan_tier")
-    .eq("id", userId)
-    .maybeSingle();
-
-  return (profile?.plan_tier ?? "free") as PlanTier;
+  return fetchEffectiveUserPlanTier(supabase, userId);
 }
 
 export async function countUserMusicLinks(

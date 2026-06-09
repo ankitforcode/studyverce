@@ -15,10 +15,12 @@ import { mergeRoomSettings } from "@studyverce/db";
 import type { StudyRoomSettings } from "@studyverce/shared";
 import { resolveWallpaperOverlay } from "@/lib/wallpaper-overlay";
 import {
+  fetchUserEntitlement,
   fetchUserPlanTier,
   hasRoomVideo,
   hasVoiceNotes,
 } from "@/lib/plan-limits";
+import type { PremiumSource } from "@studyverce/shared";
 
 export default async function RoomPage({
   params,
@@ -102,11 +104,37 @@ export default async function RoomPage({
   const initialWallpaperOverlay = resolveWallpaperOverlay(roomSettings);
   const initialFavorited = await isRoomFavorited(room.id);
   const planTier = await fetchUserPlanTier(supabase, user.id);
+  const entitlement = await fetchUserEntitlement(supabase, user.id);
   const { data: profile } = await supabase
     .from("profiles")
     .select("subject_tags")
     .eq("id", user.id)
     .single();
+
+  const { data: userAchievementRows } = await supabase
+    .from("user_achievements")
+    .select("achievement_id")
+    .eq("user_id", user.id);
+
+  let ambassadorAchievements: { slug: string; name: string; icon: string }[] = [];
+  const achievementIds = (userAchievementRows ?? []).map((row) => row.achievement_id);
+  if (achievementIds.length > 0) {
+    const { data: achievementRows } = await supabase
+      .from("achievements")
+      .select("slug, name, icon")
+      .in("id", achievementIds)
+      .eq("slug", "referrals_10");
+    ambassadorAchievements = achievementRows ?? [];
+  }
+
+  const currentUserBadge = entitlement
+    ? {
+        planTier: entitlement.plan_tier,
+        premiumUntil: entitlement.premium_until,
+        premiumSource: entitlement.premium_source as PremiumSource,
+        achievements: ambassadorAchievements,
+      }
+    : undefined;
 
   return (
     <RoomClient
@@ -134,6 +162,7 @@ export default async function RoomPage({
       roomVideoEnabled={hasRoomVideo(planTier)}
       voiceNotesEnabled={hasVoiceNotes(planTier)}
       subjectTags={profile?.subject_tags ?? []}
+      currentUserBadge={currentUserBadge}
     />
   );
 }

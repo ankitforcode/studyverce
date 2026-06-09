@@ -9,6 +9,7 @@ import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { PasswordInput } from "@/components/auth/password-input";
+import { ReferralCapture, getReferralCodeFromDocumentCookie } from "@/components/referrals/referral-capture";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input, Label } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { trackEvent } from "@/lib/analytics";
 import { syncPostHogUserFromSession } from "@/lib/consent/posthog-consent";
 import { loginPath, onboardingPath, authCallbackUrl, safeRedirectPath } from "@/lib/auth/paths";
 import { notifyNavbarProfileUpdated } from "@/lib/auth/navbar-profile-sync";
+import { readReferralCodeFromSearchParams } from "@/lib/referrals/capture";
 import { SIGNUP_FREE_DISCLOSURE } from "@/lib/plans/marketing";
 import {
   PRIVACY_POLICY_PATH,
@@ -34,18 +36,29 @@ function SignupForm() {
 
   const isRoomRedirect = redirect.startsWith("/rooms/") && redirect !== "/rooms/new";
 
+  function resolveReferralCode(): string | null {
+    return (
+      readReferralCodeFromSearchParams(searchParams) ??
+      getReferralCodeFromDocumentCookie()
+    );
+  }
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    const referralCode = resolveReferralCode();
     const supabase = createClient();
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: authCallbackUrl(redirect),
-        data: { post_auth_redirect: redirect },
+        data: {
+          post_auth_redirect: redirect,
+          ...(referralCode ? { referral_code: referralCode } : {}),
+        },
       },
     });
 
@@ -63,6 +76,9 @@ function SignupForm() {
 
     await syncPostHogUserFromSession();
     trackEvent("signup_completed", { method: "email" });
+    if (referralCode) {
+      trackEvent("referral_signup", { referral_code: referralCode, method: "email" });
+    }
     notifyNavbarProfileUpdated();
     router.push(onboardingPath(redirect));
     router.refresh();
@@ -87,6 +103,9 @@ function SignupForm() {
           : "Join StudyVerce and start studying together"
       }
     >
+      <Suspense>
+        <ReferralCapture />
+      </Suspense>
       {confirmationSent ? (
         <div className="space-y-4 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10">

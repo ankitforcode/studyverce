@@ -9,6 +9,8 @@ import { StudyCalendar } from "@/components/dashboard/study-calendar";
 import { DashboardStatCard } from "@/components/dashboard/dashboard-stat-card";
 import { RemindersTodayStat } from "@/components/dashboard/reminders-today-stat";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { ReferralProgressCard } from "@/components/referrals/referral-progress-card";
+import { getReferralsPageData } from "@/app/settings/referrals/actions";
 import { computeDashboardStats } from "@/lib/dashboard/stats";
 import { subDays, format } from "date-fns";
 
@@ -73,6 +75,8 @@ export default async function DashboardPage() {
     profile.total_focus_minutes
   );
 
+  const referralData = await getReferralsPageData();
+
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-background">
       <div className="sticky top-16 z-40 border-b border-border bg-background/95 backdrop-blur-md">
@@ -127,6 +131,8 @@ export default async function DashboardPage() {
       </div>
 
       <QuickActions />
+
+      {referralData && <ReferralProgressCard data={referralData} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <DashboardCharts data={stats.dailyData} />

@@ -29,6 +29,11 @@ import { expressRateLimitMiddleware } from "@studyverce/rate-limit/express";
 import {
   roomTrackToMusicState,
   normalizePresenceMode,
+  parseChatMentions,
+  CHAT_MENTION_EVERYONE,
+  CHAT_MENTION_HERE,
+  isParticipantInRoomForChatEveryone,
+  isParticipantOnlineForChatHere,
   ROOM_PRESENCE_AWAY_THRESHOLD_MS,
   ROOM_PRESENCE_REMOVE_AFTER_AWAY_MS,
   ROOM_PRESENCE_SWEEP_INTERVAL_MS,
@@ -825,6 +830,88 @@ async function notifyRoomOwnerInviteEvent(
   });
 }
 
+function truncateChatPreview(content: string, maxLength = 120): string {
+  const trimmed = content.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength - 3)}...`;
+}
+
+async function notifyChatMentions(
+  roomId: string,
+  message: ChatMessage,
+  senderUserId: string
+): Promise<void> {
+  if (!pgPool) return;
+
+  const { usernames, broadcastMentions } = parseChatMentions(message.content);
+  const notifyHere = broadcastMentions.includes(CHAT_MENTION_HERE);
+  const notifyEveryone = broadcastMentions.includes(CHAT_MENTION_EVERYONE);
+
+  if (usernames.length === 0 && !notifyHere && !notifyEveryone) return;
+
+  const roomResult = await pgPool.query(
+    `SELECT slug, name FROM study_rooms WHERE id = $1 LIMIT 1`,
+    [roomId]
+  );
+  const room = roomResult.rows[0] as { slug: string; name: string } | undefined;
+  if (!room) return;
+
+  const targetUserIds = new Set<string>();
+
+  if (usernames.length > 0) {
+    const membersResult = await pgPool.query(
+      `SELECT rm.user_id
+       FROM room_members rm
+       JOIN profiles p ON p.id = rm.user_id
+       WHERE rm.room_id = $1 AND lower(p.username) = ANY($2::text[])`,
+      [roomId, usernames]
+    );
+
+    for (const row of membersResult.rows) {
+      const userId = row.user_id as string;
+      if (userId !== senderUserId) {
+        targetUserIds.add(userId);
+      }
+    }
+  }
+
+  if (notifyHere || notifyEveryone) {
+    const participants = await getParticipants(roomId);
+
+    for (const participant of participants) {
+      if (participant.userId === senderUserId) continue;
+
+      if (notifyEveryone) {
+        if (isParticipantInRoomForChatEveryone(participant, senderUserId)) {
+          targetUserIds.add(participant.userId);
+        }
+        continue;
+      }
+
+      if (notifyHere && isParticipantOnlineForChatHere(participant)) {
+        targetUserIds.add(participant.userId);
+      }
+    }
+  }
+
+  if (targetUserIds.size === 0) return;
+
+  const contentPreview = truncateChatPreview(message.content);
+
+  for (const userId of targetUserIds) {
+    io.to(userChannel(userId)).emit("chat:mention-notification", {
+      roomId,
+      roomSlug: room.slug,
+      roomName: room.name,
+      messageId: message.id,
+      senderUserId,
+      senderDisplayName: message.displayName,
+      senderUsername: message.username,
+      contentPreview,
+    });
+  }
+}
+
 async function startStudySession(
   userId: string,
   roomId?: string,
@@ -1212,6 +1299,7 @@ io.on("connection", (socket) => {
     const message = await persistMessage(roomId, user.id, content.trim());
     if (message) {
       io.to(roomId).emit("chat:message", message);
+      await notifyChatMentions(roomId, message, user.id);
     }
   });
 
@@ -1228,6 +1316,7 @@ io.on("connection", (socket) => {
       return;
     }
     socket.to(roomId).emit("chat:message", verified);
+    await notifyChatMentions(roomId, verified, user.id);
   });
 
   socket.on("chat:broadcast-delete", async ({ roomId, messageId }) => {

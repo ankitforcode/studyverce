@@ -15,6 +15,16 @@ export type Database = {
           plan_tier: "free" | "premium" | "institution";
           onboarding_completed: boolean;
           is_admin: boolean;
+          referral_code: string;
+          referred_by_user_id: string | null;
+          premium_until: string | null;
+          premium_source:
+            | "free"
+            | "referral_trial"
+            | "referral_reward"
+            | "referral_lifetime"
+            | "stripe"
+            | "admin";
           created_at: string;
           updated_at: string;
         };
@@ -29,6 +39,16 @@ export type Database = {
           plan_tier?: "free" | "premium" | "institution";
           onboarding_completed?: boolean;
           is_admin?: boolean;
+          referral_code?: string;
+          referred_by_user_id?: string | null;
+          premium_until?: string | null;
+          premium_source?:
+            | "free"
+            | "referral_trial"
+            | "referral_reward"
+            | "referral_lifetime"
+            | "stripe"
+            | "admin";
           created_at?: string;
           updated_at?: string;
         };
@@ -43,6 +63,16 @@ export type Database = {
           plan_tier?: "free" | "premium" | "institution";
           onboarding_completed?: boolean;
           is_admin?: boolean;
+          referral_code?: string;
+          referred_by_user_id?: string | null;
+          premium_until?: string | null;
+          premium_source?:
+            | "free"
+            | "referral_trial"
+            | "referral_reward"
+            | "referral_lifetime"
+            | "stripe"
+            | "admin";
           created_at?: string;
           updated_at?: string;
         };
@@ -453,6 +483,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      referrals: {
+        Row: {
+          id: string;
+          referrer_id: string;
+          referee_id: string;
+          status: "pending" | "qualified" | "rejected";
+          qualified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          referrer_id: string;
+          referee_id: string;
+          status?: "pending" | "qualified" | "rejected";
+          qualified_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          referrer_id?: string;
+          referee_id?: string;
+          status?: "pending" | "qualified" | "rejected";
+          qualified_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      referral_rewards: {
+        Row: {
+          id: string;
+          user_id: string;
+          reward_type: "referee_trial" | "premium_1mo" | "ambassador_badge" | "lifetime_premium";
+          referral_count_at_grant: number;
+          granted_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          reward_type: "referee_trial" | "premium_1mo" | "ambassador_badge" | "lifetime_premium";
+          referral_count_at_grant?: number;
+          granted_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          reward_type?: "referee_trial" | "premium_1mo" | "ambassador_badge" | "lifetime_premium";
+          referral_count_at_grant?: number;
+          granted_at?: string;
+        };
+        Relationships: [];
+      };
       user_room_sidebar_layout: {
         Row: {
           user_id: string;
@@ -605,6 +686,18 @@ export type Database = {
       };
       update_profile_stats: {
         Args: { p_user_id: string; p_focus_minutes: number };
+        Returns: undefined;
+      };
+      attach_referral: {
+        Args: { p_referee_id: string; p_referral_code: string };
+        Returns: boolean;
+      };
+      qualify_referral_and_grant_rewards: {
+        Args: { p_referee_id: string };
+        Returns: Json;
+      };
+      sync_referral_code_for_username: {
+        Args: { p_user_id: string; p_username: string };
         Returns: undefined;
       };
     };

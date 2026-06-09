@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import type { PlanTier, PremiumSource } from "@studyverce/shared";
 import {
   filterParticipantsForViewer,
   isParticipantActiveForViewer,
@@ -10,6 +11,7 @@ import {
   type RoomParticipant,
   type RoomPresenceMode,
 } from "@studyverce/shared";
+import { UserBadgeStrip, type UserBadgeAchievement } from "@/components/profile/user-badge-strip";
 import {
   acceptFriendRequest,
   getFriendshipStatuses,
@@ -27,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import type { AppSocket } from "@/hooks/use-socket";
 import {
   ChevronDown,
+  Crown,
   EyeOff,
   Moon,
   Radio,
@@ -57,6 +60,12 @@ interface ParticipantListProps {
   menuAlign?: "start" | "end";
   roomAppearance?: RoomAppearance;
   className?: string;
+  currentUserBadge?: {
+    planTier: PlanTier;
+    premiumUntil: string | null;
+    premiumSource: PremiumSource;
+    achievements?: UserBadgeAchievement[];
+  };
 }
 
 const PARTICIPANT_PANEL_WIDTH = 336;
@@ -136,14 +145,35 @@ function filterParticipantsBySearch(
   );
 }
 
+function RoomOwnerBadge({ className }: { className?: string }) {
+  return (
+    <PostItIconTooltip label="Owner" side="top" align="center">
+      <span
+        className={cn(
+          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent",
+          className
+        )}
+        aria-label="Room owner"
+      >
+        <Crown className="h-3 w-3" aria-hidden />
+      </span>
+    </PostItIconTooltip>
+  );
+}
+
 function CurrentUserSection({
   participant,
+  roomOwnerId,
   onSetPresenceMode,
+  currentUserBadge,
 }: {
   participant: RoomParticipant;
+  roomOwnerId?: string;
   onSetPresenceMode?: (mode: RoomPresenceMode) => void;
+  currentUserBadge?: ParticipantListProps["currentUserBadge"];
 }) {
   const mode = normalizePresenceMode(participant.presenceMode);
+  const isOwner = Boolean(roomOwnerId && participant.userId === roomOwnerId);
 
   return (
     <div className="mx-2 mb-2 rounded-lg border border-primary/35 bg-primary/5 px-2 py-2 light:border-primary/25 light:bg-primary/8">
@@ -153,9 +183,20 @@ function CurrentUserSection({
           <PresenceDot mode={mode} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">
-            {participant.displayName}
-            <span className="ml-1 font-normal text-muted-foreground">(you)</span>
+          <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
+            <span className="truncate">{participant.displayName}</span>
+            {isOwner && <RoomOwnerBadge />}
+            {currentUserBadge && (
+              <UserBadgeStrip
+                layout="inline"
+                compact
+                planTier={currentUserBadge.planTier}
+                premiumUntil={currentUserBadge.premiumUntil}
+                premiumSource={currentUserBadge.premiumSource}
+                achievements={currentUserBadge.achievements}
+              />
+            )}
+            <span className="shrink-0 font-normal text-muted-foreground">(you)</span>
           </p>
           <p className="truncate text-xs text-muted-foreground">@{participant.username}</p>
         </div>
@@ -216,6 +257,9 @@ function ParticipantRow({
   const [friendPending, startFriendTransition] = useTransition();
   const [kickPending, startKickTransition] = useTransition();
   const isYou = participant.userId === currentUserId;
+  const isOwnerParticipant = Boolean(
+    roomOwnerId && participant.userId === roomOwnerId
+  );
   const canKick =
     isRoomOwner &&
     !isYou &&
@@ -316,9 +360,12 @@ function ParticipantRow({
         <PresenceDot participant={participant} viewerUserId={currentUserId} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">
-          {participant.displayName}
-          {isYou && <span className="ml-1 font-normal text-muted-foreground">(you)</span>}
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
+          <span className="truncate">{participant.displayName}</span>
+          {isOwnerParticipant && <RoomOwnerBadge />}
+          {isYou && (
+            <span className="shrink-0 font-normal text-muted-foreground">(you)</span>
+          )}
         </p>
         <p className="truncate text-xs text-muted-foreground">@{participant.username}</p>
       </div>
@@ -379,6 +426,7 @@ function CompactParticipantList({
   menuAlign = "end",
   roomAppearance = "dark",
   className,
+  currentUserBadge,
 }: {
   participants: RoomParticipant[];
   currentUserId: string;
@@ -390,6 +438,7 @@ function CompactParticipantList({
   menuAlign?: "start" | "end";
   roomAppearance?: RoomAppearance;
   className?: string;
+  currentUserBadge?: ParticipantListProps["currentUserBadge"];
 }) {
   const [open, setOpen] = useState(false);
   const [panelPosition, setPanelPosition] = useState<{ top: number; left: number } | null>(
@@ -569,14 +618,18 @@ function CompactParticipantList({
               </div>
             </div>
 
-            <div className="max-h-64 overflow-y-auto py-1">
-              {currentUser && (
+            {currentUser && (
+              <div className="py-1">
                 <CurrentUserSection
                   participant={currentUser}
+                  roomOwnerId={roomOwnerId}
                   onSetPresenceMode={onSetPresenceMode}
+                  currentUserBadge={currentUserBadge}
                 />
-              )}
+              </div>
+            )}
 
+            <div className="max-h-64 overflow-y-auto py-1">
               {filteredOthers.length === 0 ? (
                 searchQuery.trim() ? (
                   <p className="px-2 py-3 text-center text-xs text-muted-foreground">
@@ -696,6 +749,7 @@ export function ParticipantList({
   menuAlign = "end",
   roomAppearance = "dark",
   className,
+  currentUserBadge,
 }: ParticipantListProps) {
   const visibleParticipants = useMemo(
     () => filterParticipantsForViewer(participants, currentUserId),
@@ -724,6 +778,7 @@ export function ParticipantList({
         menuAlign={menuAlign}
         roomAppearance={roomAppearance}
         className={className}
+        currentUserBadge={currentUserBadge}
       />
     );
   }
@@ -747,26 +802,36 @@ export function ParticipantList({
             {currentUser && (
               <CurrentUserSection
                 participant={currentUser}
+                roomOwnerId={roomOwnerId}
                 onSetPresenceMode={onSetPresenceMode}
+                currentUserBadge={currentUserBadge}
               />
             )}
             <ul className="space-y-2">
-              {sortedOthers.map((p) => (
-                <li key={p.userId} className="flex items-center gap-2">
-                  <div className="relative">
-                    <Avatar src={p.avatarUrl} fallback={p.displayName} size="sm" />
-                    <PresenceDot participant={p} viewerUserId={currentUserId} />
-                  </div>
-                  <span
-                    className={cn(
-                      "text-sm",
-                      !isParticipantActiveForViewer(p, currentUserId) && "text-muted-foreground"
-                    )}
-                  >
-                    {p.displayName}
-                  </span>
-                </li>
-              ))}
+              {sortedOthers.map((p) => {
+                const isOwnerParticipant = Boolean(
+                  roomOwnerId && p.userId === roomOwnerId
+                );
+
+                return (
+                  <li key={p.userId} className="flex items-center gap-2">
+                    <div className="relative">
+                      <Avatar src={p.avatarUrl} fallback={p.displayName} size="sm" />
+                      <PresenceDot participant={p} viewerUserId={currentUserId} />
+                    </div>
+                    <span
+                      className={cn(
+                        "flex min-w-0 items-center gap-1.5 text-sm",
+                        !isParticipantActiveForViewer(p, currentUserId) &&
+                          "text-muted-foreground"
+                      )}
+                    >
+                      <span className="truncate">{p.displayName}</span>
+                      {isOwnerParticipant && <RoomOwnerBadge />}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
