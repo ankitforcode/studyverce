@@ -378,6 +378,10 @@ async function verifyToken(token: string): Promise<AuthenticatedUser | null> {
   }
 
   if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      log.error("SUPABASE_JWT_SECRET required in production — rejecting token");
+      return null;
+    }
     log.warn("SUPABASE_JWT_SECRET not set — decoding HS256 JWT payload without verification");
     try {
       const payload = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString()) as {
@@ -684,14 +688,71 @@ async function deleteMessage(messageId: string, roomId: string) {
   return true;
 }
 
+async function loadMessageById(
+  messageId: string,
+  roomId: string
+): Promise<ChatMessage | null> {
+  if (!pgPool) return null;
+  const result = await pgPool.query(
+    `SELECT m.id, m.room_id, m.user_id, m.content, m.created_at,
+            p.username, p.display_name, p.avatar_url
+     FROM room_messages m
+     JOIN profiles p ON p.id = m.user_id
+     WHERE m.id = $1 AND m.room_id = $2
+     LIMIT 1`,
+    [messageId, roomId]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    userId: row.user_id,
+    username: row.username,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    content: row.content,
+    createdAt: row.created_at.toISOString(),
+  };
+}
+
+async function canDeleteChatMessage(
+  roomId: string,
+  userId: string,
+  messageId: string
+): Promise<boolean> {
+  if (!pgPool) return false;
+  const result = await pgPool.query(
+    `SELECT m.user_id AS author_id, sr.owner_id,
+            rm.role AS member_role
+     FROM room_messages m
+     JOIN study_rooms sr ON sr.id = m.room_id
+     LEFT JOIN room_members rm
+       ON rm.room_id = m.room_id AND rm.user_id = $3
+     WHERE m.id = $1 AND m.room_id = $2
+     LIMIT 1`,
+    [messageId, roomId, userId]
+  );
+  const row = result.rows[0] as
+    | { author_id: string; owner_id: string; member_role: string | null }
+    | undefined;
+  if (!row) return false;
+  return (
+    row.author_id === userId ||
+    row.owner_id === userId ||
+    row.member_role === "owner" ||
+    row.member_role === "moderator"
+  );
+}
+
+const MAX_SESSION_FOCUS_MINUTES = 480;
+const MAX_SESSION_BREAK_MINUTES = 120;
+
 async function isRoomMember(roomId: string, userId: string): Promise<boolean> {
-  if (!pgPool) return true;
+  if (!pgPool) return false;
   return getCachedRoomMember(redis, roomId, userId, async () => {
     const result = await pgPool!.query(
-      `SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2
-       UNION
-       SELECT 1 FROM study_rooms WHERE id = $1 AND is_public = TRUE
-       LIMIT 1`,
+      `SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2 LIMIT 1`,
       [roomId, userId]
     );
     return result.rows.length > 0;
@@ -780,19 +841,32 @@ async function startStudySession(
   return result.rows[0].id;
 }
 
-async function endStudySession(sessionId: string, focusMinutes: number, breakMinutes: number) {
+async function endStudySession(
+  sessionId: string,
+  userId: string,
+  focusMinutes: number,
+  breakMinutes: number
+) {
   if (!pgPool) return;
+  const cappedFocus = Math.min(
+    Math.max(0, Math.floor(focusMinutes)),
+    MAX_SESSION_FOCUS_MINUTES
+  );
+  const cappedBreak = Math.min(
+    Math.max(0, Math.floor(breakMinutes)),
+    MAX_SESSION_BREAK_MINUTES
+  );
   const result = await pgPool.query(
     `UPDATE study_sessions
      SET ended_at = NOW(), focus_minutes = $2, break_minutes = $3
-     WHERE id = $1
+     WHERE id = $1 AND user_id = $4 AND ended_at IS NULL
      RETURNING user_id`,
-    [sessionId, focusMinutes, breakMinutes]
+    [sessionId, cappedFocus, cappedBreak, userId]
   );
-  if (result.rows.length > 0 && focusMinutes > 0) {
+  if (result.rows.length > 0 && cappedFocus > 0) {
     await pgPool.query(`SELECT update_profile_stats($1, $2)`, [
       result.rows[0].user_id,
-      focusMinutes,
+      cappedFocus,
     ]);
   }
 }
@@ -944,7 +1018,15 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("friend:reviewed", ({ requesterId }) => {
+  socket.on("friend:reviewed", async ({ requesterId }) => {
+    if (!pgPool || !requesterId) return;
+    const result = await pgPool.query(
+      `SELECT 1 FROM friendships
+       WHERE user_id = $1 AND friend_id = $2 AND status IN ('accepted', 'pending')
+       LIMIT 1`,
+      [requesterId, user.id]
+    );
+    if (result.rows.length === 0) return;
     io.to(userChannel(user.id)).emit("room:friend-request:removed", { requesterId });
     io.to(userChannel(requesterId)).emit("room:friend-request:removed", { requesterId });
   });
@@ -1121,22 +1203,15 @@ io.on("connection", (socket) => {
 
   socket.on("chat:send", async ({ roomId, content }) => {
     if (!content.trim()) return;
+    const member = await isRoomMember(roomId, user.id);
+    if (!member || !socket.rooms.has(roomId)) {
+      socket.emit("error", { message: "Not authorized to send messages" });
+      return;
+    }
     log.debug("chat:send", { userId: user.id, roomId, length: content.trim().length });
     const message = await persistMessage(roomId, user.id, content.trim());
     if (message) {
       io.to(roomId).emit("chat:message", message);
-    } else {
-      const fallback: ChatMessage = {
-        id: crypto.randomUUID(),
-        roomId,
-        userId: user.id,
-        username: profile.username,
-        displayName: profile.displayName,
-        avatarUrl: profile.avatarUrl,
-        content: content.trim(),
-        createdAt: new Date().toISOString(),
-      };
-      io.to(roomId).emit("chat:message", fallback);
     }
   });
 
@@ -1147,13 +1222,23 @@ io.on("connection", (socket) => {
       socket.emit("error", { message: "Not authorized to broadcast message" });
       return;
     }
-    socket.to(roomId).emit("chat:message", message);
+    const verified = await loadMessageById(message.id, roomId);
+    if (!verified || verified.userId !== user.id) {
+      socket.emit("error", { message: "Message not found" });
+      return;
+    }
+    socket.to(roomId).emit("chat:message", verified);
   });
 
   socket.on("chat:broadcast-delete", async ({ roomId, messageId }) => {
     const member = await isRoomMember(roomId, user.id);
     if (!member) {
       socket.emit("error", { message: "Not authorized" });
+      return;
+    }
+    const allowed = await canDeleteChatMessage(roomId, user.id, messageId);
+    if (!allowed) {
+      socket.emit("error", { message: "Not authorized to delete this message" });
       return;
     }
     socket.to(roomId).emit("chat:deleted", { messageId });
@@ -1225,8 +1310,9 @@ io.on("connection", (socket) => {
   socket.on("session:end", async ({ sessionId, focusMinutes, breakMinutes }) => {
     await endStudySession(
       sessionId,
-      Math.max(0, Math.floor(focusMinutes)),
-      Math.max(0, Math.floor(breakMinutes))
+      user.id,
+      focusMinutes,
+      breakMinutes
     );
     socket.emit("session:ended", { sessionId });
   });

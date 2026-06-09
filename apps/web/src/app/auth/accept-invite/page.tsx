@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { acceptInviteSetPassword } from "@/app/auth/actions";
 import { createClient } from "@/lib/supabase/client";
 import { establishSessionFromUrl } from "@/lib/auth/establish-session";
 import { PasswordInput } from "@/components/auth/password-input";
@@ -10,11 +11,7 @@ import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/input";
 import { isRoomInvitePath, loginPath, safeRedirectPath } from "@/lib/auth/paths";
-import {
-  PASSWORD_SET_METADATA_KEY,
-  POST_AUTH_REDIRECT_METADATA_KEY,
-  FORCE_PASSWORD_CHANGE_METADATA_KEY,
-} from "@/lib/auth/room-invite";
+import { POST_AUTH_REDIRECT_METADATA_KEY } from "@/lib/auth/room-invite";
 
 function AcceptInviteForm() {
   const searchParams = useSearchParams();
@@ -80,21 +77,16 @@ function AcceptInviteForm() {
 
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-      data: {
-        [PASSWORD_SET_METADATA_KEY]: true,
-        [FORCE_PASSWORD_CHANGE_METADATA_KEY]: false,
-      },
-    });
+    const { error: updateError } = await acceptInviteSetPassword(password);
 
     if (updateError) {
       setLoading(false);
-      setError(updateError.message);
+      setError(updateError);
       return;
     }
 
+    const supabase = createClient();
+    await supabase.auth.refreshSession();
     const {
       data: { user },
     } = await supabase.auth.getUser();

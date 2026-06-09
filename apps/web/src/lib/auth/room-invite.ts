@@ -31,10 +31,11 @@ export function buildRoomInviteUserMetadata(roomName: string, redirectPath: stri
 }
 
 export function userMustSetPassword(
-  metadata: Record<string, unknown> | undefined,
+  userMetadata: Record<string, unknown> | undefined,
+  appMetadata: Record<string, unknown> | undefined,
   invitedAt?: string | null
 ): boolean {
-  if (metadata?.[PASSWORD_SET_METADATA_KEY] === true) return false;
-  if (metadata?.[FORCE_PASSWORD_CHANGE_METADATA_KEY] === true) return true;
+  if (appMetadata?.[PASSWORD_SET_METADATA_KEY] === true) return false;
+  if (userMetadata?.[FORCE_PASSWORD_CHANGE_METADATA_KEY] === true) return true;
   return Boolean(invitedAt);
 }

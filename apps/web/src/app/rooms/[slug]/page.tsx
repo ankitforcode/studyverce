@@ -114,7 +114,7 @@ export default async function RoomPage({
       roomSlug={room.slug}
       roomName={room.name}
       isPublic={room.is_public}
-      inviteToken={room.invite_token}
+      inviteToken={isOwner ? room.invite_token : null}
       currentUserId={user.id}
       roomOwnerId={room.owner_id}
       isOwner={isOwner}

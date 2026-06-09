@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStudyAssistantPlanLimits } from "@/lib/study-assistant-limits";
 import { getStudyAssistantQuotaStatus } from "@/lib/study-assistant-quota";
 import type { PlanTier } from "@studyverce/shared";
+import { isUserRoomMember } from "@/lib/rooms/membership";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -19,6 +20,11 @@ export async function GET(request: Request) {
 
   if (!roomId) {
     return NextResponse.json({ error: "roomId is required" }, { status: 400 });
+  }
+
+  const isMember = await isUserRoomMember(supabase, roomId, user.id);
+  if (!isMember) {
+    return NextResponse.json({ error: "Not a member of this room" }, { status: 403 });
   }
 
   const { data: profile } = await supabase

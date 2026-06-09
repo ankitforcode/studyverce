@@ -60,7 +60,7 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 - **Login + onboarding**: email login (`auth/login`) and `/auth/callback` both call `resolvePostAuthDestination()` after reading `profiles.onboarding_completed`. `/onboarding` is a server page that redirects completed profiles to `redirect` or `/dashboard`.
 - **Seed admin** (`supabase/seed.sql`): `on_auth_user_created` inserts a default profile; seed **UPDATE**s that row so `admin@studyverce.local` has `onboarding_completed = true` (do not rely on `INSERT … ON CONFLICT` alone).
 - Reset: `resetPasswordForEmail` → callback with `next=/auth/reset-password`; on success `window.location.assign("/dashboard?password_reset=success")` — `QueryToastHandler` shows the success toast (avoid `router.push`; sessionStorage pending toasts break under React Strict Mode).
-- **Magic link login**: `/auth/login` tab → `sendMagicLinkLogin` in `app/auth/actions.ts` (Premium/Institution only; checks `profiles.plan_tier` via service role before `signInWithOtp`). Free users see upgrade prompt. Room invite magic links for existing users are unchanged (`invite-actions.ts`).
+- **Magic link login**: `/auth/login` tab → `sendMagicLinkLogin` in `app/auth/actions.ts` (Premium/Institution only; tier gate via service role). Returns a **uniform** success message whether or not the email exists (anti-enumeration). Room invite magic links for existing users are unchanged (`invite-actions.ts`).
 - **Room email invite**: `findAuthUserByEmail` first (no invite-then-magic-link double send). New users → `inviteUserByEmail` with `redirectTo: acceptInviteUrl()` (direct `/auth/accept-invite`, **not** `/auth/callback` — invite tokens are finished client-side via `establishSessionFromUrl`). Do **not** call `updateUserById` with a password after invite (invalidates the email link). Then `/auth/accept-invite` → `/rooms/.../invite` approval (skips onboarding). Existing users → `signInWithOtp` magic link → `/auth/callback` → `/rooms/.../invite`. `[auth.email] max_frequency = "30s"`; `formatAuthEmailRateLimitError` when Supabase reports `0 seconds`. Requires valid `SUPABASE_SERVICE_ROLE_KEY` for new-user invites (from `supabase status`).
 - **Account settings** (`/settings/account`): `updateUser({ email })`, password change, `reauthenticate()` — middleware exempts `/auth/reauthenticate` while signed in.
 - Password fields: use `components/auth/password-input.tsx` (animated eye toggle).
@@ -77,7 +77,8 @@ Per [Supabase redirect URL docs](https://supabase.com/docs/guides/auth/redirect-
 - Set **Site URL** to the canonical origin (`www`); apex redirects to `www` but auth defaults use Site URL when `redirectTo` is missing.
 - Include explicit `/auth/callback` plus `/**` wildcards for query strings (`?next=...`).
 - Match `NEXT_PUBLIC_APP_URL` in Amplify to the same canonical origin.
-- `/auth/callback` uses `NextResponse.redirect` (not `redirect()`) so session cookies survive the exchange; origin resolves via `x-forwarded-host` or `NEXT_PUBLIC_APP_URL`.
+- `/auth/callback` uses `NextResponse.redirect` (not `redirect()`) so session cookies survive the exchange; production origin prefers `NEXT_PUBLIC_APP_URL` (not unvalidated `x-forwarded-host`).
+- **Invite password gate**: `userMustSetPassword()` checks `app_metadata.password_set` (service-role only via `acceptInviteSetPassword`); do **not** rely on user-writable `user_metadata.password_set`.
 
 Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard → Authentication → URL Configuration** still has the default Site URL.
 
@@ -88,6 +89,7 @@ Wrong post-confirm URL (e.g. `https://localhost:3000/...`) means **Dashboard →
 3. Duplicating matcher in a shared export breaks production build.
 4. `/auth/callback` must return `NextResponse.redirect` after `exchangeCodeForSession` — `redirect()` from `next/navigation` can drop auth cookies in route handlers.
 5. After changing the logo SVG, run `./scripts/sync-email-logo.sh` and deploy `apps/web/public/logo-email.png` so the hosted URL stays in sync with templates.
+6. Never store security gates in `user_metadata` — use `app_metadata` (service role) or DB columns (`profiles` privileged fields are trigger-protected; see migration `20250609000000_security_hardening.sql`).
 
 ## After changes — verify
 

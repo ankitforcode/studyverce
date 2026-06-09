@@ -21,7 +21,6 @@ import {
   safeRedirectPath,
   signupPath,
 } from "@/lib/auth/paths";
-import { MAGIC_LINK_PREMIUM_REQUIRED } from "@/lib/auth/errors";
 
 type LoginMode = "password" | "magic_link";
 
@@ -98,11 +97,7 @@ function LoginForm() {
     setLoading(false);
 
     if (result.error) {
-      if (result.error === MAGIC_LINK_PREMIUM_REQUIRED) {
-        setError("Magic link sign-in is available on Premium and Institution plans.");
-      } else {
-        setError(result.error);
-      }
+      setError(result.error);
       return;
     }
 
@@ -124,15 +119,16 @@ function LoginForm() {
     return (
       <AuthPageShell
         title="Check your email"
-        description="We sent you a secure sign-in link."
+        description="If an account exists for this email, we sent a sign-in link."
       >
         <div className="space-y-4 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
             <Mail className="h-5 w-5 text-primary" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Open the link sent to{" "}
-            <span className="font-medium text-foreground">{email}</span> to sign in.
+            Check the inbox for{" "}
+            <span className="font-medium text-foreground">{email}</span> and open the link if you
+            receive one.
           </p>
           {process.env.NODE_ENV === "development" && (
             <p className="text-xs text-muted-foreground">

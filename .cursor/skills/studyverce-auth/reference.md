@@ -14,7 +14,7 @@
 | `/auth/signup` | `app/auth/signup/page.tsx` | Email confirmation gate; links to `/terms` and `/privacy` |
 | `/auth/forgot-password` | `app/auth/forgot-password/page.tsx` | |
 | `/auth/reset-password` | `app/auth/reset-password/page.tsx` | Session required; toast on success |
-| `/auth/accept-invite` | `app/auth/accept-invite/page.tsx` | New room invitees set password, then `post_auth_redirect` |
+| `/auth/accept-invite` | `app/auth/accept-invite/page.tsx` | New room invitees set password via `acceptInviteSetPassword` (sets `app_metadata.password_set`), then `post_auth_redirect` |
 | `/auth/callback` | `app/auth/callback/route.ts` | OAuth + email verify; `next` query or `user_metadata.post_auth_redirect`; rate limited |
 
 ## Auth helpers
@@ -22,7 +22,7 @@
 | File | Role |
 |------|------|
 | `lib/auth/paths.ts` | `safeRedirectPath`, `authCallbackUrl`, `accountSettingsPath`, `reauthenticatePath`, `resolvePostAuthDestination`; allowlists `/auth/reset-password`, `/auth/accept-invite` |
-| `lib/auth/room-invite.ts` | `buildRoomInviteRedirectPath`, `userMustSetPassword`, invite metadata keys |
+| `lib/auth/room-invite.ts` | `buildRoomInviteRedirectPath`, `userMustSetPassword` (reads `app_metadata.password_set`), invite metadata keys |
 | `lib/auth/admin-users.ts` | `findAuthUserByEmail` (service role) — avoids double email on room invites |
 | `lib/auth/errors.ts` | `formatAuthEmailRateLimitError` — 30s cooldown copy when Supabase returns `0 seconds` |
 | `lib/supabase/anon.ts` | Server anon client for OTP/magic-link sends |
@@ -33,7 +33,7 @@
 | `lib/supabase/middleware.ts` | `updateSession()` — `getUser()` on matcher routes only |
 | `app/auth/navbar-actions.ts` | `getNavbarAuthState()` — profile + friend count (client-deferred) |
 | `lib/auth/navbar-profile-sync.ts` | `notifyNavbarProfileUpdated()` — client event; navbar refetches/applies profile patch after onboarding or settings |
-| `app/auth/actions.ts` | `signOutAction`, `sendMagicLinkLogin` (Premium/Institution gate) |
+| `app/auth/actions.ts` | `signOutAction`, `acceptInviteSetPassword`, `sendMagicLinkLogin` (Premium/Institution gate; uniform response) |
 
 ## Layout
 

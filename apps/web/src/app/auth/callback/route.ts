@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     const nextFromMetadata = readPostAuthRedirectFromMetadata(user?.user_metadata);
     let next = nextFromQuery ?? nextFromMetadata ?? "/onboarding";
 
-    if (user && userMustSetPassword(user.user_metadata, user.invited_at)) {
+    if (user && userMustSetPassword(user.user_metadata, user.app_metadata, user.invited_at)) {
       next = "/auth/accept-invite";
     }
 

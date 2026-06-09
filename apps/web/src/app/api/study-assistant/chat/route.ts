@@ -16,6 +16,7 @@ import {
   extractOpenAiDeltaContent,
 } from "@/lib/study-assistant-stream";
 import { stripPostItHtml } from "@/lib/post-it-rich-text";
+import { isUserRoomMember } from "@/lib/rooms/membership";
 
 const MAX_MESSAGES = 24;
 
@@ -91,6 +92,11 @@ export async function POST(request: Request) {
   const roomId = body.roomId?.trim();
   if (!roomId) {
     return NextResponse.json({ error: "roomId is required" }, { status: 400 });
+  }
+
+  const isMember = await isUserRoomMember(supabase, roomId, user.id);
+  if (!isMember) {
+    return NextResponse.json({ error: "Not a member of this room" }, { status: 403 });
   }
 
   const { data: profile } = await supabase

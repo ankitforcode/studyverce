@@ -144,6 +144,13 @@ Enforced server-side in `lib/music/plan-limits.ts` + `music-actions.ts` / `music
 - Constants: `PLAN_LIMITS.maxUserMusicLinks`, `PLAN_LIMITS.streamingIntegration` in `@studyverce/shared`.
 - Free users can still paste SoundCloud URLs within the 10-link cap.
 
+## Security (RLS + socket)
+
+- **Room join**: `room_members` INSERT RLS requires `can_self_join_room()` (public, owner, or approved access); role forced to `member` except owner bootstrap. App `joinRoom` is not the only gate — browser Supabase client shares RLS.
+- **Invite token**: expose only to room owners (`getRoomVisibility`, `RoomClient` props, `get_user_private_rooms` RPC).
+- **Socket chat**: web app uses `chat:broadcast` after `sendRoomMessage`; server re-fetches DB row before relay. `chat:send` requires membership + joined socket room. `chat:broadcast-delete` checks delete auth. `session:end` requires session ownership.
+- **Study assistant**: `/api/study-assistant/*` requires `room_members` row (`lib/rooms/membership.ts`).
+
 ## Realtime (`use-socket.ts` / socket-server)
 
 Chat send/delete, pomodoro control, music/wallpaper broadcast, visibility, kicks. Pomodoro focus/break minutes persist via `useStudySessionTracking` → `session:start` / `session:end` → `study_sessions` + `update_profile_stats` (dashboard + leaderboard).

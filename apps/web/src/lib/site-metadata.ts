@@ -35,14 +35,23 @@ export function resolveAuthRedirectOrigin(request: Request): string {
     return origin;
   }
 
+  if (configured) return configured;
+
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   if (forwardedHost) {
     const forwardedProto =
       request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "https";
-    return `${forwardedProto}://${forwardedHost}`;
+    const forwardedOrigin = `${forwardedProto}://${forwardedHost}`;
+    if (configured) {
+      try {
+        const allowedHost = new URL(configured).host;
+        if (forwardedHost === allowedHost) return forwardedOrigin;
+      } catch {
+        /* fall through */
+      }
+    }
   }
 
-  if (configured) return configured;
   return origin;
 }
 

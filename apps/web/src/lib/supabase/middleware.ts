@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest) {
 
   if (
     user &&
-    userMustSetPassword(user.user_metadata, user.invited_at) &&
+    userMustSetPassword(user.user_metadata, user.app_metadata, user.invited_at) &&
     pathname !== "/auth/accept-invite" &&
     pathname !== "/auth/callback"
   ) {

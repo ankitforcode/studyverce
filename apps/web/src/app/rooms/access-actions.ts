@@ -116,7 +116,7 @@ export async function getRoomVisibility(
 
   const { data: room, error } = await supabase
     .from("study_rooms")
-    .select("is_public, invite_token")
+    .select("is_public, invite_token, owner_id")
     .eq("id", roomId)
     .single();
 
@@ -125,7 +125,7 @@ export async function getRoomVisibility(
   return {
     error: null,
     isPublic: room.is_public,
-    inviteToken: room.invite_token,
+    inviteToken: room.owner_id === user.id ? room.invite_token : null,
   };
 }
 
