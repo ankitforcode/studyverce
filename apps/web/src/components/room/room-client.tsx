@@ -214,6 +214,7 @@ export function RoomClient({
     <div
       ref={roomRootRef}
       data-room-shell
+      data-room-appearance={appearance}
       className={cn(
         "relative isolate flex min-h-0 flex-col",
         isFullscreen ? "h-dvh w-full" : "h-[calc(100dvh-4rem)]"
@@ -252,7 +253,7 @@ export function RoomClient({
       >
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold sm:text-xl">{roomName}</h1>
+            <h1 className="truncate text-lg font-bold text-foreground sm:text-xl">{roomName}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <Badge variant={roomIsPublic ? "default" : "secondary"} className="text-xs">
                 {roomIsPublic ? "Public" : "Private"}
@@ -300,6 +301,7 @@ export function RoomClient({
               onSetPresenceMode={setPresenceMode}
               variant="compact"
               menuAlign="end"
+              roomAppearance={appearance}
               className="hidden sm:flex"
             />
             <RoomAppearanceToggle
@@ -375,6 +377,7 @@ export function RoomClient({
           onSetPresenceMode={setPresenceMode}
           variant="compact"
           menuAlign="start"
+          roomAppearance={appearance}
           className="px-4 pb-3 sm:hidden"
         />
 

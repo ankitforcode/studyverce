@@ -46,7 +46,7 @@ Reuse these instead of one-off glass styles:
 | `ROOM_INNER_SURFACE` | Nested cards in sidebar |
 | `ROOM_FIELD` | Inputs on glass (participant search, chat, etc.) |
 
-Light mode: scoped vars in `globals.css` under `html.light [data-room-shell]`; components also use `light:` Tailwind variants from `room-ui.ts`.
+Light mode: room-only tokens in `globals.css` on `[data-room-shell][data-room-appearance="light|dark"]` — must set `color: var(--foreground)` on the shell so text does not inherit the site body's dark-theme foreground. Portaled UI uses `ROOM_PORTAL_LIGHT_THEME` + `roomAppearance` prop. Components also use `light:` Tailwind variants from `room-ui.ts`.
 
 ## Room header controls
 
@@ -65,7 +65,7 @@ Wired in `room-client.tsx` header row:
 
 **Hover:** header square icons must use `ROOM_HEADER_ICON_BUTTON` (not subtle `hover:bg-card/35`).
 
-Pass into `ParticipantList`: `roomId`, `roomOwnerId`, `isRoomOwner={isOwner}`, `socket`.
+Pass into `ParticipantList`: `roomId`, `roomOwnerId`, `isRoomOwner={isOwner}`, `socket`, `roomAppearance`.
 
 ## Participant menu (`participant-list.tsx`)
 

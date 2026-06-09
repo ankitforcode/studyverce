@@ -136,7 +136,7 @@ export const RoomVoiceNotes = forwardRef<RoomVoiceNotesHandle, RoomVoiceNotesPro
       <div className={cn("space-y-3 border-t border-border/50 pt-3", className)}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold">Voice notes</p>
+            <p className="text-sm font-semibold text-foreground">Voice notes</p>
             <p className="text-xs text-muted-foreground">
               Record, share with the room, and transcribe study reminders.
             </p>

@@ -80,7 +80,7 @@ export function RoomFavoriteButton({
             ? "fill-primary text-primary"
             : variant === "card"
               ? "text-white/90"
-              : "text-muted-foreground"
+              : "text-foreground/70 light:text-foreground/75"
         )}
       />
     </Button>

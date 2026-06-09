@@ -11,13 +11,3 @@ export function getStoredRoomAppearance(): RoomAppearance {
 export function storeRoomAppearance(mode: RoomAppearance) {
   localStorage.setItem(STORAGE_KEY, mode);
 }
-
-export function applyRoomAppearance(mode: RoomAppearance) {
-  document.documentElement.classList.toggle("light", mode === "light");
-  document.documentElement.classList.toggle("dark", mode === "dark");
-}
-
-export function clearRoomAppearance() {
-  document.documentElement.classList.remove("light");
-  document.documentElement.classList.add("dark");
-}

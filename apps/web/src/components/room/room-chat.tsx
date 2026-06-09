@@ -89,7 +89,7 @@ export function RoomChat({
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-primary" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Room chat</p>
+            <p className="text-sm font-semibold text-foreground">Room chat</p>
             <p className="truncate text-xs text-muted-foreground">
               {messages.length === 0
                 ? "Stay accountable with your study partners"

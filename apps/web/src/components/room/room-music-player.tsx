@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Volume2, VolumeX, Music2 } from "lucide-react";
 import type { RoomMusicState } from "@studyverce/shared";
 import { Button } from "@/components/ui/button";
+import { ROOM_HEADER_SECONDARY_TEXT } from "@/lib/room-ui";
 import { cn } from "@/lib/utils";
 import { ScrollingTrackRibbon } from "@/components/room/scrolling-track-ribbon";
 import { isEmbedProvider } from "@/lib/music/providers";
@@ -172,7 +173,7 @@ export function RoomMusicPlayer({
               <Button
                 variant="ghost"
                 size="icon"
-                className="shrink-0"
+                className="shrink-0 text-foreground hover:text-foreground"
                 onClick={() => onTogglePlay(!music.isPlaying)}
                 aria-label={music.isPlaying ? "Pause music" : "Resume music"}
               >
@@ -186,7 +187,7 @@ export function RoomMusicPlayer({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0"
+                  className="shrink-0 text-foreground hover:text-foreground"
                   onClick={onRestart}
                   aria-label="Restart playback"
                   title="Restart from beginning"
@@ -200,7 +201,7 @@ export function RoomMusicPlayer({
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0"
+            className="shrink-0 text-foreground hover:text-foreground"
             onClick={() => setMuted((m) => !m)}
             aria-label={muted ? "Unmute" : "Mute"}
             title={muted ? "Unmute (only affects you)" : "Mute (only affects you)"}
@@ -222,7 +223,7 @@ export function RoomMusicPlayer({
           )}
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">No music playing</p>
+        <p className={cn("text-sm", ROOM_HEADER_SECONDARY_TEXT)}>No music playing</p>
       )}
     </div>
   );

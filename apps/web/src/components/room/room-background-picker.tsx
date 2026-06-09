@@ -151,7 +151,7 @@ export function RoomBackgroundPicker({
               />
             </span>
           ) : (
-            <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            <ImageIcon className="h-3.5 w-3.5 text-foreground/70 light:text-foreground/75" />
           )}
         </Button>
       </PostItIconTooltip>

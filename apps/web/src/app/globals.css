@@ -39,16 +39,74 @@ html.light {
   --ring: #16a34a;
 }
 
-/* Room shell: stronger surfaces + readable secondary text over bright wallpapers */
-html.light [data-room-shell] {
-  --muted-foreground: #334155;
-  --border: #cbd5e1;
-  --input: #ffffff;
-  --muted: #e2e8f0;
-  --secondary: #e2e8f0;
+/* Room appearance — scoped to shell so global navbar/footer stay on site theme */
+[data-room-shell] {
+  color: var(--foreground);
 }
 
-@variant light (html.light &);
+[data-room-shell][data-room-appearance="dark"] {
+  color-scheme: dark;
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --primary: #22c55e;
+  --primary-foreground: #052e16;
+  --secondary: #334155;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #f59e0b;
+  --accent-foreground: #451a03;
+  --destructive: #ef4444;
+  --border: #334155;
+  --input: #334155;
+  --ring: #22c55e;
+}
+
+[data-room-shell][data-room-appearance="light"] {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --primary: #16a34a;
+  --primary-foreground: #ffffff;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #d97706;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --border: #cbd5e1;
+  --input: #ffffff;
+  --ring: #16a34a;
+}
+
+/* Portaled room UI (participant menu, modals) — outside data-room-shell */
+.room-portal-theme-light {
+  color: var(--foreground);
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --primary: #16a34a;
+  --primary-foreground: #ffffff;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #d97706;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --border: #cbd5e1;
+  --input: #ffffff;
+  --ring: #16a34a;
+}
+
+@variant light ([data-room-shell][data-room-appearance="light"] &);
 
 @theme inline {
   --color-background: var(--background);
@@ -305,10 +363,10 @@ body {
 }
 
 .navbar-fluid.navbar-scrolled {
-  border-color: rgb(51 65 85 / 0.6);
-  background: rgb(15 23 42 / 0.82);
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--background) 88%, transparent);
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgb(0 0 0 / 0.18);
+  box-shadow: 0 4px 24px rgb(0 0 0 / 0.15);
 }
 
 @media (prefers-reduced-motion: reduce) {

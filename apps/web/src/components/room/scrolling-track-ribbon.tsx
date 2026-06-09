@@ -29,13 +29,13 @@ export function ScrollingTrackRibbon({
         className={cn("shrink-0 text-primary", compact ? "h-3 w-3" : "h-3.5 w-3.5")}
         aria-hidden
       />
-      <span className={cn("font-medium", compact ? "text-xs" : "text-sm")}>
+      <span className={cn("font-medium text-foreground", compact ? "text-xs" : "text-sm")}>
         {trackName}
       </span>
       {artist && (
         <span
           className={cn(
-            "text-muted-foreground",
+            "text-foreground/70 light:text-foreground/75",
             compact ? "text-xs" : "text-sm"
           )}
         >

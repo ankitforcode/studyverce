@@ -30,7 +30,14 @@ const legalLinks = [
   { href: PRIVACY_POLICY_PATH, label: "Privacy Policy" },
 ] as const;
 
-export function SiteFooter({ className }: { className?: string }) {
+export function SiteFooter({
+  className,
+  hideMainSection = false,
+}: {
+  className?: string;
+  /** Hide link columns on immersive pages (e.g. study room). Keeps copyright bar. */
+  hideMainSection?: boolean;
+}) {
   return (
     <footer
       className={cn(
@@ -38,74 +45,86 @@ export function SiteFooter({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="sm:col-span-2 lg:col-span-1">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 font-bold text-lg leading-none"
-            >
-              <BookOpen className="h-5 w-5 text-primary" aria-hidden />
-              {SITE_NAME}
-            </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              {FOOTER_TAGLINE}
-            </p>
-          </div>
+      <div
+        className={cn(
+          "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8",
+          hideMainSection ? "py-4" : "py-12"
+        )}
+      >
+        {!hideMainSection && (
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 font-bold text-lg leading-none"
+              >
+                <BookOpen className="h-5 w-5 text-primary" aria-hidden />
+                {SITE_NAME}
+              </Link>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                {FOOTER_TAGLINE}
+              </p>
+            </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Product</h3>
-            <ul className="mt-4 space-y-2.5">
-              {productLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Product</h3>
+              <ul className="mt-4 space-y-2.5">
+                {productLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Explore</h3>
+              <ul className="mt-4 space-y-2.5">
+                {exploreLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Legal</h3>
+              <ul className="mt-4 space-y-2.5">
+                {legalLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <CookieSettingsButton className="text-sm text-muted-foreground transition-colors hover:text-foreground" />
                 </li>
-              ))}
-            </ul>
+              </ul>
+            </div>
           </div>
+        )}
 
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Explore</h3>
-            <ul className="mt-4 space-y-2.5">
-              {exploreLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Legal</h3>
-            <ul className="mt-4 space-y-2.5">
-              {legalLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <CookieSettingsButton className="text-sm text-muted-foreground transition-colors hover:text-foreground" />
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-8 text-sm text-muted-foreground sm:flex-row">
+        <div
+          className={cn(
+            "flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row",
+            !hideMainSection && "mt-10 border-t border-border/50 pt-8"
+          )}
+        >
           <p>© {new Date().getFullYear()} {SITE_NAME}. All rights reserved.</p>
           <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-5 sm:justify-end">
             {legalLinks.map((link) => (

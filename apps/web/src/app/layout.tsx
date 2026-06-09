@@ -1,7 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/layout/app-providers";
 import { Navbar } from "@/components/layout/navbar";
-import { SiteFooter } from "@/components/layout/site-footer";
+import { ConditionalSiteFooter } from "@/components/layout/conditional-site-footer";
 import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics, GoogleConsentMode } from "@/components/seo/google-analytics";
 import { ConsentProvider } from "@/components/consent/consent-provider";
@@ -44,7 +44,7 @@ export default function RootLayout({
           <AppProviders>
             <Navbar />
             <main className="flex-1">{children}</main>
-            <SiteFooter />
+            <ConditionalSiteFooter />
           </AppProviders>
         </ConsentProvider>
       </body>

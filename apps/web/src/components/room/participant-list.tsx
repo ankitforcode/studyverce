@@ -36,7 +36,13 @@ import {
   UserX,
   Users,
 } from "lucide-react";
-import { ROOM_FIELD, ROOM_HEADER_CONTROL } from "@/lib/room-ui";
+import {
+  ROOM_FIELD,
+  ROOM_HEADER_CONTROL,
+  ROOM_HEADER_SECONDARY_TEXT,
+  ROOM_PORTAL_LIGHT_THEME,
+} from "@/lib/room-ui";
+import type { RoomAppearance } from "@/lib/room-appearance";
 import { cn } from "@/lib/utils";
 
 interface ParticipantListProps {
@@ -49,6 +55,7 @@ interface ParticipantListProps {
   onSetPresenceMode?: (mode: RoomPresenceMode) => void;
   variant?: "card" | "compact";
   menuAlign?: "start" | "end";
+  roomAppearance?: RoomAppearance;
   className?: string;
 }
 
@@ -370,6 +377,7 @@ function CompactParticipantList({
   socket,
   onSetPresenceMode,
   menuAlign = "end",
+  roomAppearance = "dark",
   className,
 }: {
   participants: RoomParticipant[];
@@ -380,6 +388,7 @@ function CompactParticipantList({
   socket?: AppSocket | null;
   onSetPresenceMode?: (mode: RoomPresenceMode) => void;
   menuAlign?: "start" | "end";
+  roomAppearance?: RoomAppearance;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -524,7 +533,8 @@ function CompactParticipantList({
         className={cn(
           "participant-panel-enter z-[120]",
           ROOM_HEADER_CONTROL,
-          "rounded-xl border border-border/60 bg-card/95 p-2 shadow-xl light:bg-white/98"
+          "rounded-xl border border-border/60 bg-card/95 p-2 shadow-xl light:bg-white/98",
+          roomAppearance === "light" && ROOM_PORTAL_LIGHT_THEME
         )}
       >
         <div className="border-b border-border/50 px-2 pb-2 pt-1">
@@ -622,14 +632,14 @@ function CompactParticipantList({
         aria-controls={panelId}
         aria-haspopup="listbox"
         className={cn(
-          "flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors",
+          "flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-foreground transition-colors",
           "hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           open && "bg-muted/25"
         )}
       >
-        <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <Users className={cn("h-4 w-4 shrink-0", ROOM_HEADER_SECONDARY_TEXT)} />
         {visibleParticipants.length === 0 ? (
-          <span className="text-xs text-muted-foreground">Just you</span>
+          <span className={cn("text-xs", ROOM_HEADER_SECONDARY_TEXT)}>Just you</span>
         ) : (
           <>
             <div className="flex -space-x-2">
@@ -645,7 +655,12 @@ function CompactParticipantList({
                 </div>
               ))}
             </div>
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate text-xs",
+                ROOM_HEADER_SECONDARY_TEXT
+              )}
+            >
               {activeCount} active
               {awayCount > 0 && ` · ${awayCount} away`}
               {youAreActive && " · you're in the room"}
@@ -654,7 +669,8 @@ function CompactParticipantList({
         )}
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+            "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+            ROOM_HEADER_SECONDARY_TEXT,
             open && "rotate-180"
           )}
           aria-hidden
@@ -678,6 +694,7 @@ export function ParticipantList({
   onSetPresenceMode,
   variant = "card",
   menuAlign = "end",
+  roomAppearance = "dark",
   className,
 }: ParticipantListProps) {
   const visibleParticipants = useMemo(
@@ -705,6 +722,7 @@ export function ParticipantList({
         socket={socket}
         onSetPresenceMode={onSetPresenceMode}
         menuAlign={menuAlign}
+        roomAppearance={roomAppearance}
         className={className}
       />
     );

@@ -95,7 +95,7 @@ export function RoomTodoPanel({
         <div className="flex min-w-0 items-center gap-2">
           <ListTodo className="h-4 w-4 shrink-0 text-primary" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold">My tasks</p>
+            <p className="text-sm font-semibold text-foreground">My tasks</p>
             <p className="truncate text-xs text-muted-foreground">
               {openTasks.length} open · {closedTasks.length} done
             </p>
