@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  LogOut,
   Menu,
   Settings,
   Shield,
@@ -15,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { getNavbarAuthState, type NavbarAuthState } from "@/app/auth/navbar-actions";
+import { signOutAction } from "@/app/auth/actions";
 import { NavbarNotificationsButton } from "@/components/layout/navbar-notifications-button";
 import { NavbarProfileMenu } from "@/components/layout/navbar-profile-menu";
 import { NavLink } from "@/components/layout/nav-link";
@@ -343,6 +345,16 @@ export function NavbarInteractive() {
                   Settings
                 </Button>
               </Link>
+              <form action={signOutAction}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </form>
             </div>
           )}
 

@@ -34,7 +34,7 @@ Keep matcher paths in sync with `isProtectedAppPath()` in `lib/auth/middleware-r
 ## Navbar (TTFB)
 
 - `navbar.tsx` — static shell (logo only); **no** async `getUser()` on the server.
-- `navbar-interactive.tsx` — client; loads `getNavbarAuthState()` after paint; refreshes on route change, auth events, and `notifyNavbarProfileUpdated()` (onboarding/settings).
+- `navbar-interactive.tsx` — client; loads `getNavbarAuthState()` after paint; refreshes on route change, auth events, and `notifyNavbarProfileUpdated()` (onboarding/settings). Mobile hamburger includes Settings + Sign out (desktop profile menu is `hidden` below `sm`).
 - Do not move profile/friend-count fetches back into the root layout server path.
 
 ## Email templates (Supabase)
