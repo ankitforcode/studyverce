@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+import { getSessionUser } from "@/lib/auth/server-session";
 
 export const metadata = createSiteMetadata({
   path: "/dashboard",
@@ -14,20 +14,9 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) redirect("/auth/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) redirect("/auth/login");
 
   return children;
 }

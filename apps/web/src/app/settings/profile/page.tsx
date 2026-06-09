@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { SUBJECT_TAGS } from "@studyverce/shared";
-import { createClient } from "@/lib/supabase/server";
 import { updateProfile } from "@/app/settings/profile/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+import { getServerSupabase, getSessionUser } from "@/lib/auth/server-session";
 
 export const metadata = createSiteMetadata({
   path: "/settings/profile",
@@ -15,16 +15,14 @@ export const metadata = createSiteMetadata({
 });
 
 export default async function SettingsProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) redirect("/auth/login?redirect=/settings/profile");
 
+  const supabase = await getServerSupabase();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("username, display_name, subject_tags, onboarding_completed")
     .eq("id", user.id)
     .single();
 

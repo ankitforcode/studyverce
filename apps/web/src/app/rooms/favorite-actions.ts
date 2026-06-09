@@ -1,23 +1,33 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  getCachedFavoriteRoomIds,
+  invalidateFavoriteRoomIdsCache,
+} from "@/lib/cache/favorites";
 
-export async function getFavoriteRoomIds(): Promise<string[]> {
+export async function getFavoriteRoomIds(userId?: string): Promise<string[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) return [];
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    resolvedUserId = user.id;
+  }
 
-  const { data, error } = await supabase
-    .from("user_favorite_rooms")
-    .select("room_id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  return getCachedFavoriteRoomIds(resolvedUserId, async () => {
+    const { data, error } = await supabase
+      .from("user_favorite_rooms")
+      .select("room_id")
+      .eq("user_id", resolvedUserId!)
+      .order("created_at", { ascending: false });
 
-  if (error || !data) return [];
-  return data.map((row) => row.room_id);
+    if (error || !data) return [];
+    return data.map((row) => row.room_id);
+  });
 }
 
 export async function isRoomFavorited(roomId: string): Promise<boolean> {
@@ -85,6 +95,7 @@ export async function toggleRoomFavorite(
       .eq("room_id", roomId);
 
     if (error) return { error: error.message };
+    await invalidateFavoriteRoomIdsCache(user.id);
     return { error: null, favorited: false };
   }
 
@@ -95,5 +106,6 @@ export async function toggleRoomFavorite(
 
   if (error) return { error: error.message };
 
+  await invalidateFavoriteRoomIdsCache(user.id);
   return { error: null, favorited: true };
 }

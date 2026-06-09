@@ -35,6 +35,8 @@ Active count TTL: **15s** (`REDIS_TTL.activeCountSeconds`).
 ## Web app Redis
 
 - Listing cache: `apps/web/src/lib/cache/listing.ts` (120s TTL)
+- Favorites cache: `apps/web/src/lib/cache/favorites.ts` (120s TTL)
+- Public profile cache: `apps/web/src/lib/cache/profile.ts` (300s TTL)
 - Post-it lazy persist: `apps/web/src/lib/post-it-cache/` — debounced flush
 - Shared client: `packages/redis` lazy connect; `@/lib/redis` side-effect import where needed
 

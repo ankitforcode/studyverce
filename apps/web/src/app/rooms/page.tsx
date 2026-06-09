@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createSiteMetadata } from "@/lib/site-metadata";
+import { getSessionUser } from "@/lib/auth/server-session";
 import {
   getPublicRooms,
   getPrivateRooms,
@@ -24,10 +24,7 @@ export default async function RoomsPage({
   searchParams: Promise<{ q?: string; tab?: string; removed?: string }>;
 }) {
   const { q, tab: tabParam = "trending", removed } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   const isLoggedIn = !!user;
   const tab =
@@ -46,7 +43,7 @@ export default async function RoomsPage({
     rooms = await getFavoriteRooms(user.id);
   }
 
-  const favoriteRoomIds = isLoggedIn ? await getFavoriteRoomIds() : [];
+  const favoriteRoomIds = isLoggedIn ? await getFavoriteRoomIds(user!.id) : [];
 
   return (
     <>

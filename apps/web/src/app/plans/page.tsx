@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { PUBLIC_BREADCRUMBS } from "@/lib/seo/breadcrumbs";
 import { createSiteMetadata } from "@/lib/site-metadata";
 
+export const dynamic = "force-static";
+
 export const metadata = createSiteMetadata({
   path: "/plans",
   title: "Plans & Pricing",

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SUBJECT_TAGS } from "@studyverce/shared";
-import { createClient } from "@/lib/supabase/client";
 import { completeOnboarding } from "@/app/onboarding/actions";
 import { safeRedirectPath } from "@/lib/auth/paths";
 import { Button } from "@/components/ui/button";
@@ -14,48 +13,21 @@ import { cn } from "@/lib/utils";
 import { notifyNavbarProfileUpdated } from "@/lib/auth/navbar-profile-sync";
 import { trackEvent } from "@/lib/analytics";
 
-export function OnboardingForm() {
+export function OnboardingForm({
+  initialUsername = "",
+  initialDisplayName = "",
+}: {
+  initialUsername?: string;
+  initialDisplayName?: string;
+}) {
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/dashboard";
   const isInviteRedirect = redirect.includes("/invite");
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState(initialUsername);
+  const [displayName, setDisplayName] = useState(initialDisplayName);
   const [subjectTags, setSubjectTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadExistingProfile() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("username, display_name")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (cancelled || !profile) return;
-
-      if (profile.display_name) {
-        setDisplayName(profile.display_name);
-      }
-      if (profile.username && !profile.username.startsWith("user_")) {
-        setUsername(profile.username);
-      }
-    }
-
-    void loadExistingProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   function toggleTag(tag: string) {
     setSubjectTags((prev) =>

@@ -30,29 +30,35 @@ export type ReferralsPageData = {
   premiumSource: string;
 };
 
-export async function getReferralsPageData(): Promise<ReferralsPageData | null> {
+export async function getReferralsPageData(
+  userId?: string
+): Promise<ReferralsPageData | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    resolvedUserId = user.id;
+  }
 
   const [{ data: profile }, { data: referrals }, { data: rewards }] = await Promise.all([
     supabase
       .from("profiles")
       .select("referral_code, plan_tier, premium_until, premium_source")
-      .eq("id", user.id)
+      .eq("id", resolvedUserId)
       .single(),
     supabase
       .from("referrals")
       .select("id, status, qualified_at, created_at, referee_id")
-      .eq("referrer_id", user.id)
+      .eq("referrer_id", resolvedUserId)
       .order("created_at", { ascending: false }),
     supabase
       .from("referral_rewards")
       .select("reward_type")
-      .eq("user_id", user.id),
+      .eq("user_id", resolvedUserId),
   ]);
 
   if (!profile) return null;

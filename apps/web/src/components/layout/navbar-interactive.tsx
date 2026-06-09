@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -45,7 +45,6 @@ export function NavbarInteractive() {
   const isHome = pathname === "/";
   const [authState, setAuthState] = useState<NavbarAuthState | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const skipPathnameRefreshRef = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,28 +109,6 @@ export function NavbarInteractive() {
       unsubscribeProfileSync();
     };
   }, []);
-
-  useEffect(() => {
-    if (skipPathnameRefreshRef.current) {
-      skipPathnameRefreshRef.current = false;
-      return;
-    }
-
-    let cancelled = false;
-
-    async function refreshAuthState() {
-      const next = await getNavbarAuthState();
-      if (!cancelled) {
-        setAuthState(next);
-      }
-    }
-
-    void refreshAuthState();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
 
   useEffect(() => {
     setMobileOpen(false);

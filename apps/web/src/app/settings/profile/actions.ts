@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateProfileSchema } from "@studyverce/db";
+import { invalidatePublicProfileCache } from "@/lib/cache/profile";
 
 export async function updateProfile(formData: FormData): Promise<void> {
   const supabase = await createClient();
@@ -23,6 +24,12 @@ export async function updateProfile(formData: FormData): Promise<void> {
     redirect("/settings/profile?error=invalid");
   }
 
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+
   const { error } = await supabase
     .from("profiles")
     .update(parsed.data)
@@ -31,6 +38,11 @@ export async function updateProfile(formData: FormData): Promise<void> {
   if (error) {
     redirect("/settings/profile?error=save");
   }
+
+  if (existing?.username) {
+    await invalidatePublicProfileCache(existing.username);
+  }
+  await invalidatePublicProfileCache(parsed.data.username as string);
 
   revalidatePath("/settings/profile");
   revalidatePath("/profile");

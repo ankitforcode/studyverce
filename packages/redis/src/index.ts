@@ -15,8 +15,10 @@ export {
   invalidateRoomUserAuth,
 } from "./invalidate";
 export {
+  favoritesCacheKey,
   listingCacheKey,
   profileKey,
+  publicProfileCacheKey,
   REDIS_BUDGET,
   REDIS_TTL,
   roomActiveCountKey,

@@ -13,6 +13,10 @@ export const REDIS_TTL = {
   chatSeconds: 3600,
   /** Bumped from 45s — listing is invalidated on room mutations. */
   listingSeconds: 120,
+  /** Per-user favorite room IDs on listing page. */
+  favoritesSeconds: 120,
+  /** Public profile pages by username. */
+  publicProfileSeconds: 300,
   /** Refreshed on each participant write; empty hashes are deleted. */
   participantsSeconds: 2 * 60 * 60,
   roomMusicSeconds: 3600,
@@ -65,6 +69,14 @@ export function roomChatKey(roomId: string) {
 
 export function listingCacheKey(scope: string, userId?: string) {
   return userId ? `listing:${scope}:${userId}` : `listing:${scope}`;
+}
+
+export function favoritesCacheKey(userId: string) {
+  return `favorites:${userId}`;
+}
+
+export function publicProfileCacheKey(username: string) {
+  return `profile:public:${username.toLowerCase()}`;
 }
 
 export function studyAssistantDailyQuotaKey(

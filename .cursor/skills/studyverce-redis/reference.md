@@ -28,6 +28,8 @@
 | `room:{id}:active_count` | 15s |
 | `room:{id}:participants` | 2h (refreshed on write) |
 | `listing:{scope}` | 120s |
+| `favorites:{userId}` | 120s |
+| `profile:public:{username}` | 300s |
 | `rl:{ip}:*` | window bucket (60s typical) |
 
 ## Env knobs

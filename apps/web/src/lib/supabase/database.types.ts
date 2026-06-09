@@ -656,6 +656,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_room_member_counts: {
+        Args: { p_room_ids: string[] };
+        Returns: { room_id: string; member_count: number }[];
+      };
       get_room_share_preview: {
         Args: { p_slug: string; p_token?: string | null };
         Returns: Json;

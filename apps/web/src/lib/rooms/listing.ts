@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCachedListing } from "@/lib/cache/listing";
+import { fetchRoomMemberCounts } from "@/lib/rooms/member-counts";
 import type { StudyRoomSettings } from "@studyverce/shared";
 import { mergeRoomSettings } from "@studyverce/db";
 import "@/lib/redis";
@@ -91,7 +92,7 @@ async function loadPublicRooms(search?: string): Promise<RoomListingItem[]> {
   ] as string[];
   const roomIds = rooms.map((r) => r.id);
 
-  const [{ data: profiles }, { data: wallpapers }, { data: members }, { data: tracks }] =
+  const [{ data: profiles }, { data: wallpapers }, memberCounts, { data: tracks }] =
     await Promise.all([
       supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", ownerIds),
       wallpaperIds.length
@@ -102,7 +103,7 @@ async function loadPublicRooms(search?: string): Promise<RoomListingItem[]> {
         : Promise.resolve({
             data: [] as { id: string; image_url: string; thumbnail_url: string | null }[],
           }),
-      supabase.from("room_members").select("room_id").in("room_id", roomIds),
+      fetchRoomMemberCounts(supabase, roomIds),
       trackIds.length
         ? supabase.from("room_tracks").select("id, name, artist").in("id", trackIds)
         : Promise.resolve({ data: [] as { id: string; name: string; artist: string | null }[] }),
@@ -111,11 +112,6 @@ async function loadPublicRooms(search?: string): Promise<RoomListingItem[]> {
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);
   const wallpaperMap = new Map(wallpapers?.map((w) => [w.id, w]) ?? []);
   const trackMap = new Map(tracks?.map((t) => [t.id, t]) ?? []);
-
-  const memberCounts = new Map<string, number>();
-  for (const m of members ?? []) {
-    memberCounts.set(m.room_id, (memberCounts.get(m.room_id) ?? 0) + 1);
-  }
 
   return rooms.map((room) => {
     const owner = profileMap.get(room.owner_id);
@@ -268,7 +264,7 @@ async function loadFavoriteRooms(userId: string): Promise<RoomListingItem[]> {
   ] as string[];
   const fetchedRoomIds = rooms.map((r) => r.id);
 
-  const [{ data: profiles }, { data: wallpapers }, { data: members }, { data: tracks }] =
+  const [{ data: profiles }, { data: wallpapers }, memberCounts, { data: tracks }] =
     await Promise.all([
       supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", ownerIds),
       wallpaperIds.length
@@ -279,7 +275,7 @@ async function loadFavoriteRooms(userId: string): Promise<RoomListingItem[]> {
         : Promise.resolve({
             data: [] as { id: string; image_url: string; thumbnail_url: string | null }[],
           }),
-      supabase.from("room_members").select("room_id").in("room_id", fetchedRoomIds),
+      fetchRoomMemberCounts(supabase, fetchedRoomIds),
       trackIds.length
         ? supabase.from("room_tracks").select("id, name, artist").in("id", trackIds)
         : Promise.resolve({ data: [] as { id: string; name: string; artist: string | null }[] }),
@@ -288,11 +284,6 @@ async function loadFavoriteRooms(userId: string): Promise<RoomListingItem[]> {
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);
   const wallpaperMap = new Map(wallpapers?.map((w) => [w.id, w]) ?? []);
   const trackMap = new Map(tracks?.map((t) => [t.id, t]) ?? []);
-
-  const memberCounts = new Map<string, number>();
-  for (const m of members ?? []) {
-    memberCounts.set(m.room_id, (memberCounts.get(m.room_id) ?? 0) + 1);
-  }
 
   const items = rooms.map((room) => {
     const owner = profileMap.get(room.owner_id);

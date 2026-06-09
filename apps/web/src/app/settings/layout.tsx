@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { SettingsNav } from "@/components/settings/settings-nav";
-import { createClient } from "@/lib/supabase/server";
 import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+import { getSessionUser } from "@/lib/auth/server-session";
 
 export const metadata = createSiteMetadata({
   path: "/settings",
@@ -15,10 +15,7 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) redirect("/auth/login?redirect=/settings/profile");
 

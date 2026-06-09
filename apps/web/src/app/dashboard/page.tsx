@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Clock, Zap } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatFocusTime } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { QuickActions } from "@/components/dashboard/quick-actions";
 import { ReferralProgressCard } from "@/components/referrals/referral-progress-card";
 import { getReferralsPageData } from "@/app/settings/referrals/actions";
 import { computeDashboardStats } from "@/lib/dashboard/stats";
+import { getServerSupabase, getSessionUser } from "@/lib/auth/server-session";
 import { subDays, format } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -30,18 +31,29 @@ function formatHoursShort(minutes: number): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const supabase = await getServerSupabase();
+  const since = subDays(new Date(), 30).toISOString();
+
+  const [{ data: profile }, { data: sessions }, referralData] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        "onboarding_completed, display_name, study_streak, total_focus_minutes"
+      )
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("study_sessions")
+      .select("id, started_at, focus_minutes, goal_text")
+      .eq("user_id", user.id)
+      .gte("started_at", since)
+      .order("started_at", { ascending: false }),
+    getReferralsPageData(user.id),
+  ]);
 
   if (!profile) return null;
 
@@ -62,20 +74,11 @@ export default async function DashboardPage() {
     );
   }
 
-  const { data: sessions } = await supabase
-    .from("study_sessions")
-    .select("*")
-    .eq("user_id", user.id)
-    .gte("started_at", subDays(new Date(), 30).toISOString())
-    .order("started_at", { ascending: false });
-
   const stats = computeDashboardStats(
-    sessions,
+    sessions as Parameters<typeof computeDashboardStats>[0],
     profile.study_streak,
     profile.total_focus_minutes
   );
-
-  const referralData = await getReferralsPageData();
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-background">
