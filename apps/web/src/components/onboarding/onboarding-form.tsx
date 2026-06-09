@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { SUBJECT_TAGS } from "@studyverce/shared";
 import { createClient } from "@/lib/supabase/client";
+import { completeOnboarding } from "@/app/onboarding/actions";
 import { safeRedirectPath } from "@/lib/auth/paths";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -13,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { notifyNavbarProfileUpdated } from "@/lib/auth/navbar-profile-sync";
 
 export function OnboardingForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect")) ?? "/dashboard";
   const isInviteRedirect = redirect.includes("/invite");
@@ -67,40 +67,30 @@ export function OnboardingForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const result = await completeOnboarding({
+        username,
+        displayName,
+        subjectTags,
+      });
 
-    if (!user) {
-      router.push(`/auth/login?redirect=${encodeURIComponent(redirect)}`);
-      return;
-    }
+      if (result.error) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
 
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        username: username.toLowerCase(),
-        display_name: displayName,
-        subject_tags: subjectTags,
-        onboarding_completed: true,
-      })
-      .eq("id", user.id);
+      const normalizedUsername = username.toLowerCase();
+      notifyNavbarProfileUpdated({
+        username: normalizedUsername,
+        displayName,
+      });
 
-    if (updateError) {
-      setError(updateError.message);
+      window.location.assign(redirect);
+    } catch {
+      setError("Could not save your profile. Please try again.");
       setLoading(false);
-      return;
     }
-
-    const normalizedUsername = username.toLowerCase();
-    notifyNavbarProfileUpdated({
-      username: normalizedUsername,
-      displayName,
-    });
-
-    router.push(redirect);
-    router.refresh();
   }
 
   return (
