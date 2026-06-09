@@ -143,6 +143,7 @@ export function RoomChat({
                       )}
                     </div>
                     <p
+                      data-ph-mask
                       className={cn(
                         "inline-block rounded-2xl px-3 py-2 text-sm wrap-break-word text-left",
                         isOwn

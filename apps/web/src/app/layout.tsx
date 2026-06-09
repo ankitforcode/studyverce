@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleAnalytics, GoogleConsentMode } from "@/components/seo/google-analytics";
 import { ConsentProvider } from "@/components/consent/consent-provider";
+import { PostHogRouteContext } from "@/components/analytics/posthog-route-context";
 import { DEFAULT_JSON_LD } from "@/lib/seo/structured-data";
 import { createSiteMetadata } from "@/lib/site-metadata";
 import "./globals.css";
@@ -37,6 +38,7 @@ export default function RootLayout({
         <GoogleConsentMode />
         <GoogleAnalytics />
         <ConsentProvider>
+          <PostHogRouteContext />
           <AppProviders>
             <Navbar />
             <main className="flex-1">{children}</main>

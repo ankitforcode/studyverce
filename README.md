@@ -66,8 +66,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SOCKET_URL=http://localhost:3002
-NEXT_PUBLIC_POSTHOG_KEY=           # optional
+NEXT_PUBLIC_POSTHOG_KEY=           # optional; analytics, Web Vitals, session replay (after consent)
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+# Enable Session replay in your PostHog project settings when using the key above.
 # Rate limiting (same Redis as socket-server; optional — fails open if unset)
 REDIS_URL=redis://localhost:6379
 # RATE_LIMIT_ENABLED=false

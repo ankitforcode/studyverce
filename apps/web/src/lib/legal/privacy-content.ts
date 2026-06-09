@@ -80,7 +80,7 @@ export const privacySections: PrivacySection[] = [
       "Short-lived OAuth state cookies when connecting a music provider.",
       "Browser session storage for AI coach conversation history in a room on Premium and Institution plans.",
       "A consent preference stored in local storage so we remember your cookie choices.",
-      "Analytics cookies and events through PostHog when you allow analytics and NEXT_PUBLIC_POSTHOG_KEY is configured, including page views and selected product events such as sign-in, sign-up, and room interactions.",
+      "Analytics cookies and events through PostHog when you allow analytics and NEXT_PUBLIC_POSTHOG_KEY is configured, including page views, Core Web Vitals (LCP, INP, CLS, FCP), page leave timing, session replays (with input fields and marked sensitive text masked), and selected product events such as sign-in, sign-up, and room interactions.",
       "Analytics cookies and page-view measurement through Google Analytics (Google tag G-SSW5YJCT5M, or the ID configured for your environment) when you allow analytics, to understand traffic and how visitors use our public pages.",
       "Marketing cookies for ad measurement and personalization only when you allow marketing cookies (for example, if we run advertising campaigns in the future).",
     ],

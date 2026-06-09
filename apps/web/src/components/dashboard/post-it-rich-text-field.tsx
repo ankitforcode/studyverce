@@ -59,6 +59,7 @@ export function PostItRichTextField({
       role="textbox"
       aria-multiline={field === "item"}
       data-no-drag
+      data-ph-mask
       data-field={field}
       data-item-id={itemId}
       data-placeholder={placeholder}
