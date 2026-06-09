@@ -20,6 +20,8 @@ import {
 } from "@/lib/leaderboard/data";
 import { formatFocusTime } from "@/lib/utils";
 import { createSiteMetadata } from "@/lib/site-metadata";
+import { PublicPageSeo } from "@/components/seo/public-page-seo";
+import { PUBLIC_BREADCRUMBS } from "@/lib/seo/breadcrumbs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata = createSiteMetadata({
@@ -63,14 +65,22 @@ export default async function LeaderboardPage({
     <div className="min-h-[calc(100dvh-4rem)] bg-background">
       <div className="sticky top-16 z-40 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <Trophy className="h-6 w-6 text-accent" />
-              <h1 className="text-2xl font-bold">Leaderboard</h1>
+          <div className="space-y-3">
+            <PublicPageSeo
+              path="/leaderboard"
+              name="Study Focus Leaderboard"
+              description="Top study streaks and weekly focus hours on the StudyVerce leaderboard."
+              breadcrumbs={PUBLIC_BREADCRUMBS.leaderboard}
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <Trophy className="h-6 w-6 text-accent" />
+                <h1 className="text-2xl font-bold">Leaderboard</h1>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                See how you stack up — focus time, weekly momentum, and streaks
+              </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              See how you stack up — focus time, weekly momentum, and streaks
-            </p>
           </div>
           <Link
             href="/rooms"

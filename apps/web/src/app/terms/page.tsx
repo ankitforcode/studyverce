@@ -6,10 +6,12 @@ import {
   TERMS_LAST_UPDATED,
   termsSections,
 } from "@/lib/legal/terms-content";
+import { TERMS_OF_SERVICE_PATH } from "@/lib/legal/urls";
+import { PUBLIC_BREADCRUMBS } from "@/lib/seo/breadcrumbs";
 import { createSiteMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = createSiteMetadata({
-  path: "/terms",
+  path: TERMS_OF_SERVICE_PATH,
   title: "Terms of Service",
   description:
     "Terms for StudyVerce study rooms, plan limits, Premium pricing, chat, music, voice notes, AI coach, cookies, and acceptable use.",
@@ -21,6 +23,8 @@ export default function TermsPage() {
       title="Terms of Service"
       description="Rules for using StudyVerce, including Free and Premium plan limits and community guidelines."
       lastUpdated={TERMS_LAST_UPDATED}
+      seoPath={TERMS_OF_SERVICE_PATH}
+      breadcrumbs={PUBLIC_BREADCRUMBS.terms}
     >
       <nav
         aria-label="Terms of service sections"

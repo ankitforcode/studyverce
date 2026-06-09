@@ -9,7 +9,10 @@
 | `lib/legal/urls.ts` | Canonical `/privacy` and `/terms` paths + full URL helpers |
 | `app/privacy/page.tsx` | Privacy route + metadata |
 | `app/terms/page.tsx` | Terms route + metadata |
-| `components/legal/legal-page-shell.tsx` | Shared layout, TOC anchors (`scroll-mt-24`) |
+| `components/legal/legal-page-shell.tsx` | Shared layout, TOC anchors (`scroll-mt-24`), `PublicPageSeo` breadcrumbs |
+| `components/seo/public-page-seo.tsx` | Visible breadcrumbs + WebPage/BreadcrumbList JSON-LD |
+| `components/seo/breadcrumbs.tsx` | Accessible breadcrumb nav |
+| `lib/seo/breadcrumbs.ts` | `PUBLIC_BREADCRUMBS`, `breadcrumbJsonLd()` |
 | `components/layout/site-footer.tsx` | Footer legal + product links |
 | `app/auth/signup/page.tsx` | “By creating an account…” terms/privacy links |
 | `app/robots.ts` | `/robots.txt` generation |
@@ -117,6 +120,8 @@ Aligned with `isProtectedAppPath()` plus auth flows:
 ## Sitemap entries
 
 `/`, `/rooms`, `/plans`, `/leaderboard`, `/privacy`, `/terms`
+
+Public indexable pages use `PublicPageSeo` + `PUBLIC_BREADCRUMBS` in `lib/seo/breadcrumbs.ts` (legal pages via `LegalPageShell`).
 
 ## Checklist (material app change)
 

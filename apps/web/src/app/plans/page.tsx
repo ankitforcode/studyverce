@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PlansGrid } from "@/components/plans/plans-grid";
+import { PublicPageSeo } from "@/components/seo/public-page-seo";
 import { Button } from "@/components/ui/button";
+import { PUBLIC_BREADCRUMBS } from "@/lib/seo/breadcrumbs";
 import { createSiteMetadata } from "@/lib/site-metadata";
 
 export const metadata = createSiteMetadata({
@@ -21,6 +23,13 @@ export default function PlansPage() {
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+        <PublicPageSeo
+          path="/plans"
+          name="Plans & Pricing"
+          description="Compare StudyVerce Free, Premium, and Institution plans for virtual study rooms and focus tools."
+          breadcrumbs={PUBLIC_BREADCRUMBS.plans}
+          className="mb-6"
+        />
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-medium uppercase tracking-wide text-primary">
             Plans & pricing

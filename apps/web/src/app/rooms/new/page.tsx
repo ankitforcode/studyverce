@@ -5,6 +5,14 @@ import {
   fetchUserPlanTier,
   getPlanMaxRoomParticipants,
 } from "@/lib/plan-limits";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  path: "/rooms/new",
+  title: "Create Study Room",
+  description: "Create a new virtual study room on StudyVerce with Pomodoro, chat, and shared focus tools.",
+  robots: NOINDEX_ROBOTS,
+});
 
 export default async function NewRoomPage() {
   const supabase = await createClient();

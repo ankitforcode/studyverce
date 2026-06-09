@@ -5,6 +5,9 @@ const DEFAULT_SITE_URL = "http://localhost:3001";
 
 export const SITE_NAME = "StudyVerce";
 
+/** Shown on the home tab and as the site-wide metadata default. */
+export const SITE_TAB_TITLE = `${SITE_NAME} — Virtual Study Rooms`;
+
 export const SITE_TITLE =
   "Free Virtual Study Rooms — Pomodoro Timer & Study Together Online";
 
@@ -12,6 +15,16 @@ export const SITE_DESCRIPTION =
   "Join free virtual study rooms with shared Pomodoro timers, post-it tasks, study music, and live chat. Upgrade to Premium for team rooms, voice notes, and unlimited AI — study together online.";
 
 export const OG_IMAGE_PATH = "/opengraph-image";
+
+/** Browser tab / PWA icon paths (also served from `app/icon.svg` and `app/apple-icon.svg`). */
+export const SITE_ICONS = {
+  favicon: "/icon.svg",
+  apple: "/apple-icon.svg",
+} as const;
+
+export function formatPageTitle(pageTitle: string): string {
+  return `${pageTitle} | ${SITE_NAME}`;
+}
 
 export function getSiteUrl(): string {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
@@ -140,13 +153,15 @@ export function createSiteMetadata(overrides?: SiteMetadataOptions): Metadata {
     title,
     description,
     images: [OG_IMAGE_PATH],
+    creator: SITE_NAME,
+    site: SITE_NAME,
     ...twitterOverrides,
   };
 
   return {
     metadataBase: new URL(siteUrl),
     title: titleOverride ?? {
-      default: SITE_TITLE,
+      default: SITE_TAB_TITLE,
       template: `%s | ${SITE_NAME}`,
     },
     description,
@@ -156,6 +171,18 @@ export function createSiteMetadata(overrides?: SiteMetadataOptions): Metadata {
     authors: [{ name: SITE_NAME, url: siteUrl }],
     creator: SITE_NAME,
     publisher: SITE_NAME,
+    appleWebApp: {
+      capable: true,
+      title: SITE_NAME,
+      statusBarStyle: "black-translucent" as const,
+    },
+    icons: {
+      icon: [{ url: SITE_ICONS.favicon, type: "image/svg+xml", sizes: "any" }],
+      apple: [
+        { url: SITE_ICONS.apple, type: "image/svg+xml", sizes: "180x180" },
+      ],
+      shortcut: SITE_ICONS.favicon,
+    },
     formatDetection: {
       email: false,
       address: false,
@@ -174,6 +201,7 @@ export function createSiteMetadata(overrides?: SiteMetadataOptions): Metadata {
       canonical: canonicalUrl,
       languages: {
         "en-US": canonicalUrl,
+        "x-default": canonicalUrl,
       },
       ...alternatesOverrides,
     },

@@ -4,6 +4,8 @@ import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
 
 export const metadata = createSiteMetadata({
   path: "/dashboard",
+  title: "Dashboard",
+  description: "Your StudyVerce dashboard — study stats, calendar, quick actions, and referral progress.",
   robots: NOINDEX_ROBOTS,
 });
 

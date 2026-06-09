@@ -1,11 +1,13 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { PublicPageSeo } from "@/components/seo/public-page-seo";
 import { cn } from "@/lib/utils";
+import type { BreadcrumbItem } from "@/lib/seo/breadcrumbs";
 
 interface LegalPageShellProps {
   title: string;
   description: string;
   lastUpdated: string;
+  breadcrumbs: BreadcrumbItem[];
+  seoPath: string;
   children: React.ReactNode;
   className?: string;
 }
@@ -14,18 +16,20 @@ export function LegalPageShell({
   title,
   description,
   lastUpdated,
+  breadcrumbs,
+  seoPath,
   children,
   className,
 }: LegalPageShellProps) {
   return (
     <div className={cn("mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16", className)}>
-      <Link
-        href="/"
-        className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to home
-      </Link>
+      <PublicPageSeo
+        path={seoPath}
+        name={title}
+        description={description}
+        breadcrumbs={breadcrumbs}
+        className="mb-8"
+      />
 
       <header className="mb-10 space-y-3">
         <p className="text-sm text-muted-foreground">Last updated {lastUpdated}</p>

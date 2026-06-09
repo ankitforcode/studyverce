@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site-metadata";
+import { SITE_DESCRIPTION, SITE_ICONS, SITE_NAME, SITE_TAB_TITLE } from "@/lib/site-metadata";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${SITE_NAME} — Virtual Study Rooms`,
+    name: SITE_TAB_TITLE,
     short_name: SITE_NAME,
     description: SITE_DESCRIPTION,
     start_url: "/",
@@ -14,9 +14,16 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["education", "productivity"],
     icons: [
       {
-        src: "/icon.svg",
+        src: SITE_ICONS.favicon,
         sizes: "any",
         type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
+        src: SITE_ICONS.apple,
+        sizes: "180x180",
+        type: "image/svg+xml",
+        purpose: "any",
       },
     ],
   };

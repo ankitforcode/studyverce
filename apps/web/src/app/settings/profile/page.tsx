@@ -5,6 +5,14 @@ import { updateProfile } from "@/app/settings/profile/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  path: "/settings/profile",
+  title: "Profile Settings",
+  description: "Edit your StudyVerce display name, username, and study subjects.",
+  robots: NOINDEX_ROBOTS,
+});
 
 export default async function SettingsProfilePage() {
   const supabase = await createClient();

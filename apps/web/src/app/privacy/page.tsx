@@ -6,10 +6,12 @@ import {
   PRIVACY_LAST_UPDATED,
   privacySections,
 } from "@/lib/legal/privacy-content";
+import { PRIVACY_POLICY_PATH } from "@/lib/legal/urls";
+import { PUBLIC_BREADCRUMBS } from "@/lib/seo/breadcrumbs";
 import { createSiteMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = createSiteMetadata({
-  path: "/privacy",
+  path: PRIVACY_POLICY_PATH,
   title: "Privacy Policy",
   description:
     "How StudyVerce collects, uses, and protects your information — accounts, study rooms, chat, music, voice notes, AI coach, cookies, and analytics.",
@@ -21,6 +23,8 @@ export default function PrivacyPage() {
       title="Privacy Policy"
       description="How StudyVerce handles your information when you use study rooms, music, voice notes, AI, and analytics."
       lastUpdated={PRIVACY_LAST_UPDATED}
+      seoPath={PRIVACY_POLICY_PATH}
+      breadcrumbs={PUBLIC_BREADCRUMBS.privacy}
     >
       <nav
         aria-label="Privacy policy sections"

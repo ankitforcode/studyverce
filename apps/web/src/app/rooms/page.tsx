@@ -8,6 +8,8 @@ import {
 } from "@/lib/rooms/listing";
 import { getFavoriteRoomIds } from "@/app/rooms/favorite-actions";
 import { RoomsDirectory } from "@/components/rooms/rooms-directory";
+import { PublicPageSeo } from "@/components/seo/public-page-seo";
+import { PUBLIC_BREADCRUMBS } from "@/lib/seo/breadcrumbs";
 
 export const metadata = createSiteMetadata({
   path: "/rooms",
@@ -47,15 +49,25 @@ export default async function RoomsPage({
   const favoriteRoomIds = isLoggedIn ? await getFavoriteRoomIds() : [];
 
   return (
-    <RoomsDirectory
-      rooms={rooms}
-      initialQuery={q ?? ""}
-      initialTab={tab}
-      isLoggedIn={isLoggedIn}
-      favoriteRoomIds={favoriteRoomIds}
-      removedNotice={
-        removed === "inactive" ? "inactive" : removed === "kicked" ? "kicked" : null
-      }
-    />
+    <>
+      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
+        <PublicPageSeo
+          path="/rooms"
+          name="Browse Virtual Study Rooms"
+          description="Browse public and private virtual study rooms with shared Pomodoro timers, study music, and live accountability."
+          breadcrumbs={PUBLIC_BREADCRUMBS.rooms}
+        />
+      </div>
+      <RoomsDirectory
+        rooms={rooms}
+        initialQuery={q ?? ""}
+        initialTab={tab}
+        isLoggedIn={isLoggedIn}
+        favoriteRoomIds={favoriteRoomIds}
+        removedNotice={
+          removed === "inactive" ? "inactive" : removed === "kicked" ? "kicked" : null
+        }
+      />
+    </>
   );
 }

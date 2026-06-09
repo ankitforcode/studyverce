@@ -11,6 +11,7 @@ import { PostHogRouteContext } from "@/components/analytics/posthog-route-contex
 import { PostHogUserIdentity } from "@/components/analytics/posthog-user-identity";
 import { DEFAULT_JSON_LD } from "@/lib/seo/structured-data";
 import { createSiteMetadata } from "@/lib/site-metadata";
+import type { Viewport } from "next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,6 +27,14 @@ const geistMono = Geist_Mono({
 export const metadata = createSiteMetadata({
   path: "/",
 });
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
+  colorScheme: "dark light",
+};
 
 export default function RootLayout({
   children,

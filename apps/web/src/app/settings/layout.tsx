@@ -5,6 +5,8 @@ import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
 
 export const metadata = createSiteMetadata({
   path: "/settings",
+  title: "Settings",
+  description: "Manage your StudyVerce profile, account, and referral rewards.",
   robots: NOINDEX_ROBOTS,
 });
 

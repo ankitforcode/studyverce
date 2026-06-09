@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none" role="img" aria-label="StudyVerce">
+  <rect width="180" height="180" rx="40" fill="#0a0a0a"/>
+  <path
+    stroke="#22c55e"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M45 40h31a14 14 0 0 1 14 14v86a11 11 0 0 0-11-11H45V40z"
+  />
+  <path
+    stroke="#22c55e"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M135 40h-31a14 14 0 0 0-14 14v86a11 11 0 0 1 11-11h34V40z"
+  />
+</svg>

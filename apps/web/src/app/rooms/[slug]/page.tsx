@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { joinRoom } from "@/app/rooms/actions";
 import { getRoomAccessStateForUser } from "@/app/rooms/access-actions";
@@ -21,6 +22,30 @@ import {
   hasVoiceNotes,
 } from "@/lib/plan-limits";
 import type { PremiumSource } from "@studyverce/shared";
+import { createSiteMetadata, NOINDEX_ROBOTS } from "@/lib/site-metadata";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: room } = await supabase
+    .from("study_rooms")
+    .select("name")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  const roomName = room?.name?.trim() || "Study Room";
+
+  return createSiteMetadata({
+    path: `/rooms/${slug}`,
+    title: `${roomName} — Study Room`,
+    description: `Study in ${roomName} on StudyVerce with a shared Pomodoro timer, chat, post-it tasks, and focus music.`,
+    robots: NOINDEX_ROBOTS,
+  });
+}
 
 export default async function RoomPage({
   params,
